@@ -1357,6 +1357,9 @@
     background: var(--amber-dim);
   }
   .mixtape-app ul.tracks li.dragging{ opacity: 0.4; }
+  .mixtape-app .track-select-checkbox{
+    width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--amber);
+  }
 
   .mixtape-app .track-num{
     font-family: var(--mono);
@@ -3101,10 +3104,6 @@
             </div>
         </div>
 
-        <!-- 다중 선택 모드 전용 오버레이 - 기존 mixtape-app-root의 트랙리스트는 그대로 두고, 선택 모드일 때만
-             이 목록을 대신 보여준다 (기존 재생 엔진의 렌더링/클릭 로직을 전혀 건드리지 않기 위함) -->
-        <div id="playlist-select-overlay" style="display:none;"></div>
-
         <div id="mixtape-app-root" class="mixtape-app">
 
 
@@ -3533,11 +3532,19 @@
                 // 나가기 전 다른 서브탭(내 음악 등)에 있었다면 그 상태를 유지하고, 실제로 Music Home이
                 // 보이는 상태일 때만 폴링을 시작한다 (안 보이는데 백그라운드로 도는 걸 방지)
                 const homePanel = document.getElementById('music-panel-home');
-                if (homePanel && homePanel.classList.contains('active') && typeof startMusicHomePlayerPolling === 'function') {
+                const isHomeActive = !!(homePanel && homePanel.classList.contains('active'));
+                if (isHomeActive && typeof startMusicHomePlayerPolling === 'function') {
                     startMusicHomePlayerPolling();
                 }
-            } else if (typeof stopMusicHomePlayerPolling === 'function') {
-                stopMusicHomePlayerPolling(); // Music 탭을 완전히 벗어나면 폴링도 멈춘다
+                // PiP 억제 플래그도 실제 보이는 서브탭 기준으로 정확히 맞춘다
+                const wasInMusicHome = !!window.__inMusicHomeScreen;
+                window.__inMusicHomeScreen = isHomeActive;
+                if (wasInMusicHome !== window.__inMusicHomeScreen && window.GlobalMiniController) {
+                    window.GlobalMiniController.handleGesture();
+                }
+            } else {
+                if (typeof stopMusicHomePlayerPolling === 'function') stopMusicHomePlayerPolling(); // Music 탭을 완전히 벗어나면 폴링도 멈춘다
+                if (window.__inMusicHomeScreen) window.__inMusicHomeScreen = false; // 다른 탭이면 이 플래그는 의미 없음 - 정리
             }
             document.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -8543,6 +8550,13 @@
         window.switchMusicSection = function(section) {
             document.querySelectorAll('.music-subnav-item').forEach(el => el.classList.toggle('active', el.dataset.section === section));
             document.querySelectorAll('.music-panel').forEach(el => el.classList.toggle('active', el.id === `music-panel-${section}`));
+            // PiP는 이제 "Music 탭 전체"가 아니라 "Music Home"과 "재생 중인 플레이리스트 페이지"에서만
+            // 숨긴다. 공유 음악/좋아요/내 음악/플레이리스트 목록에서는 PiP가 정상적으로 떠야 한다.
+            const wasInMusicHome = !!window.__inMusicHomeScreen;
+            window.__inMusicHomeScreen = (section === 'home');
+            if (wasInMusicHome !== window.__inMusicHomeScreen && window.GlobalMiniController) {
+                window.GlobalMiniController.handleGesture();
+            }
             if (section === 'home') { renderMusicHome(); startMusicHomePlayerPolling(); }
             else stopMusicHomePlayerPolling(); // 다른 화면으로 나가면 즉시 멈춘다 (불필요한 polling 방지)
             if (section === 'shared') loadSharedMusic();
@@ -8631,13 +8645,9 @@
         function resetPlaylistSelectModeUI() {
             const manageToolbar = document.getElementById('playlist-manage-toolbar');
             const selectToolbar = document.getElementById('playlist-select-toolbar');
-            const overlay = document.getElementById('playlist-select-overlay');
-            const root = document.getElementById('mixtape-app-root');
             if (manageToolbar) manageToolbar.style.display = 'flex';
             if (selectToolbar) selectToolbar.style.display = 'none';
-            if (overlay) overlay.style.display = 'none';
-            if (root) root.style.display = 'block';
-            playlistSelectedTrackIds = new Set();
+            if (window.MixTapeApp && window.MixTapeApp.exitSelectMode) window.MixTapeApp.exitSelectMode();
         }
 
         // 기존 플레이리스트 드로어의 "+ 새 플레이리스트" 버튼과 동일한 생성 로직을 그대로 재사용한다
@@ -9124,107 +9134,57 @@
         };
 
         // --- 📁 플레이리스트 곡 다중 선택 모드 ---
-        // 기존 엔진의 트랙리스트(#trackList) 렌더링/클릭 로직은 전혀 건드리지 않는다. 선택 모드에서는
-        // mixtape-app-root 전체를 잠깐 숨기고, 체크박스만 있는 별도 오버레이 목록을 대신 보여준다.
-        // 이렇게 하면 "선택 모드에서 클릭 = 선택/해제, 일반 모드에서 클릭 = 재생"이 자연스럽게 분리된다.
-        let playlistSelectedTrackIds = new Set();
+        // 별도 화면을 새로 만들지 않고, 기존 엔진의 트랙리스트(#trackList)에 체크박스만 조건부로
+        // 붙인다(엔진의 renderList() 안에서 처리). 선택 상태 자체도 엔진(MixTapeApp) 쪽에서 관리한다.
 
-        window.enterPlaylistSelectMode = async function() {
-            const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
-            if (currentId == null) return;
+        // 문서 요구사항: 선택 모드는 별도 화면이 아니라 기존 트랙리스트에 체크박스로 직접 나타난다.
+        window.enterPlaylistSelectMode = function() {
+            if (!window.MixTapeApp || !window.MixTapeApp.enterSelectMode) return;
             document.getElementById('playlist-manage-toolbar').style.display = 'none';
             document.getElementById('playlist-select-toolbar').style.display = 'flex';
-            document.getElementById('mixtape-app-root').style.display = 'none';
-            document.getElementById('playlist-select-overlay').style.display = 'block';
-            playlistSelectedTrackIds = new Set();
-            await renderPlaylistSelectOverlay();
+            window.MixTapeApp.enterSelectMode(); // 기존 트랙리스트를 다시 그리면서 체크박스가 나타난다
             updatePlaylistSelectUI();
         };
 
-        window.exitPlaylistSelectMode = async function() {
+        window.exitPlaylistSelectMode = function() {
             document.getElementById('playlist-manage-toolbar').style.display = 'flex';
             document.getElementById('playlist-select-toolbar').style.display = 'none';
-            document.getElementById('playlist-select-overlay').style.display = 'none';
-            document.getElementById('mixtape-app-root').style.display = 'block';
-            playlistSelectedTrackIds = new Set();
-            // 선택 모드 중 삭제했을 수 있으니 반영한다. 단, 지금 재생 중이면 끊기지 않도록 다시 불러오지 않는다.
-            const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
-            const nowPlaying = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
-            if (currentId != null && !(nowPlaying && nowPlaying.playing) && window.MixTapeApp.switchToPlaylist) {
-                await window.MixTapeApp.switchToPlaylist(currentId);
-            }
+            if (window.MixTapeApp && window.MixTapeApp.exitSelectMode) window.MixTapeApp.exitSelectMode();
         };
 
-        async function renderPlaylistSelectOverlay() {
-            const overlay = document.getElementById('playlist-select-overlay');
-            const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
-            if (currentId == null) { overlay.innerHTML = '<div class="widget-text">플레이리스트를 선택해주세요.</div>'; return; }
-            try {
-                const tracks = await musicDbGetTracksByPlaylist(currentId);
-                if (tracks.length === 0) { overlay.innerHTML = '<div class="widget-text">곡이 없습니다.</div>'; return; }
-                overlay.innerHTML = tracks.map((t, i) => {
-                    const title = t.title || t.name || '제목 없음';
-                    const artist = t.artist || '';
-                    const checked = playlistSelectedTrackIds.has(t.id);
-                    return `
-                        <div onclick="togglePlaylistTrackSelected(${t.id})" style="display:flex; align-items:center; gap:10px; padding:10px 8px; border-bottom:1px solid var(--border-color); cursor:pointer;">
-                            <span style="font-size:16px;">${checked ? '☑' : '☐'}</span>
-                            <span style="font-size:12px; color:var(--text-muted); width:22px;">${String(i + 1).padStart(2, '0')}</span>
-                            <span style="flex:1; min-width:0;">
-                                <div style="font-size:14px; font-weight:600; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🎵 ${escapeNoticeText(title)}</div>
-                                ${artist ? `<div style="font-size:12px; color:var(--text-muted);">${escapeNoticeText(artist)}</div>` : ''}
-                            </span>
-                        </div>
-                    `;
-                }).join('');
-            } catch (e) {
-                console.error('선택 목록 로딩 오류:', e);
-                overlay.innerHTML = '<div class="widget-text">불러오지 못했습니다.</div>';
-            }
-        }
-
-        window.togglePlaylistTrackSelected = function(trackId) {
-            if (playlistSelectedTrackIds.has(trackId)) playlistSelectedTrackIds.delete(trackId);
-            else playlistSelectedTrackIds.add(trackId);
-            renderPlaylistSelectOverlay();
+        window.toggleSelectAllPlaylistTracks = function() {
+            if (!window.MixTapeApp) return;
+            const total = window.MixTapeApp.getTrackCount();
+            const selected = window.MixTapeApp.getSelectedCount();
+            if (selected >= total && total > 0) window.MixTapeApp.deselectAllTracks();
+            else window.MixTapeApp.selectAllTracks();
             updatePlaylistSelectUI();
         };
 
-        window.toggleSelectAllPlaylistTracks = async function() {
-            const currentId = window.MixTapeApp.getCurrentPlaylistId();
-            const tracks = await musicDbGetTracksByPlaylist(currentId);
-            playlistSelectedTrackIds = (playlistSelectedTrackIds.size === tracks.length && tracks.length > 0)
-                ? new Set()
-                : new Set(tracks.map(t => t.id));
-            await renderPlaylistSelectOverlay();
-            updatePlaylistSelectUI();
-        };
+        // 체크박스를 클릭할 때마다 엔진(mixtape 엔진)이 이 콜백을 호출해서 상단 개수 표시를 갱신한다
+        window.onPlaylistSelectionChanged = function() { updatePlaylistSelectUI(); };
 
         function updatePlaylistSelectUI() {
-            const count = playlistSelectedTrackIds.size;
+            if (!window.MixTapeApp) return;
+            const count = window.MixTapeApp.getSelectedCount();
+            const total = window.MixTapeApp.getTrackCount();
             document.getElementById('playlist-select-count').textContent = `${count}곡 선택됨`;
-            document.getElementById('playlist-select-all-checkbox').textContent = count > 0 ? '☑' : '☐';
+            document.getElementById('playlist-select-all-checkbox').textContent = (count >= total && total > 0) ? '☑' : '☐';
             const delBtn = document.getElementById('playlist-select-delete-btn');
             delBtn.disabled = count === 0;
             delBtn.style.opacity = count === 0 ? '0.5' : '1';
             delBtn.textContent = count > 0 ? `🗑 ${count}곡 삭제` : '🗑 삭제';
         }
 
-        // 문서 요구사항: "플레이리스트에서 삭제 ≠ 내 음악에서 삭제" - trackIds 참조만 지운다
-        window.deleteSelectedPlaylistTracks = async function() {
-            const count = playlistSelectedTrackIds.size;
+        // 문서 요구사항: "플레이리스트에서 삭제 ≠ 내 음악에서 삭제" - 기존 엔진의 removeTrack이
+        // 이미 이 원칙대로 동작한다(트랙 자체가 아니라 참조만 지움). 그걸 그대로 재사용한다.
+        window.deleteSelectedPlaylistTracks = function() {
+            if (!window.MixTapeApp) return;
+            const count = window.MixTapeApp.getSelectedCount();
             if (count === 0) return;
             if (!confirm(`선택한 ${count}곡을 이 플레이리스트에서 삭제할까요?`)) return;
-            const currentId = window.MixTapeApp.getCurrentPlaylistId();
-            try {
-                await musicDbRemoveTracksFromPlaylist(currentId, Array.from(playlistSelectedTrackIds));
-                playlistSelectedTrackIds = new Set();
-                await renderPlaylistSelectOverlay();
-                updatePlaylistSelectUI();
-            } catch (e) {
-                console.error('일괄 삭제 오류:', e);
-                alert('삭제에 실패했습니다.\n잠시 후 다시 시도해주세요.');
-            }
+            window.MixTapeApp.deleteSelectedTracks();
+            updatePlaylistSelectUI();
         };
 
         // "+ 내 음악에서 추가"를 재생화면에서 누르면 지금 열려있는 플레이리스트를 기본 대상으로 미리 선택해둔다
@@ -12244,6 +12204,11 @@
     }
   }
 
+  // 1-2 Music: 플레이리스트 "선택 모드" - 별도 화면을 새로 만들지 않고, 기존 트랙리스트 좌측에
+  // 체크박스만 조건부로 붙인다. 선택 모드일 때는 클릭이 재생 대신 체크 토글로 동작한다.
+  let selectModeActive = false;
+  let selectedTrackIndices = new Set();
+
   function renderList(){
     trackCountEl.textContent = `${playlist.length}곡`;
     if(playlist.length === 0){
@@ -12254,9 +12219,22 @@
     trackListEl.innerHTML = "";
     playlist.forEach((track, i) => {
       const li = document.createElement("li");
-      li.draggable = true;
+      li.draggable = !selectModeActive; // 선택 모드에서는 드래그 정렬 대신 체크에 집중
       li.dataset.index = i;
       if(i === currentIndex) li.classList.add("active");
+
+      if(selectModeActive){
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "track-select-checkbox";
+        checkbox.checked = selectedTrackIndices.has(i);
+        checkbox.addEventListener("click", (e) => e.stopPropagation());
+        checkbox.addEventListener("change", () => {
+          if(checkbox.checked) selectedTrackIndices.add(i); else selectedTrackIndices.delete(i);
+          if(window.onPlaylistSelectionChanged) window.onPlaylistSelectionChanged();
+        });
+        li.appendChild(checkbox);
+      }
 
       const num = document.createElement("div");
       num.className = "track-num";
@@ -12306,12 +12284,23 @@
       li.appendChild(num);
       li.appendChild(info);
       li.appendChild(dur);
-      li.appendChild(moveWrap);
-      li.appendChild(removeBtn);
+      if(!selectModeActive){
+        li.appendChild(moveWrap);
+        li.appendChild(removeBtn);
+      }
 
-      li.addEventListener("click", () => playTrack(i));
+      li.addEventListener("click", () => {
+        if(selectModeActive){
+          // 선택 모드에서는 행 전체를 클릭해도 체크박스와 동일하게 토글된다 (체크박스만 정확히 누르지 않아도 됨)
+          const cb = li.querySelector(".track-select-checkbox");
+          if(cb){ cb.checked = !cb.checked; cb.dispatchEvent(new Event("change")); }
+          return;
+        }
+        playTrack(i);
+      });
 
       li.addEventListener("dragstart", () => {
+        if(selectModeActive) return;
         dragSrcIndex = i;
         li.classList.add("dragging");
       });
@@ -12321,7 +12310,7 @@
       li.addEventListener("dragover", (e) => e.preventDefault());
       li.addEventListener("drop", (e) => {
         e.preventDefault();
-        if(dragSrcIndex === null || dragSrcIndex === i) return;
+        if(selectModeActive || dragSrcIndex === null || dragSrcIndex === i) return;
         const moved = playlist.splice(dragSrcIndex, 1)[0];
         playlist.splice(i, 0, moved);
         if(currentIndex === dragSrcIndex) currentIndex = i;
@@ -12355,6 +12344,13 @@
       currentIndex--;
     }
     renderList();
+  }
+
+  // 선택 모드에서 체크된 여러 곡을 한 번에 삭제한다. 기존에 검증된 removeTrack()을 그대로
+  // 재사용하되, 인덱스가 낮아지는 순서를 피하려고 "높은 인덱스부터" 순서대로 지운다.
+  function removeSelectedTracks(indices){
+    const sorted = Array.from(indices).sort((a, b) => b - a);
+    sorted.forEach(i => removeTrack(i));
   }
 
   function moveTrack(i, dir){
@@ -12622,6 +12618,35 @@
     // 로직도 그대로 적용된다 (재생 중인 곡이 처음부터 다시 시작되지 않음).
     switchToPlaylist: function(id){ return switchPlaylist(id); },
     getCurrentPlaylistId: function(){ return currentPlaylistId; },
+    // 1-2 Music: 선택 모드 제어 - 별도 화면을 새로 만들지 않고 기존 트랙리스트에 체크박스만 켠다.
+    enterSelectMode: function(){
+      selectModeActive = true;
+      selectedTrackIndices = new Set();
+      renderList();
+    },
+    exitSelectMode: function(){
+      selectModeActive = false;
+      selectedTrackIndices = new Set();
+      renderList();
+    },
+    isSelectModeActive: function(){ return selectModeActive; },
+    getSelectedCount: function(){ return selectedTrackIndices.size; },
+    getTrackCount: function(){ return playlist.length; },
+    selectAllTracks: function(){
+      selectedTrackIndices = new Set(playlist.map((_, i) => i));
+      renderList();
+    },
+    deselectAllTracks: function(){
+      selectedTrackIndices = new Set();
+      renderList();
+    },
+    deleteSelectedTracks: function(){
+      const count = selectedTrackIndices.size;
+      if(count === 0) return 0;
+      removeSelectedTracks(selectedTrackIndices);
+      selectedTrackIndices = new Set();
+      return count;
+    },
     // 1-2 Music: Music Home의 "재생 중" 위젯 탐색바(seek)용. 기존 audio 객체의 currentTime만 옮긴다.
     seekTo: function(seconds){
       try {
@@ -13200,8 +13225,13 @@
             // 이 suppress는 "지금 보고 있는 사이트 내부 페이지와 중복 표시되지 않도록" inline 위젯에만 적용한다.
             // Document PiP(외부)는 사이트 자체를 벗어난 상태에서만 뜨므로, 마지막으로 활성화됐던 내부 탭이
             // 무엇이었는지와 무관하게 Focus/MixTape가 "실제로 켜져 있는지"만 기준으로 항상 보여줘야 한다.
+            //
+            // 1-2 Music: PiP/인라인 미니플레이어를 숨기는 범위는 "Music 탭 전체"가 아니라
+            // "Music Home 화면"과 "재생 중인 플레이리스트를 들어간 페이지"로 한정한다.
+            // 공유 음악/좋아요/내 음악/플레이리스트 목록에서는 정상적으로 떠야 한다.
+            const suppressMixHere = !!window.__inMusicHomeScreen || !!window.__inPlaylistPlayScreen;
             const suppressInlineFocus = page === 'planner';
-            const suppressInlineMix = page === 'mixtape';
+            const suppressInlineMix = page === 'mixtape' && suppressMixHere;
 
             if (state.mode === 'inline') {
                 renderInlineFocus(focusData, suppressInlineFocus);
@@ -13216,9 +13246,9 @@
             inlineFocusCard.style.display = 'none';
             inlineMixCard.style.display = 'none';
             const showFocus = renderPiPFocus(focusData, false);
-            // 1-2 Music: "플레이리스트 음악 플레이 화면"에 있을 때만 PiP의 MixTape 표시를 막는다.
-            // 플레이리스트 "목록" 화면이나 Music의 다른 화면(홈/검색/추천/공유 등)은 기존 그대로 PiP가 뜬다.
-            const showMix = renderPiPMix(mixData, !!window.__inPlaylistPlayScreen);
+            // 1-2 Music: "Music Home"이나 "재생 중인 플레이리스트 페이지"에 있을 때만 PiP의 MixTape 표시를 막는다.
+            // 공유 음악/좋아요/내 음악/플레이리스트 목록 화면에서는 정상적으로 PiP가 뜬다.
+            const showMix = renderPiPMix(mixData, suppressMixHere);
             if (pipCard) pipCard.classList.toggle('gmw-pip-both', showFocus && showMix);
             if (pipWindow) {
                 if (!showFocus && !showMix) {
