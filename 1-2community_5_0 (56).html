@@ -3732,7 +3732,12 @@
                         updatePokemonChampionsButton();
 
                         listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule();
-                        
+                        // NEIS 학사일정 자동 동기화: 세션당 한 번만 시도하고, 브라우저별로 최근 동기화 후 일정 시간 내면 건너뛴다.
+                        if (!neisSyncTriggered) {
+                            neisSyncTriggered = true;
+                            if (shouldSyncNeisNow()) syncNeisSchedules();
+                        }
+
                         if (is2Ban && !isListeningToPosts) {
                             listenToPosts(); listenToArchive(); listenToArchiveStudy(); listenToArchiveEtc(); listenToExamNotes(); listenToCalendar(); listenToSeating(); listenToPokemonPosts(); listenToGames(); listenToGameCategories(); loadSupabaseMaterials();
                             isListeningToPosts = true;
@@ -3778,7 +3783,8 @@
                 document.getElementById('home-calendar-summary').innerHTML = upcoming.map(ev => {
                     const c = scheduleTagColor((ev.tags || [])[0]);
                     const dateLabel = ev.endDate && ev.endDate !== ev.date ? `${ev.date} ~ ${ev.endDate}` : ev.date;
-                    return `<div style="font-size:13px; margin-bottom:4px;"><span class="widget-date">[${dateLabel}]</span> <span style="color:${c}; font-weight:700;">${escapeNoticeText(ev.title)}</span></div>`;
+                    const dday = scheduleDDayLabel(ev.date);
+                    return `<div style="font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><span class="widget-date">[${dateLabel}]</span> <span style="color:${c}; font-weight:700;">${escapeNoticeText(ev.title)}</span><span style="margin-left:auto; flex-shrink:0; font-size:11px; font-weight:800; color:${c}; background:${c}18; padding:1px 7px; border-radius:6px;">${dday}</span></div>`;
                 }).join('') || '<div class="widget-text">일정 없음</div>';
             });
         }
@@ -6522,8 +6528,8 @@
         // =========================================================================
         // 반 공용 일정 캘린더 (기존 수행평가 Firestore calendar 자동 미러링 포함)
         // =========================================================================
-        const SCHEDULE_DEFAULT_TAGS = ['수행평가', '지필평가', '학교행사'];
-        const SCHEDULE_TAG_COLORS = { '수행평가': '#3b82f6', '지필평가': '#ef4444', '학교행사': '#16a34a' };
+        const SCHEDULE_DEFAULT_TAGS = ['수행평가', '지필평가', '학교행사', '학교일정'];
+        const SCHEDULE_TAG_COLORS = { '수행평가': '#3b82f6', '지필평가': '#ef4444', '학교행사': '#16a34a', '학교일정': '#f59e0b' };
         function scheduleTagColor(tag) { return SCHEDULE_TAG_COLORS[tag] || '#8b5cf6'; }
 
         let scheduleViewDate = new Date();
@@ -6548,6 +6554,14 @@
         }
 
         function getScheduleDateKey(y, m, d) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+        // 일정 시작일까지 며칠 남았는지 "D-n" / "D-DAY" / "D+n"(지난 일정) 형태로 표시한다.
+        function scheduleDDayLabel(dateStr) {
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const target = new Date(dateStr + 'T00:00:00');
+            const diffDays = Math.round((target - today) / 86400000);
+            if (diffDays === 0) return 'D-DAY';
+            return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+        }
         function scheduleEventsByDate(dateKey) { return Object.entries(scheduleCache).filter(([, ev]) => dateKey >= ev.date && dateKey <= (ev.endDate || ev.date)).map(([id, ev]) => ({ id, ...ev })); }
         function scheduleEventMatchesFilter(ev) {
             if (scheduleActiveTagFilter.size === 0) return true;
@@ -6771,6 +6785,164 @@
         }
         function unmirrorAssessmentFromSchedule(examId) {
             remove(ref(db, `dashboard/shared_schedule/assess_${examId}`)).catch(() => {});
+        }
+
+        // =========================================================================
+        // NEIS 학사일정 자동 연동 (한일고등학교)
+        // - 기존 dashboard/shared_schedule / scheduleCache / renderScheduleCalendar()를 그대로 재사용한다.
+        // - 이 블록이 관리하는 것은 source === 'neis' 인 항목뿐이며, manual/assessment 일정은 절대 건드리지 않는다.
+        // - 키(NEIS API 인증키 등)는 이 블록에서만 관리한다.
+        // =========================================================================
+        const NEIS_API_KEY = "8540f31cf4a84f6fb377f1e063f54f73";
+        const NEIS_SCHOOL_NAME = "한일고등학교";
+        const NEIS_SCHOOL_INFO_URL = "https://open.neis.go.kr/hub/schoolInfo";
+        const NEIS_SCHEDULE_URL = "https://open.neis.go.kr/hub/SchoolSchedule";
+        const NEIS_SCHOOL_INFO_CACHE_KEY = "hanilgo_neis_school_info";
+        const NEIS_LAST_SYNC_KEY = "hanilgo_neis_last_sync";
+        const NEIS_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6시간 - 열 때마다 과도하게 호출하지 않기 위한 최소 간격(브라우저별)
+        const NEIS_RESULT_MESSAGES = {
+            'INFO-200': '조회된 데이터가 없습니다.',
+            'ERROR-290': '인증키가 유효하지 않습니다.',
+            'ERROR-300': '필수 파라미터가 누락되었습니다.',
+            'ERROR-336': '한 번에 요청 가능한 최대 건수(1,000건)를 초과했습니다.',
+            'ERROR-337': '일일 트래픽 제한을 초과했습니다.'
+        };
+        let neisSyncTriggered = false;
+
+        function neisResultMessage(code) { return NEIS_RESULT_MESSAGES[code] || `알 수 없는 응답 코드 (${code})`; }
+
+        // NEIS 응답은 정상일 땐 [rootKey][0].head[1].RESULT, 오류/데이터없음일 땐 최상위 RESULT로 내려온다.
+        function parseNeisResponse(json, rootKey) {
+            const topResult = json && json.RESULT;
+            if (topResult && topResult.CODE) return { code: topResult.CODE, rows: [] };
+            const block = json && json[rootKey];
+            const head = block && block[0] && block[0].head;
+            const resultCode = (head && head[1] && head[1].RESULT && head[1].RESULT.CODE) || 'INFO-000';
+            const rows = (block && block[1] && block[1].row) || [];
+            return { code: resultCode, rows };
+        }
+
+        // 문자열을 안정적인 짧은 해시로 변환한다 (같은 입력 → 항상 같은 출력, Firebase key로 쓸 수 있는 문자만 사용).
+        function stableHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+            return hash.toString(36);
+        }
+
+        // 같은 NEIS 일정이면 재동기화해도 항상 같은 key가 나오도록 하는 결정적 ID (push() 대신 이걸 set 키로 쓴다).
+        function makeNeisEventId(aaYmd, eventNm, eventCntnt) {
+            return `neis_${aaYmd}_${stableHash(`${eventNm || ''}|${eventCntnt || ''}`)}`;
+        }
+
+        // 한일고등학교의 교육청 코드(ATPT_OFCDC_SC_CODE)/학교 코드(SD_SCHUL_CODE)를 조회한다.
+        // 브라우저 localStorage에 캐시해서, 매번 학교 코드부터 다시 찾지 않도록 한다.
+        async function fetchNeisSchoolInfo() {
+            try {
+                const cached = JSON.parse(localStorage.getItem(NEIS_SCHOOL_INFO_CACHE_KEY) || 'null');
+                if (cached && cached.officeCode && cached.schoolCode) return cached;
+            } catch (e) {}
+
+            const url = new URL(NEIS_SCHOOL_INFO_URL);
+            url.searchParams.set('KEY', NEIS_API_KEY);
+            url.searchParams.set('Type', 'json');
+            url.searchParams.set('pIndex', '1');
+            url.searchParams.set('pSize', '100');
+            url.searchParams.set('SCHUL_NM', NEIS_SCHOOL_NAME);
+
+            const json = await (await fetch(url.toString())).json();
+            const { code, rows } = parseNeisResponse(json, 'schoolInfo');
+            if (code === 'INFO-200') throw new Error(`NEIS ${code}: "${NEIS_SCHOOL_NAME}" 학교를 찾지 못했습니다.`);
+            if (code !== 'INFO-000') throw new Error(`NEIS ${code}: ${neisResultMessage(code)}`);
+
+            const exact = rows.find(r => r.SCHUL_NM === NEIS_SCHOOL_NAME) || rows[0];
+            if (!exact) throw new Error(`NEIS: "${NEIS_SCHOOL_NAME}" 학교를 찾지 못했습니다.`);
+            const info = { officeCode: exact.ATPT_OFCDC_SC_CODE, schoolCode: exact.SD_SCHUL_CODE, schoolName: exact.SCHUL_NM };
+            try { localStorage.setItem(NEIS_SCHOOL_INFO_CACHE_KEY, JSON.stringify(info)); } catch (e) {}
+            return info;
+        }
+
+        // 지정한 기간의 학사일정을 조회한다. 1,000건 제한을 지키기 위해 필요하면 pIndex를 늘려가며 페이지네이션한다.
+        async function fetchNeisSchedule(officeCode, schoolCode, fromYmd, toYmd) {
+            const pSize = 1000;
+            let pIndex = 1;
+            let all = [];
+            while (pIndex <= 10) { // 안전장치: 최대 10페이지(1만 건)까지만
+                const url = new URL(NEIS_SCHEDULE_URL);
+                url.searchParams.set('KEY', NEIS_API_KEY);
+                url.searchParams.set('Type', 'json');
+                url.searchParams.set('pIndex', String(pIndex));
+                url.searchParams.set('pSize', String(pSize));
+                url.searchParams.set('ATPT_OFCDC_SC_CODE', officeCode);
+                url.searchParams.set('SD_SCHUL_CODE', schoolCode);
+                url.searchParams.set('AA_FROM_YMD', fromYmd);
+                url.searchParams.set('AA_TO_YMD', toYmd);
+
+                const json = await (await fetch(url.toString())).json();
+                const { code, rows } = parseNeisResponse(json, 'SchoolSchedule');
+                if (code === 'INFO-200') break; // 정상: 해당 기간에 데이터 없음
+                if (code !== 'INFO-000') throw new Error(`NEIS ${code}: ${neisResultMessage(code)}`);
+
+                all = all.concat(rows);
+                if (rows.length < pSize) break; // 더 가져올 페이지 없음
+                pIndex++;
+            }
+            return all;
+        }
+
+        // NEIS 학사일정을 기존 반 공용 일정(dashboard/shared_schedule)에 병합한다.
+        // - source: 'neis' 인 항목만 이 함수가 관리하고, 'manual'/'assessment' 일정은 절대 건드리지 않는다.
+        // - 결정적 key(makeNeisEventId)로 set() 하므로 여러 번 실행해도 중복 생성되지 않고 내용만 갱신된다.
+        // - 이번 동기화 결과에 더 이상 없는 과거 NEIS 일정(source==='neis')은 삭제해 학사일정 변경/취소를 반영한다.
+        async function syncNeisSchedules() {
+            try {
+                const { officeCode, schoolCode, schoolName } = await fetchNeisSchoolInfo();
+                console.log(`✓ NEIS 학교정보 연결됨 (${schoolName})`);
+
+                const year = new Date().getFullYear();
+                const rows = await fetchNeisSchedule(officeCode, schoolCode, `${year}0101`, `${year}1231`);
+
+                const updates = {};
+                const seenIds = new Set();
+                rows.forEach(row => {
+                    const aaYmd = row.AA_YMD;
+                    if (!aaYmd || aaYmd.length !== 8) return;
+                    const date = `${aaYmd.slice(0, 4)}-${aaYmd.slice(4, 6)}-${aaYmd.slice(6, 8)}`;
+                    const id = makeNeisEventId(aaYmd, row.EVENT_NM, row.EVENT_CNTNT);
+                    seenIds.add(id);
+                    updates[`dashboard/shared_schedule/${id}`] = {
+                        date,
+                        subject: '',
+                        title: row.EVENT_NM || '학교 일정',
+                        content: row.EVENT_CNTNT || '',
+                        tags: ['학교일정', 'NEIS'],
+                        source: 'neis',
+                        school: NEIS_SCHOOL_NAME,
+                        neisYmd: aaYmd,
+                        updatedAt: Date.now()
+                    };
+                });
+
+                // manual/assessment는 절대 건드리지 않고, source==='neis'인데 이번 응답에 없는 것만 삭제 대상으로 삼는다.
+                Object.entries(scheduleCache).forEach(([id, ev]) => {
+                    if (ev && ev.source === 'neis' && !seenIds.has(id)) updates[`dashboard/shared_schedule/${id}`] = null;
+                });
+
+                if (Object.keys(updates).length > 0) await update(ref(db), updates);
+                try { localStorage.setItem(NEIS_LAST_SYNC_KEY, String(Date.now())); } catch (e) {}
+                console.log(`✓ ${NEIS_SCHOOL_NAME} 일정 ${seenIds.size}개 동기화`);
+            } catch (e) {
+                console.warn('⚠ NEIS 학사일정을 불러오지 못했습니다. 인증키 또는 API 요청 상태를 확인해주세요.');
+                console.error('NEIS 동기화 실패:', e && e.message ? e.message : e);
+            }
+        }
+
+        // 페이지를 열 때마다 과도하게 호출하지 않도록, 브라우저별로 최근 동기화 후 일정 시간 내에는 건너뛴다.
+        // (여러 사용자가 같은 Firebase 데이터를 보므로, 어느 한 사용자가 동기화하면 나머지는 그 결과를 그대로 읽는다.)
+        function shouldSyncNeisNow() {
+            try {
+                const last = parseInt(localStorage.getItem(NEIS_LAST_SYNC_KEY) || '0', 10);
+                return (Date.now() - last) > NEIS_SYNC_INTERVAL_MS;
+            } catch (e) { return true; }
         }
 
         async function uploadImageToImgbb(file) {
