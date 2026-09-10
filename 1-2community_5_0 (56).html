@@ -134,7 +134,7 @@
         .sidebar-menu-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
         .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 10px 0; margin-bottom: 10px; flex-shrink: 0; overflow: visible; }
-        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header { justify-content: flex-start; padding: 10px 4px; }
+        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header { justify-content: flex-start; padding: 10px 14px; }
 
         /* 로고: 접힘/펼침 상태 모두 완전히 같은 이미지를 쓰고, width만 상태별로 바꿔서 자연스럽게
            커지고 작아지게 한다. height는 항상 auto라 원본 비율이 유지되고 절대 위아래가 잘리지 않는다.
@@ -150,7 +150,7 @@
         }
         .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo { justify-content: flex-start; }
         .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img {
-            width: 88%;       /* 펼쳐진 사이드바(260px) 가로폭을 거의 꽉 채움 - 세로는 auto라 비율대로 같이 커짐 */
+            width: 100%;      /* 펼쳐진 사이드바에서 아래 프로필 위젯(.user-profile)과 같은 좌우 여백을 쓰도록 가로폭을 꽉 채움 - 세로는 auto라 비율대로 같이 커짐 */
         }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
         .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text { font-size: 19px; }
@@ -6901,15 +6901,17 @@
                 const year = new Date().getFullYear();
                 const rows = await fetchNeisSchedule(officeCode, schoolCode, `${year}0101`, `${year}1231`);
 
-                const updates = {};
+                // 루트(ref(db))에 대한 멀티패스 update()는 Firebase 규칙에 따라 permission_denied가 날 수 있으므로,
+                // 기존 mirrorAssessmentToSchedule/unmirrorAssessmentFromSchedule과 동일하게 경로별 set()/remove()를 쓴다.
                 const seenIds = new Set();
+                const writes = [];
                 rows.forEach(row => {
                     const aaYmd = row.AA_YMD;
                     if (!aaYmd || aaYmd.length !== 8) return;
                     const date = `${aaYmd.slice(0, 4)}-${aaYmd.slice(4, 6)}-${aaYmd.slice(6, 8)}`;
                     const id = makeNeisEventId(aaYmd, row.EVENT_NM, row.EVENT_CNTNT);
                     seenIds.add(id);
-                    updates[`dashboard/shared_schedule/${id}`] = {
+                    writes.push(set(ref(db, `dashboard/shared_schedule/${id}`), {
                         date,
                         subject: '',
                         title: row.EVENT_NM || '학교 일정',
@@ -6919,15 +6921,15 @@
                         school: NEIS_SCHOOL_NAME,
                         neisYmd: aaYmd,
                         updatedAt: Date.now()
-                    };
+                    }));
                 });
 
                 // manual/assessment는 절대 건드리지 않고, source==='neis'인데 이번 응답에 없는 것만 삭제 대상으로 삼는다.
                 Object.entries(scheduleCache).forEach(([id, ev]) => {
-                    if (ev && ev.source === 'neis' && !seenIds.has(id)) updates[`dashboard/shared_schedule/${id}`] = null;
+                    if (ev && ev.source === 'neis' && !seenIds.has(id)) writes.push(remove(ref(db, `dashboard/shared_schedule/${id}`)));
                 });
 
-                if (Object.keys(updates).length > 0) await update(ref(db), updates);
+                await Promise.all(writes);
                 try { localStorage.setItem(NEIS_LAST_SYNC_KEY, String(Date.now())); } catch (e) {}
                 console.log(`✓ ${NEIS_SCHOOL_NAME} 일정 ${seenIds.size}개 동기화`);
             } catch (e) {
