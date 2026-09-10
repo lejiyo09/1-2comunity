@@ -1946,8 +1946,8 @@
                         <div class="card-title">주요 과목 시험범위 📝</div>
                         <div id="home-exam-summary" class="widget-text">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('exam')">
-                        <div class="card-title">최근 수행평가 📅</div>
+                    <div class="card clickable" onclick="switchTab('schedule')">
+                        <div class="card-title">일정 📅</div>
                         <div id="home-calendar-summary" class="widget-text">불러오는 중...</div>
                     </div>
                     <div class="card clickable home-mini-card" onclick="switchTab('planner')">
@@ -2227,6 +2227,8 @@
                     <input type="hidden" id="schedule-editing-id" value="">
                     <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">날짜</label>
                     <input type="date" id="schedule-form-date" class="auth-input" style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">종료일 (여러 날에 걸친 일정인 경우에만 입력, 예: 9/28~10/2)</label>
+                    <input type="date" id="schedule-form-enddate" class="auth-input" style="margin-bottom:12px;">
                     <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">과목</label>
                     <select id="schedule-form-subject" class="auth-select" style="margin-bottom:12px;">
                         <option value="국어">국어</option><option value="영어">영어</option><option value="수학">수학</option>
@@ -3765,11 +3767,19 @@
                 const targets = ['국어', '영어', '수학', '통합사회', '통합과학'];
                 document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px;"><strong style="color:var(--primary);">${sub}</strong> <span>${notes[sub] || '미등록'}</span></div>`).join('');
             });
-            // 최근 3개 수행평가 (날짜가 아직 없는 임시 입력행은 제외한다)
-            onSnapshot(collection(fdb, 'calendar'), (snap) => {
-                const cal = fsSnapshotToMap(snap);
-                const sorted = Object.values(cal).filter(c => c && c.date && c.title).sort((a,b) => a.date.localeCompare(b.date)).slice(0, 3);
-                document.getElementById('home-calendar-summary').innerHTML = sorted.map(c => `<div style="font-size:13px; margin-bottom:4px;"><span class="widget-date">[${c.date}]</span> ${c.icon || '📝'} ${c.title || c.text || '수행평가'}</div>`).join('') || '<div class="widget-text">일정 없음</div>';
+            // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개
+            onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
+                const events = snap.val() || {};
+                const todayKey = getScheduleDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+                const upcoming = Object.values(events)
+                    .filter(ev => ev && ev.date && ev.title && (ev.endDate || ev.date) >= todayKey)
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .slice(0, 5);
+                document.getElementById('home-calendar-summary').innerHTML = upcoming.map(ev => {
+                    const c = scheduleTagColor((ev.tags || [])[0]);
+                    const dateLabel = ev.endDate && ev.endDate !== ev.date ? `${ev.date} ~ ${ev.endDate}` : ev.date;
+                    return `<div style="font-size:13px; margin-bottom:4px;"><span class="widget-date">[${dateLabel}]</span> <span style="color:${c}; font-weight:700;">${escapeNoticeText(ev.title)}</span></div>`;
+                }).join('') || '<div class="widget-text">일정 없음</div>';
             });
         }
 
@@ -6513,7 +6523,7 @@
         // 반 공용 일정 캘린더 (기존 수행평가 Firestore calendar 자동 미러링 포함)
         // =========================================================================
         const SCHEDULE_DEFAULT_TAGS = ['수행평가', '지필평가', '학교행사'];
-        const SCHEDULE_TAG_COLORS = { '수행평가': '#3b82f6', '지필평가': '#ef4444', '학교행사': '#16a34a' };
+        const SCHEDULE_TAG_COLORS = { '수행평가': '#ef4444', '지필평가': '#ef4444', '학교행사': '#16a34a' };
         function scheduleTagColor(tag) { return SCHEDULE_TAG_COLORS[tag] || '#8b5cf6'; }
 
         let scheduleViewDate = new Date();
@@ -6538,7 +6548,7 @@
         }
 
         function getScheduleDateKey(y, m, d) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
-        function scheduleEventsByDate(dateKey) { return Object.entries(scheduleCache).filter(([, ev]) => ev.date === dateKey).map(([id, ev]) => ({ id, ...ev })); }
+        function scheduleEventsByDate(dateKey) { return Object.entries(scheduleCache).filter(([, ev]) => dateKey >= ev.date && dateKey <= (ev.endDate || ev.date)).map(([id, ev]) => ({ id, ...ev })); }
         function scheduleEventMatchesFilter(ev) {
             if (scheduleActiveTagFilter.size === 0) return true;
             return (ev.tags || []).some(t => scheduleActiveTagFilter.has(t));
@@ -6599,11 +6609,13 @@
             if (events.length === 0) { listEl.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding:14px;">등록된 일정이 없습니다.</div>`; return; }
             listEl.innerHTML = events.map(ev => {
                 const tagsHtml = (ev.tags || []).map(t => `<span style="font-size:10px; padding:2px 6px; border-radius:5px; background:${scheduleTagColor(t)}22; color:${scheduleTagColor(t)}; margin-right:4px;">${t}</span>`).join('');
+                const rangeHtml = (ev.endDate && ev.endDate !== ev.date) ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${ev.date} ~ ${ev.endDate}</div>` : '';
                 return `<div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                         <div style="font-size:14px; font-weight:700; color:var(--text-main);">${ev.subject ? `[${escapeNoticeText(ev.subject)}] ` : ''}${escapeNoticeText(ev.title)}</div>
                         ${canWriteSchedule ? `<div style="display:flex; gap:8px; flex-shrink:0;"><span onclick="openScheduleComposer('${ev.id}')" style="cursor:pointer; font-size:12px; color:var(--primary); font-weight:600;">수정</span><span onclick="deleteScheduleEvent('${ev.id}')" style="cursor:pointer; font-size:12px; color:#ef4444; font-weight:600;">삭제</span></div>` : ''}
                     </div>
+                    ${rangeHtml}
                     ${tagsHtml ? `<div style="margin-top:6px;">${tagsHtml}</div>` : ''}
                     ${ev.content ? `<div style="font-size:12px; color:var(--text-muted); margin-top:6px; white-space:pre-wrap;">${escapeNoticeText(ev.content)}</div>` : ''}
                 </div>`;
@@ -6620,6 +6632,7 @@
                 const ev = scheduleCache[id];
                 titleEl.textContent = '일정 수정';
                 document.getElementById('schedule-form-date').value = ev.date || '';
+                document.getElementById('schedule-form-enddate').value = (ev.endDate && ev.endDate !== ev.date) ? ev.endDate : '';
                 document.getElementById('schedule-form-subject').value = ev.subject || '기타';
                 document.getElementById('schedule-form-title').value = ev.title || '';
                 document.getElementById('schedule-form-content').value = ev.content || '';
@@ -6627,6 +6640,7 @@
             } else {
                 titleEl.textContent = '일정 추가';
                 document.getElementById('schedule-form-date').value = scheduleSelectedDateKey || '';
+                document.getElementById('schedule-form-enddate').value = '';
                 document.getElementById('schedule-form-subject').value = '국어';
                 document.getElementById('schedule-form-title').value = '';
                 document.getElementById('schedule-form-content').value = '';
@@ -6652,17 +6666,20 @@
         window.submitScheduleForm = async function() {
             if (!canWriteSchedule || !currentUser) return alert('작성 권한이 없습니다.');
             const date = document.getElementById('schedule-form-date').value;
+            const endDateInput = document.getElementById('schedule-form-enddate').value;
             const subject = document.getElementById('schedule-form-subject').value;
             const title = document.getElementById('schedule-form-title').value.trim();
             const content = document.getElementById('schedule-form-content').value.trim();
             if (!date || !title) return alert('날짜와 제목을 입력해주세요.');
+            if (endDateInput && endDateInput < date) return alert('종료일은 시작 날짜보다 빠를 수 없습니다.');
+            const endDate = endDateInput || date;
             const tags = Array.from(scheduleFormSelectedTags);
             try {
                 if (scheduleEditingId) {
-                    await update(ref(db, `dashboard/shared_schedule/${scheduleEditingId}`), { date, subject, title, content, tags, updatedAt: Date.now() });
+                    await update(ref(db, `dashboard/shared_schedule/${scheduleEditingId}`), { date, endDate, subject, title, content, tags, updatedAt: Date.now() });
                 } else {
                     await push(ref(db, 'dashboard/shared_schedule'), {
-                        date, subject, title, content, tags, source: 'manual',
+                        date, endDate, subject, title, content, tags, source: 'manual',
                         authorName: getAuthorName(), authorUid: currentUser.uid, authorOriginal: currentUser.email || '', createdAt: Date.now()
                     });
                 }
