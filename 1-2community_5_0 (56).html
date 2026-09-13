@@ -2625,7 +2625,8 @@
             <div id="tab-seat" class="tab-content">
                 <div class="header"><h1>🪑 실시간 랜덤 자리 배치</h1><p>우리 반 고유의 좌석 구조(교탁 기준 6열 배치)를 완벽히 구현한 시스템입니다.</p></div>
                 <div id="seat-secure-content" style="display: none;">
-                    <button onclick="shuffleSeats()" class="auth-btn" style="width: auto; padding: 12px 24px; font-size: 15px; margin-bottom: 15px;">🎲 자리 무작위 배치 셔플 시작</button>
+                    <button id="btn-shuffle-seats" onclick="shuffleSeats()" class="auth-btn" style="display:none; width: auto; padding: 12px 24px; font-size: 15px; margin-bottom: 15px;">🎲 자리 무작위 배치 셔플 시작</button>
+                    <p id="seat-view-only-hint" style="display:none; font-size:13px; color:var(--text-muted); margin-bottom:15px;">✏️ 자리 배치는 커뮤니티 엔지니어·반장·부반장·담임선생님만 수정할 수 있습니다.</p>
                     <div class="classroom">
                         <div class="teacher-desk">교 탁</div>
                         <div class="seating-grid" id="seating-grid"></div>
@@ -2688,6 +2689,15 @@
                     <h3 style="margin-bottom: 15px;" id="squad-modal-title">선수 선택</h3>
                     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;" id="squad-student-list"></div>
                     <button onclick="updateSquadPlayer('')" class="auth-btn" style="background:#ef4444; margin-top:15px;">포지션 비우기</button>
+                </div>
+            </div>
+
+            <div id="seat-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-card" style="max-width: 400px;">
+                    <span class="close-btn" onclick="document.getElementById('seat-modal').style.display='none'">&times;</span>
+                    <h3 style="margin-bottom: 15px;" id="seat-modal-title">좌석 배정</h3>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;" id="seat-student-list"></div>
+                    <button onclick="updateSeatAssignment('')" class="auth-btn" style="background:#ef4444; margin-top:15px;">🚪 자리 비우기</button>
                 </div>
             </div>
 
@@ -3309,6 +3319,7 @@
         let isAdmin = false; let isFounder = false; let isSubAdmin = false; let subAdminsList = {};
         let canPostNotice = false; // 홈 공지: 커뮤니티 엔지니어(관리자)/담임선생님/반장/부반장/운영자 작성 가능
         let canWriteSchedule = false; // 반 공용 일정: 1-2반 정회원(학생+담임선생님)이면 누구나 추가/수정/삭제 가능
+        let canManageSeats = false; // 랜덤 자리 배치: 커뮤니티 엔지니어(관리자)/반장/부반장/담임선생님만 셔플·개별 자리 수정 가능
         let isTeacherAccount = false;
         let isRestrictedViewer = false; // 1-2 담임선생님 + 타반 학생: 게임/커뮤니티 접근 불가, 프로필은 열람만 가능(사진 기본, 설명/댓글 비공개)
         const TEACHER_ACCOUNT_EMAILS = ["nassir@hanilgo.cnehs.kr", "20261240@hanilgo.cnehs.kr"];
@@ -3405,7 +3416,7 @@
             if (typeof unsubscribeAchievements === 'function') { unsubscribeAchievements(); unsubscribeAchievements = null; }
             dailyMissionsAllCache = {}; myAchievementsUnlocked = {};
             if (window.PlannerApp && window.PlannerApp.resetLocalXPDisplay) window.PlannerApp.resetLocalXPDisplay(); // 로그아웃은 인증 상태만 종료 - Firebase에는 아무것도 쓰지 않고 화면 표시만 초기화
-            currentUser = null; currentUserInfo = null; isAdmin = false; isFounder = false; isSubAdmin = false; isTeacherAccount = false; isOperator = false; isRestrictedViewer = false; canPostNotice = false; canWriteSchedule = false; isListeningToPosts = false; isListeningToSquad = false; signOut(auth);
+            currentUser = null; currentUserInfo = null; isAdmin = false; isFounder = false; isSubAdmin = false; isTeacherAccount = false; isOperator = false; isRestrictedViewer = false; canPostNotice = false; canWriteSchedule = false; canManageSeats = false; isListeningToPosts = false; isListeningToSquad = false; signOut(auth);
         });
 
         window.setNickname = async function() {
@@ -3683,6 +3694,9 @@
                             canPostNotice = isAdmin || isTeacherAccount || isViceClassPresident || isOperator;
                             // 반 공용 일정 등록/수정/삭제 권한: 1-2반 정회원(학생+담임선생님)이면 누구나 가능
                             canWriteSchedule = is2Ban || isTeacherAccount;
+                            // 랜덤 자리 배치 셔플/개별 자리 수정 권한: 커뮤니티 엔지니어(관리자)·반장·부반장·담임선생님만
+                            canManageSeats = isAdmin || isFounder || isViceClassPresident || isTeacherAccount;
+                            updateSeatComposerVisibility();
                             updateNoticeComposerVisibility();
                             updatePollComposerVisibility();
                             updateScheduleComposerVisibility();
@@ -10408,12 +10422,48 @@
                             displayName = resolved || assigned;
                         }
                         box.innerHTML = `<div class="seat-label">${num}번 좌석</div><div class="seat-user">${displayName}</div>`;
+                        if (canManageSeats) { box.style.cursor = 'pointer'; box.onclick = () => openSeatModal(num); }
                     }
                     gridEl.appendChild(box);
                 });
             });
         }
+
+        // 랜덤 자리 배치 셔플/개별 자리 수정 버튼 노출 (canManageSeats가 바뀔 때마다 호출됨)
+        function updateSeatComposerVisibility() {
+            const btn = document.getElementById('btn-shuffle-seats');
+            if (btn) btn.style.display = canManageSeats ? 'inline-flex' : 'none';
+            const hint = document.getElementById('seat-view-only-hint');
+            if (hint) hint.style.display = canManageSeats ? 'none' : 'block';
+            renderSeatingGrid(); // 좌석 클릭 가능 여부(커서/onclick)도 함께 다시 그린다
+        }
+
+        let currentActiveSeat = null;
+        // 스쿼드 메이커(openSquadModal)와 동일한 방식: 좌석을 클릭하면 26명 학생 버튼이 뜨고,
+        // 하나를 고르면 그 자리에 배정된다.
+        window.openSeatModal = function(seatNum) {
+            if (!canManageSeats) return;
+            currentActiveSeat = seatNum;
+            document.getElementById('seat-modal-title').innerText = `${seatNum}번 좌석 배정`;
+            const listEl = document.getElementById('seat-student-list'); listEl.innerHTML = '';
+            for (let i = 1; i <= 26; i++) {
+                const pName = resolveStudentDisplayName(i) || `${i}번`;
+                listEl.innerHTML += `<button class="squad-member-btn" onclick="updateSeatAssignment(${i})">${i}. ${pName}</button>`;
+            }
+            document.getElementById('seat-modal').style.display = 'flex';
+        }
+
+        window.updateSeatAssignment = function(num) {
+            if (canManageSeats && currentActiveSeat) {
+                const seatRef = ref(db, `dashboard/seating/seat_${currentActiveSeat}`);
+                if (num === '' || num === null || num === undefined) remove(seatRef);
+                else set(seatRef, num);
+            }
+            document.getElementById('seat-modal').style.display = 'none';
+        }
+
         window.shuffleSeats = function() {
+            if (!canManageSeats) return alert('권한이 없습니다. (커뮤니티 엔지니어·반장·부반장·담임선생님만 가능)');
             if(!confirm("🎲 전 좌석 셔플 믹스 하시겠습니까?")) return;
             let pool = [];
             for(let i=1; i<=26; i++) pool.push(i); // 이름이 아니라 "몇 번 학생"인지를 셔플한다
