@@ -534,6 +534,16 @@
         .pitch { background: #22c55e; border: 2px solid #ffffff; border-radius: 12px; height: 450px; position: relative; overflow: hidden; margin-top: 15px; }
         .player-pos { position: absolute; background: var(--card-bg); padding: 4px 10px; border-radius: 16px; font-weight: 700; font-size: 13px; transform: translate(-50%, -50%); border: 2px solid var(--primary); text-align: center; cursor: pointer; min-width: 65px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background 0.2s; }
         .player-pos:hover { background: var(--primary-soft); }
+        /* 게임 카드 제목/설명: 배경이 임의의 색/이미지라도 항상 읽히도록 테두리 있는 글씨를 쓴다.
+           라이트 모드 = 검은 글씨 + 흰 테두리, 다크 모드 = 흰 글씨 + 검은 테두리. */
+        .game-card-title, .game-card-desc {
+            color: #000;
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
+        }
+        body.gmw-site-dark .game-card-title, body.gmw-site-dark .game-card-desc {
+            color: #fff;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
+        }
         .pos-label { font-size: 10px; color: var(--text-muted); font-weight: 600; }
         .player-name { font-size: 12px; color: var(--text-main); font-weight: 800; }
 
@@ -1907,6 +1917,21 @@
                     <button id="btn-write-notice" class="auth-btn" style="display:none; width:auto; margin-top:4px; padding:10px 18px; font-size:13px; white-space:nowrap;" onclick="openNoticeComposer()">📢 공지 작성</button>
                 </div>
 
+                <div class="dashboard-section-title">🔗 바로가기</div>
+                <div class="dashboard-grid">
+                    <div class="card" style="grid-column: span 3;">
+                        <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+                            <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null)">+ 바로가기 추가</button>
+                        </div>
+                        <div id="shortcuts-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;"></div>
+                        <style>
+                            @media (max-width: 640px){
+                                #shortcuts-grid { grid-template-columns: repeat(2, 1fr) !important; }
+                            }
+                        </style>
+                    </div>
+                </div>
+
                 <!-- 우선순위 스트립: 왼쪽 날씨, 가운데 오늘의 미션(절반 크기로 축소), 오른쪽 지금 학교는 -->
                 <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
                     <div class="card">
@@ -1988,26 +2013,6 @@
                     </div>
                 </div>
 
-                <div class="dashboard-section-title">🔗 바로가기</div>
-                <div class="dashboard-grid">
-                    <div class="card" style="grid-column: span 3;">
-                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
-                            <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('https://classroom.google.com/h/st', '_blank', 'noopener,noreferrer')">🧑‍🏫 클래스룸</button>
-                            <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('https://docs.google.com/presentation/d/1tXyvxlnUymznKIxb6yD6AR7l1GOnoUmh93-qCtHU4W0/edit?usp=sharing', '_blank', 'noopener,noreferrer')">📢 공지사항 보드판</button>
-                            <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('https://hanil40-9awj8tjxyjljkfyjrayd9k.streamlit.app/', '_blank', 'noopener,noreferrer')">📝 귀성 및 신청</button>
-                            <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('https://40th-qna-kiwdwxdi6o2gqqheugwgc7.streamlit.app/', '_blank', 'noopener,noreferrer')">💬 40기 질문방</button>
-                            <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('https://poetic-sunshine-4f5c0a.netlify.app/', '_blank', 'noopener,noreferrer')">⏰ 기상송 신청</button>
-                        </div>
-
-                        <style>
-                            @media (max-width: 640px){
-                                #tab-home .card > div[style*="grid-template-columns: repeat(5"]{
-                                    grid-template-columns: repeat(2, 1fr) !important;
-                                }
-                            }
-                        </style>
-                    </div>
-                </div>
             </div>
 
             <div id="tab-notice" class="tab-content">
@@ -2547,8 +2552,17 @@
                             <input type="text" id="game-input-url" class="auth-input" placeholder="https://...">
                         </div>
                         <div>
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">배경 이미지 (imgdb 등 이미지 URL)</label>
-                            <input type="text" id="game-input-bg" class="auth-input" placeholder="https://i.imgdb... (비워두면 기본 배경)">
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">배경 이미지 (imgbb 등 이미지 URL)</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="text" id="game-input-bg" class="auth-input" style="margin-bottom:0;" placeholder="https://i.ibb.co/... (비워두면 기본 배경)">
+                                <button type="button" class="btn-sub" style="flex-shrink:0; padding:0 12px;" onclick="document.getElementById('game-input-bg-file').click()">📷 업로드</button>
+                                <input type="file" id="game-input-bg-file" accept="image/*" style="display:none;" onchange="uploadGameBgImage(this)">
+                            </div>
+                            <div id="game-bg-upload-status" style="font-size:11px; color:var(--text-muted); margin-top:4px;"></div>
+                        </div>
+                        <div>
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">기본 배경 색상 (배경 이미지가 없을 때 사용)</label>
+                            <input type="color" id="game-input-color" class="auth-input" style="padding:4px; height:38px;" value="#3b82f6">
                         </div>
                         <div style="display:flex; gap:10px;">
                             <div style="flex:1;">
@@ -2698,6 +2712,29 @@
                     <h3 style="margin-bottom: 15px;" id="seat-modal-title">좌석 배정</h3>
                     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;" id="seat-student-list"></div>
                     <button onclick="updateSeatAssignment('')" class="auth-btn" style="background:#ef4444; margin-top:15px;">🚪 자리 비우기</button>
+                </div>
+            </div>
+
+            <div id="shortcut-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-card" style="max-width: 400px;">
+                    <span class="close-btn" onclick="closeShortcutModal()">&times;</span>
+                    <h3 id="shortcut-modal-title" style="margin-bottom: 15px;">바로가기 추가</h3>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div>
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">이름 (이모지 포함 가능)</label>
+                            <input type="text" id="shortcut-input-label" class="auth-input" placeholder="예: 🧑‍🏫 클래스룸">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">URL</label>
+                            <input type="text" id="shortcut-input-url" class="auth-input" placeholder="https://...">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">표시 순서</label>
+                            <input type="number" id="shortcut-input-order" class="auth-input" value="0">
+                        </div>
+                        <button onclick="saveShortcut()" class="auth-btn" style="margin-top:5px;">💾 저장</button>
+                        <button id="shortcut-delete-btn" onclick="deleteShortcutFromModal()" class="auth-btn" style="display:none; background:#ef4444; margin-top:0;">🗑️ 이 바로가기 삭제</button>
+                    </div>
                 </div>
             </div>
 
@@ -3320,6 +3357,7 @@
         let canPostNotice = false; // 홈 공지: 커뮤니티 엔지니어(관리자)/담임선생님/반장/부반장/운영자 작성 가능
         let canWriteSchedule = false; // 반 공용 일정: 1-2반 정회원(학생+담임선생님)이면 누구나 추가/수정/삭제 가능
         let canManageSeats = false; // 랜덤 자리 배치: 커뮤니티 엔지니어(관리자)/반장/부반장/담임선생님만 셔플·개별 자리 수정 가능
+        let canManageShortcuts = false; // 홈 바로가기: 커뮤니티 엔지니어(관리자)/반장/부반장/담임선생님만 추가·수정·삭제 가능
         let isTeacherAccount = false;
         let isRestrictedViewer = false; // 1-2 담임선생님 + 타반 학생: 게임/커뮤니티 접근 불가, 프로필은 열람만 가능(사진 기본, 설명/댓글 비공개)
         const TEACHER_ACCOUNT_EMAILS = ["nassir@hanilgo.cnehs.kr", "20261240@hanilgo.cnehs.kr"];
@@ -3416,7 +3454,7 @@
             if (typeof unsubscribeAchievements === 'function') { unsubscribeAchievements(); unsubscribeAchievements = null; }
             dailyMissionsAllCache = {}; myAchievementsUnlocked = {};
             if (window.PlannerApp && window.PlannerApp.resetLocalXPDisplay) window.PlannerApp.resetLocalXPDisplay(); // 로그아웃은 인증 상태만 종료 - Firebase에는 아무것도 쓰지 않고 화면 표시만 초기화
-            currentUser = null; currentUserInfo = null; isAdmin = false; isFounder = false; isSubAdmin = false; isTeacherAccount = false; isOperator = false; isRestrictedViewer = false; canPostNotice = false; canWriteSchedule = false; canManageSeats = false; isListeningToPosts = false; isListeningToSquad = false; signOut(auth);
+            currentUser = null; currentUserInfo = null; isAdmin = false; isFounder = false; isSubAdmin = false; isTeacherAccount = false; isOperator = false; isRestrictedViewer = false; canPostNotice = false; canWriteSchedule = false; canManageSeats = false; canManageShortcuts = false; isListeningToPosts = false; isListeningToSquad = false; signOut(auth);
         });
 
         window.setNickname = async function() {
@@ -3696,7 +3734,10 @@
                             canWriteSchedule = is2Ban || isTeacherAccount;
                             // 랜덤 자리 배치 셔플/개별 자리 수정 권한: 커뮤니티 엔지니어(관리자)·반장·부반장·담임선생님만
                             canManageSeats = isAdmin || isFounder || isViceClassPresident || isTeacherAccount;
+                            // 홈 화면 바로가기 추가/수정/삭제 권한: 커뮤니티 엔지니어(관리자)·반장·부반장·담임선생님만
+                            canManageShortcuts = isAdmin || isFounder || isViceClassPresident || isTeacherAccount;
                             updateSeatComposerVisibility();
+                            updateShortcutComposerVisibility();
                             updateNoticeComposerVisibility();
                             updatePollComposerVisibility();
                             updateScheduleComposerVisibility();
@@ -3748,7 +3789,7 @@
 
                         updatePokemonChampionsButton();
 
-                        listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule();
+                        listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule(); listenToShortcuts();
                         // NEIS 학사일정 자동 동기화: 세션당 한 번만 시도하고, 브라우저별로 최근 동기화 후 일정 시간 내면 건너뛴다.
                         if (!neisSyncTriggered) {
                             neisSyncTriggered = true;
@@ -3787,7 +3828,7 @@
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const notes = {}; snap.forEach(d => { notes[d.id] = d.data().text || ''; });
                 const targets = ['국어', '영어', '수학', '통합사회', '통합과학'];
-                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px;"><strong style="color:var(--primary);">${sub}</strong> <span>${notes[sub] || '미등록'}</span></div>`).join('');
+                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; font-size:13px;"><strong style="color:var(--primary); flex-shrink:0; white-space:nowrap;">${sub}</strong> <span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${notes[sub] || '미등록'}</span></div>`).join('');
             });
             // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
@@ -5395,9 +5436,27 @@
                 html += `오늘 일정 종료`;
             }
             html += `</div>`;
+
+            const nextExam = findNearestTaggedScheduleEvent('지필평가');
+            html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); font-size:12px;">`;
+            html += nextExam
+                ? `<strong style="color:#ef4444;">📝 지필고사 ${scheduleDDayLabel(nextExam.date)}</strong> <span style="color:var(--text-muted);">(${nextExam.title})</span>`
+                : `<span style="color:var(--text-muted);">📝 예정된 지필고사가 없습니다</span>`;
+            html += `</div>`;
+
             el.innerHTML = html;
         }
         setInterval(renderCurrentPeriodWidget, 30000);
+        // 반 공용 일정(scheduleCache)에서 특정 태그가 붙은 일정 중 오늘 이후로 가장 가까운 것 하나를 찾는다.
+        // scheduleCache/getScheduleDateKey는 아래(반 공용 일정 섹션)에서 정의되지만, 이 함수는
+        // 실제 로그인 이후 비동기로 호출되므로(스크립트 전체가 먼저 파싱된 뒤 실행) 참조에 문제없다.
+        function findNearestTaggedScheduleEvent(tag) {
+            const todayKey = getScheduleDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+            const upcoming = Object.values(scheduleCache)
+                .filter(ev => ev && ev.date && (ev.tags || []).includes(tag) && (ev.endDate || ev.date) >= todayKey)
+                .sort((a, b) => a.date.localeCompare(b.date));
+            return upcoming[0] || null;
+        }
 
         // =========================================================================
         // 일일 미션 - 완료 상태는 계정별로 Firebase Realtime Database에 저장한다.
@@ -6565,6 +6624,7 @@
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
                 scheduleCache = snap.val() || {};
                 renderScheduleCalendar();
+                renderCurrentPeriodWidget(); // 지필고사 D-day가 이 안에서 scheduleCache를 쓰므로 즉시 갱신
                 const dayModal = document.getElementById('schedule-day-modal');
                 if (scheduleSelectedDateKey && dayModal && dayModal.style.display === 'flex') renderScheduleDayList();
             });
@@ -7764,7 +7824,7 @@
         function renderGameCard(id, g, isFallback, isFirst, isLast) {
             const bg = g.backgroundImage
                 ? `background-image: linear-gradient(rgba(15,23,42,0.5), rgba(15,23,42,0.5)), url('${g.backgroundImage}'); background-size: cover; background-position: center;`
-                : `background: linear-gradient(135deg, #3b82f6, #6366f1);`;
+                : (g.color ? `background: ${g.color};` : `background: linear-gradient(135deg, #3b82f6, #6366f1);`);
             const disabledBadge = (!g.enabled && !isFallback) ? `<span class="badge" style="background:#fee2e2; color:#991b1b; font-size:10px; margin-bottom:6px; display:inline-block;">비활성</span><br>` : '';
             const safeUrl = (g.url || '').replace(/'/g, "\\'");
             let adminControls = '';
@@ -7778,8 +7838,8 @@
             return `
                 <div class="card" style="text-align:center; padding: 28px 16px; border: none; ${bg}">
                     ${disabledBadge}
-                    <div style="font-size: 16px; font-weight: 800; margin-bottom: 4px; color: #ffffff; text-shadow: 0 2px 6px rgba(0,0,0,0.35);">${g.title}</div>
-                    <p style="color: #f0f9ff; font-size: 12px; margin-bottom: 14px; text-shadow: 0 1px 4px rgba(0,0,0,0.3);">${g.description || ''}</p>
+                    <div class="game-card-title" style="font-size: 16px; font-weight: 800; margin-bottom: 4px;">${g.title}</div>
+                    <p class="game-card-desc" style="font-size: 12px; margin-bottom: 14px;">${g.description || ''}</p>
                     <button class="auth-btn" style="width: auto; padding: 10px 28px; font-size: 14px; margin-top: 0;" onclick="playGameUrl('${safeUrl}')">▶ 플레이</button>
                     ${adminControls}
                 </div>
@@ -7804,6 +7864,8 @@
             document.getElementById('game-input-desc').value = g ? (g.description || '') : '';
             document.getElementById('game-input-url').value = g ? (g.url || '') : '';
             document.getElementById('game-input-bg').value = g ? (g.backgroundImage || '') : '';
+            document.getElementById('game-input-color').value = g ? (g.color || '#3b82f6') : '#3b82f6';
+            document.getElementById('game-bg-upload-status').textContent = '';
             document.getElementById('game-input-order').value = g ? (g.order || 0) : Object.keys(gamesCache).length;
             document.getElementById('game-input-enabled').value = (g && g.enabled === false) ? 'false' : 'true';
             document.getElementById('game-delete-btn').style.display = gameId ? 'block' : 'none';
@@ -7821,18 +7883,36 @@
             const description = document.getElementById('game-input-desc').value.trim();
             const url = document.getElementById('game-input-url').value.trim();
             const backgroundImage = document.getElementById('game-input-bg').value.trim();
+            const color = document.getElementById('game-input-color').value || '#3b82f6';
             const order = parseInt(document.getElementById('game-input-order').value) || 0;
             const enabled = document.getElementById('game-input-enabled').value === 'true';
             if (!title) return alert("게임 이름을 입력해주세요.");
 
             try {
                 if (editingGameId) {
-                    await updateDoc(doc(fdb, 'games', editingGameId), { title, description, url, backgroundImage, order, enabled });
+                    await updateDoc(doc(fdb, 'games', editingGameId), { title, description, url, backgroundImage, color, order, enabled });
                 } else {
-                    await addDoc(collection(fdb, 'games'), { title, description, url, backgroundImage, order, enabled, createdAt: Date.now() });
+                    await addDoc(collection(fdb, 'games'), { title, description, url, backgroundImage, color, order, enabled, createdAt: Date.now() });
                 }
                 closeGameModal();
             } catch (e) { alert("게임 저장 중 오류가 발생했습니다: " + (e && e.message ? e.message : e)); }
+        }
+
+        // 게임 배경 이미지 업로드: 기존 리치 에디터/프로필 사진과 동일한 imgbb 업로드 함수를 재사용한다.
+        window.uploadGameBgImage = async function(inputEl) {
+            const file = inputEl.files && inputEl.files[0];
+            if (!file) return;
+            const statusEl = document.getElementById('game-bg-upload-status');
+            statusEl.textContent = '업로드 중...';
+            try {
+                const url = await uploadImageToImgbb(file);
+                document.getElementById('game-input-bg').value = url;
+                statusEl.textContent = '✓ 업로드 완료';
+            } catch (e) {
+                statusEl.textContent = '⚠ 업로드 실패';
+            } finally {
+                inputEl.value = '';
+            }
         }
 
         window.deleteGameFromModal = async function() {
@@ -7849,11 +7929,16 @@
             const idx = entries.findIndex(([id]) => id === gameId);
             const swapIdx = idx + dir;
             if (idx === -1 || swapIdx < 0 || swapIdx >= entries.length) return;
-            const [idA, gA] = entries[idx]; const [idB, gB] = entries[swapIdx];
-            const orderA = gA.order || 0; const orderB = gB.order || 0;
+            // 두 게임의 order를 서로의 raw 값이 아니라 "정렬된 위치(인덱스)"로 맞바꿔 쓴다.
+            // idx와 swapIdx는 항상 서로 다른 정수이므로, 두 게임의 기존 order가 우연히 같았어도
+            // (예: 둘 다 기본값 0) 이 두 값만은 항상 서로 달라져 실제로 순서가 바뀐다.
+            // 이전 코드는 두 게임의 raw order 값을 그대로 맞바꿔서, 값이 같으면 조용히 아무 변화가 없었다.
+            const [idA] = entries[idx]; const [idB] = entries[swapIdx];
             try {
-                await updateDoc(doc(fdb, 'games', idA), { order: orderB });
-                await updateDoc(doc(fdb, 'games', idB), { order: orderA });
+                await Promise.all([
+                    updateDoc(doc(fdb, 'games', idA), { order: swapIdx }),
+                    updateDoc(doc(fdb, 'games', idB), { order: idx })
+                ]);
             } catch (e) { alert("순서 변경 중 오류가 발생했습니다."); }
         }
 
@@ -10470,6 +10555,92 @@
             for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
             let updateData = {}; for(let i=1; i<=26; i++) updateData[`seat_${i}`] = pool[i-1];
             set(ref(db, 'dashboard/seating'), updateData).then(() => alert("🎲 재배치 완료!"));
+        }
+
+        // =========================================================================
+        // 홈 바로가기 (관리자/반장/부반장/담임선생님만 추가·수정·삭제 가능)
+        // =========================================================================
+        // 기존에 하드코딩되어 있던 5개 바로가기를 그대로 기본값으로 심어둔다 (동작 변화 없이 Firebase로 이전).
+        const DEFAULT_SHORTCUTS_SEED = {
+            s1: { label: '🧑‍🏫 클래스룸', url: 'https://classroom.google.com/h/st', order: 0 },
+            s2: { label: '📢 공지사항 보드판', url: 'https://docs.google.com/presentation/d/1tXyvxlnUymznKIxb6yD6AR7l1GOnoUmh93-qCtHU4W0/edit?usp=sharing', order: 1 },
+            s3: { label: '📝 귀성 및 신청', url: 'https://hanil40-9awj8tjxyjljkfyjrayd9k.streamlit.app/', order: 2 },
+            s4: { label: '💬 40기 질문방', url: 'https://40th-qna-kiwdwxdi6o2gqqheugwgc7.streamlit.app/', order: 3 },
+            s5: { label: '⏰ 기상송 신청', url: 'https://poetic-sunshine-4f5c0a.netlify.app/', order: 4 }
+        };
+        let shortcutsCache = {};
+        let editingShortcutId = null;
+        let shortcutsSeedAttempted = false;
+
+        function listenToShortcuts() {
+            onValue(ref(db, 'dashboard/shortcuts'), (snap) => {
+                shortcutsCache = snap.val() || {};
+                if (Object.keys(shortcutsCache).length === 0 && canManageShortcuts && !shortcutsSeedAttempted) {
+                    // 최초 1회, 편집 권한이 있는 뷰어만 시도한다 (일반 뷰어가 시도하면 규칙상 permission_denied가 날 수 있음).
+                    shortcutsSeedAttempted = true;
+                    set(ref(db, 'dashboard/shortcuts'), DEFAULT_SHORTCUTS_SEED).catch(() => {});
+                }
+                renderShortcuts();
+            });
+        }
+
+        function renderShortcuts() {
+            const grid = document.getElementById('shortcuts-grid');
+            if (!grid) return;
+            const entries = Object.entries(shortcutsCache).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+            grid.innerHTML = entries.map(([id, sc]) => {
+                const safeUrl = (sc.url || '').replace(/'/g, "\\'");
+                const editBtn = canManageShortcuts ? `<span onclick="event.stopPropagation(); openShortcutModal('${id}')" style="position:absolute; top:-6px; right:-6px; cursor:pointer; font-size:14px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">⚙️</span>` : '';
+                return `<div style="position:relative;">
+                    ${editBtn}
+                    <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('${safeUrl}', '_blank', 'noopener,noreferrer')">${sc.label}</button>
+                </div>`;
+            }).join('');
+        }
+
+        // canManageShortcuts가 바뀔 때마다 "+ 바로가기 추가" 버튼과 각 버튼의 ⚙️ 편집 아이콘 노출을 함께 갱신한다.
+        function updateShortcutComposerVisibility() {
+            const btn = document.getElementById('btn-add-shortcut');
+            if (btn) btn.style.display = canManageShortcuts ? 'inline-flex' : 'none';
+            renderShortcuts();
+        }
+
+        window.openShortcutModal = function(id) {
+            if (!canManageShortcuts) return;
+            editingShortcutId = id || null;
+            const sc = id ? shortcutsCache[id] : null;
+            document.getElementById('shortcut-modal-title').innerText = id ? '바로가기 수정' : '바로가기 추가';
+            document.getElementById('shortcut-input-label').value = sc ? sc.label : '';
+            document.getElementById('shortcut-input-url').value = sc ? (sc.url || '') : '';
+            document.getElementById('shortcut-input-order').value = sc ? (sc.order || 0) : Object.keys(shortcutsCache).length;
+            document.getElementById('shortcut-delete-btn').style.display = id ? 'block' : 'none';
+            document.getElementById('shortcut-modal').style.display = 'flex';
+        }
+
+        window.closeShortcutModal = function() {
+            document.getElementById('shortcut-modal').style.display = 'none';
+            editingShortcutId = null;
+        }
+
+        window.saveShortcut = async function() {
+            if (!canManageShortcuts) return;
+            const label = document.getElementById('shortcut-input-label').value.trim();
+            const url = document.getElementById('shortcut-input-url').value.trim();
+            const order = parseInt(document.getElementById('shortcut-input-order').value) || 0;
+            if (!label || !url) return alert('이름과 URL을 입력해주세요.');
+            try {
+                if (editingShortcutId) await update(ref(db, `dashboard/shortcuts/${editingShortcutId}`), { label, url, order });
+                else await push(ref(db, 'dashboard/shortcuts'), { label, url, order, createdAt: Date.now() });
+                closeShortcutModal();
+            } catch (e) { alert('바로가기 저장 중 오류가 발생했습니다.'); }
+        }
+
+        window.deleteShortcutFromModal = async function() {
+            if (!canManageShortcuts || !editingShortcutId) return;
+            if (confirm('이 바로가기를 삭제하시겠습니까?')) {
+                try { await remove(ref(db, `dashboard/shortcuts/${editingShortcutId}`)); closeShortcutModal(); }
+                catch (e) { alert('삭제 중 오류가 발생했습니다.'); }
+            }
         }
 
         // ---  프로필 & 관리자 시스템 ---
