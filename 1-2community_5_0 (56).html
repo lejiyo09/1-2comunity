@@ -338,6 +338,14 @@
         .header { margin-bottom: 30px; }
         .header h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
         .header p { color: var(--text-muted); font-size: 15px; }
+        /* 페이지 타이틀(각 탭의 .header h1/p)은 카드 배경 없이 페이지 배경(커스텀 배경화면 포함) 위에
+           바로 놓이므로, 어떤 배경이든 읽히도록 테두리를 준다. 색상 자체는 그대로 두고 테두리만 추가한다. */
+        .header h1, .header p {
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
+        }
+        body.gmw-site-dark .header h1, body.gmw-site-dark .header p {
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
+        }
 
         /* --- 아카이브(2반 아카이브) 서브탭: 추억/공부/기타 --- */
         .archive-subnav { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 0; }
