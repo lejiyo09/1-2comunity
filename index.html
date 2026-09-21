@@ -8172,9 +8172,9 @@
                 }
 
                 if (communityTab === 'popular') {
-                    entries.sort((a, b) => (b[1].likeCount || 0) - (a[1].likeCount || 0));
+                    entries.sort((a, b) => (b[1].likeCount || 0) - (a[1].likeCount || 0)); // 이미 좋아요 많은 순 - 뒤에서 reverse() 안 함
                 } else {
-                    entries.sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0)); // 아래서 reverse()로 최신이 위로
+                    entries.sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0)).reverse(); // 오래된순으로 정렬 후 뒤집어서 최신이 위로
                 }
 
                 if (entries.length === 0) {
@@ -8183,7 +8183,7 @@
                 }
 
                 let html = `<div class="feed-list">`;
-                entries.reverse().forEach(([postId, post], idx) => {
+                entries.forEach(([postId, post], idx) => {
                     const isMyPost = currentUser && currentUser.uid === post.authorId;
                     const hasLiked = post.likes && post.likes[currentUser.uid];
                     const canDelete = isMyPost || isAdmin || isSubAdmin || isOperator;
@@ -9049,13 +9049,13 @@
             }
 
             if (pokemonSortTab === 'popular') {
-                entries.sort((a, b) => (b[1].likeCount || 0) - (a[1].likeCount || 0));
+                entries.sort((a, b) => (b[1].likeCount || 0) - (a[1].likeCount || 0)); // 이미 좋아요 많은 순 - 뒤에서 reverse() 안 함
             } else {
-                entries.sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0)); // 아래서 reverse()로 최신이 위로
+                entries.sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0)).reverse(); // 오래된순으로 정렬 후 뒤집어서 최신이 위로
             }
 
             let html = `<div class="feed-list">`;
-            entries.reverse().forEach(([postId, post], idx) => {
+            entries.forEach(([postId, post], idx) => {
                 const isMyPost = currentUser && currentUser.uid === post.authorId;
                 const hasLiked = post.likes && post.likes[currentUser.uid];
                 const canDelete = isMyPost || isAdmin || isSubAdmin || isOperator;
