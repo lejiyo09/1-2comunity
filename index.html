@@ -202,6 +202,17 @@
         .sidebar-logout-btn { color: #ef4444; margin-bottom: 4px; }
         .sidebar-logout-btn:hover { background-color: rgba(239,68,68,0.12); }
 
+        /* 홈 위젯 편집/초기화 버튼 - 알림 종(🔔) 바로 왼쪽에 고정. 종이 top:18px/right:24px/42px 폭이라
+           그만큼 오른쪽을 비우고 배치한다. 문서 흐름에서 완전히 빠지므로 아래 위젯들이 그만큼 위로 올라온다. */
+        #home-layout-edit-toolbar { position: fixed; top: 18px; right: 76px; z-index: 500; display: flex; gap: 6px; }
+        #home-layout-edit-toolbar .btn-sub { padding: 8px 14px; font-size: 12px; white-space: nowrap; background: var(--card-bg); box-shadow: 0 4px 10px rgba(22,48,92,0.12); }
+        @media (max-width: 900px) {
+            #home-layout-edit-toolbar { top: 66px; right: 24px; }
+        }
+        @media (max-width: 480px) {
+            #home-layout-edit-toolbar { position: static; margin-bottom: 14px; }
+        }
+
         /* --- 5.0 전역 알림(🔔) 진입점 --- */
         .gmw-notif-bell { display: none; position: fixed; top: 18px; right: 24px; z-index: 500; width: 42px; height: 42px; border-radius: 50%; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 4px 10px rgba(22,48,92,0.12); align-items: center; justify-content: center; font-size: 19px; cursor: pointer; }
         .gmw-notif-panel { display: none; position: fixed; top: 66px; right: 24px; z-index: 500; width: 320px; max-height: 420px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 12px 28px rgba(22,48,92,0.18); padding: 10px; }
@@ -344,18 +355,23 @@
         .header h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
         .header p { color: var(--text-muted); font-size: 15px; }
         /* 페이지 타이틀(각 탭의 .header h1)은 카드 배경 없이 페이지 배경(커스텀 배경화면 포함) 위에 바로
-           놓이므로, 게임 카드 제목처럼 테마와 무관하게 항상 흰 글씨 + 검은 테두리로 고정해 어떤 배경에서도
-           또렷하게 보이게 한다. */
+           놓이므로, 게임 카드 제목과 완전히 똑같은 방식으로 처리한다: 라이트 모드 = 검은 글씨 + 흰 테두리,
+           다크 모드 = 흰 글씨 + 검은 테두리. */
         .header h1 {
+            color: #000;
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
+        }
+        body.gmw-site-dark .header h1 {
             color: #fff;
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
         }
-        /* 세부 설명(.header p)은 기존과 동일하게 테마에 따라 테두리 색만 바꾸는 처리를 그대로 유지한다. */
+        /* 세부 설명(.header p)은 테마에 따라 테두리 색만 바꾸는 처리를 유지하되, 글씨가 작아서
+           1px 테두리가 상대적으로 너무 두꺼워 보이던 것을 절반 두께(0.5px)로 얇게 줄였다. */
         .header p {
-            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
+            text-shadow: -0.5px -0.5px 0 #fff, 0.5px -0.5px 0 #fff, -0.5px 0.5px 0 #fff, 0.5px 0.5px 0 #fff, 0 0 2px #fff;
         }
         body.gmw-site-dark .header p {
-            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
+            text-shadow: -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000, 0 0 2px #000;
         }
 
         /* --- 아카이브(2반 아카이브) 서브탭: 추억/공부/기타 --- */
@@ -378,6 +394,21 @@
         .community-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
         .community-page-header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
         .community-page-header p { color: var(--text-muted); font-size: 14px; }
+        /* .header h1/p와 동일하게: 라이트 모드 = 검은 글씨+흰 테두리, 다크 모드 = 흰 글씨+검은 테두리 (게임 카드와 동일) */
+        .community-page-header h1 {
+            color: #000;
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
+        }
+        body.gmw-site-dark .community-page-header h1 {
+            color: #fff;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
+        }
+        .community-page-header p {
+            text-shadow: -0.5px -0.5px 0 #fff, 0.5px -0.5px 0 #fff, -0.5px 0.5px 0 #fff, 0.5px 0.5px 0 #fff, 0 0 2px #fff;
+        }
+        body.gmw-site-dark .community-page-header p {
+            text-shadow: -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000, 0 0 2px #000;
+        }
         .community-write-btn { flex-shrink: 0; background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
         .community-write-btn:hover { opacity: 0.92; }
 
@@ -498,10 +529,15 @@
         #home-sections-container.editing-sections .home-section-arrows { display: flex; }
         .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
         #tab-home .home-section .card[data-widget-id] { position: relative; }
-        .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; gap: 4px; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        /* 위젯을 손으로 잡아서 옮기는 드래그 앤 드롭. 편집 모드에서만 카드 전체가 draggable이 되고,
+           왼쪽 위 "⠿" 손잡이는 드래그 가능하다는 시각적 힌트일 뿐 클릭 동작은 없다. */
+        .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
         #home-sections-container.editing-sections .widget-edit-bar { display: flex; }
-        .widget-edit-bar button.btn-sub { padding: 2px 6px; font-size: 10px; }
-        .widget-edit-bar select { font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); padding: 2px 4px; max-width: 110px; }
+        .widget-drag-handle { font-size: 13px; color: var(--text-muted); line-height: 1; user-select: none; }
+        #home-sections-container.editing-sections .card[data-widget-id] { cursor: grab; }
+        #home-sections-container.editing-sections .card[data-widget-id]:active { cursor: grabbing; }
+        .card[data-widget-id].dragging-widget { opacity: 0.35; }
+        .card[data-widget-id].drag-over-target { outline: 2px dashed var(--primary); outline-offset: 3px; }
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
@@ -795,6 +831,10 @@
         .modal-card { background: var(--card-bg-glass); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); color: var(--text-main); width: 92%; max-width: 580px; border-radius: 24px; padding: 30px; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-color); }
         .close-btn { position: absolute; top: 20px; right: 22px; font-size: 28px; cursor: pointer; color: var(--text-muted); line-height: 1; transition: color 0.2s; }
         .close-btn:hover { color: var(--text-main); }
+        /* 배경화면 크롭 프레임: 실제 배경으로 쓰일 가로 16:9 비율 그대로 미리보기 - 여기 보이는 그대로 잘린다 */
+        #bg-crop-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; background: #111; touch-action: none; cursor: grab; }
+        #bg-crop-frame.grabbing { cursor: grabbing; }
+        #bg-crop-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
         .modal-profile-header { display: flex; gap: 24px; align-items: flex-start; }
         .profile-avatar-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .profile-avatar-container img { width: 130px; height: 130px; border-radius: 18px; object-fit: cover; border: 1px solid var(--border-color); background: var(--surface-secondary); }
@@ -1950,7 +1990,7 @@
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                         <label class="btn-sub" style="cursor:pointer; margin:0;">
                             사진 선택
-                            <input type="file" accept="image/*" style="display:none;" onchange="handleCustomBackgroundUpload(event)">
+                            <input type="file" id="bg-upload-input" accept="image/*" style="display:none;" onchange="handleCustomBackgroundUpload(event)">
                         </label>
                         <button class="btn-sub" onclick="resetCustomBackground()">기본으로</button>
                     </div>
@@ -1964,14 +2004,36 @@
             </div>
         </div>
 
+        <!-- 배경화면 부분 잘라 쓰기(크롭) 모달: 사진 전체를 그대로 쓰는 대신, 드래그로 위치를 옮기고
+             슬라이더로 확대해서 원하는 부분만 잘라 배경으로 저장할 수 있게 한다. -->
+        <div id="bg-crop-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-card" style="max-width: 560px;">
+                <span class="close-btn" onclick="closeBgCropModal()">&times;</span>
+                <h3 style="font-size:17px; font-weight:800; margin-bottom:8px; color:var(--text-main);">배경화면 위치 조정</h3>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">드래그해서 위치를 옮기고, 슬라이더로 확대해서 원하는 부분만 잘라 쓸 수 있어요.</div>
+                <div id="bg-crop-frame">
+                    <canvas id="bg-crop-canvas"></canvas>
+                </div>
+                <input type="range" id="bg-crop-zoom" min="0" max="100" value="0" style="width:100%; margin-top:14px;">
+                <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                    <button class="btn-sub" onclick="closeBgCropModal()">취소</button>
+                    <button class="auth-btn" style="width:auto; margin-top:0; padding:10px 22px;" onclick="applyCroppedBackground()">적용</button>
+                </div>
+            </div>
+        </div>
+
         <main class="main">
             <div id="tab-home" class="tab-content active">
                 <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                     <div>
                         <h1 id="welcome-title">반가워요!</h1>
-                        <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-top:6px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
                     </div>
                     <button id="btn-write-notice" class="auth-btn" style="display:none; width:auto; margin-top:4px; padding:10px 18px; font-size:13px; white-space:nowrap;" onclick="openNoticeComposer()">📢 공지 작성</button>
+                </div>
+
+                <div id="home-layout-edit-toolbar">
+                    <button id="btn-edit-home-layout" class="btn-sub" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
+                    <button id="btn-reset-home-layout" class="btn-sub" style="display:none;" onclick="resetHomeLayout()">↺ 초기화</button>
                 </div>
 
                 <div id="home-sections-container">
@@ -3970,29 +4032,25 @@
                         ${sIdx < layout.length - 1 ? `<button onclick="moveHomeSection('${section.id}', 1)" class="btn-sub">▼</button>` : ''}
                     `;
                 }
-                const sectionOptionsHtml = layout.map(s => `<option value="${s.id}">${escapeHtml(s.label)}</option>`).join('');
-                section.widgets.forEach((widgetId, wIdx) => {
+                section.widgets.forEach(widgetId => {
                     const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
                     if (!widgetEl) return;
+                    widgetEl.draggable = true; // 위젯 위치는 버튼이 아니라 카드를 직접 드래그해서 옮긴다
                     let bar = widgetEl.querySelector(':scope > .widget-edit-bar');
                     if (!bar) {
                         bar = document.createElement('div');
                         bar.className = 'widget-edit-bar';
+                        bar.innerHTML = '<span class="widget-drag-handle" title="드래그해서 옮기기">⠿</span>';
                         bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
                         widgetEl.prepend(bar);
                     }
-                    bar.innerHTML = `
-                        ${wIdx > 0 ? `<button class="btn-sub" onclick="moveWidget('${widgetId}', -1)">▲</button>` : ''}
-                        ${wIdx < section.widgets.length - 1 ? `<button class="btn-sub" onclick="moveWidget('${widgetId}', 1)">▼</button>` : ''}
-                        <select onchange="moveWidgetToSection('${widgetId}', this.value)">${sectionOptionsHtml}</select>
-                    `;
-                    bar.querySelector('select').value = section.id;
                 });
             });
         }
 
         function removeHomeWidgetEditBars() {
             document.querySelectorAll('#home-sections-container .widget-edit-bar').forEach(el => el.remove());
+            document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => { el.draggable = false; });
         }
 
         window.moveHomeSection = function(sectionId, dir) {
@@ -4006,30 +4064,98 @@
             renderHomeEditControls();
         }
 
-        window.moveWidget = function(widgetId, dir) {
+        // 위젯을 어느 섹션의 몇 번째 자리로든 옮긴다 (같은 섹션 안 재배치 + 다른 섹션으로 이동 모두 이 함수 하나로 처리).
+        function moveWidgetToPosition(widgetId, targetSectionId, targetIndex) {
             const layout = loadHomeLayout();
-            const section = layout.find(s => s.widgets.includes(widgetId));
-            if (!section) return;
-            const idx = section.widgets.indexOf(widgetId);
-            const swapIdx = idx + dir;
-            if (swapIdx < 0 || swapIdx >= section.widgets.length) return;
-            [section.widgets[idx], section.widgets[swapIdx]] = [section.widgets[swapIdx], section.widgets[idx]];
+            const fromSection = layout.find(s => s.widgets.includes(widgetId));
+            const toSection = layout.find(s => s.id === targetSectionId);
+            if (!fromSection || !toSection) return;
+            const fromIdx = fromSection.widgets.indexOf(widgetId);
+            fromSection.widgets.splice(fromIdx, 1);
+            if (fromSection === toSection && fromIdx < targetIndex) targetIndex -= 1; // 뺀 자리만큼 인덱스 보정
+            targetIndex = Math.max(0, Math.min(targetIndex, toSection.widgets.length));
+            toSection.widgets.splice(targetIndex, 0, widgetId);
             saveHomeLayout(layout);
             applyHomeLayout();
             renderHomeEditControls();
         }
 
-        window.moveWidgetToSection = function(widgetId, targetSectionId) {
-            const layout = loadHomeLayout();
-            const fromSection = layout.find(s => s.widgets.includes(widgetId));
-            const toSection = layout.find(s => s.id === targetSectionId);
-            if (!fromSection || !toSection || fromSection === toSection) return;
-            fromSection.widgets = fromSection.widgets.filter(id => id !== widgetId);
-            toSection.widgets.push(widgetId); // 옮긴 섹션의 맨 끝에 추가 - 이후 ▲로 원하는 위치로 옮기면 됨
-            saveHomeLayout(layout);
+        window.resetHomeLayout = function() {
+            if (!confirm('위젯 배치를 기본값으로 되돌릴까요? (이 브라우저에 저장된 개인 설정만 초기화됩니다)')) return;
+            saveHomeLayout(DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() })));
             applyHomeLayout();
-            renderHomeEditControls();
+            if (homeSectionEditMode) renderHomeEditControls();
         }
+
+        // ===================== 드래그 앤 드롭: 위젯 카드를 손으로 잡아서 자유롭게 옮기기 =====================
+        let draggedWidgetId = null;
+
+        // 그리드는 여러 열이 있어서 위/아래(Y)뿐 아니라 좌/우(X)도 봐야 한다. 같은 줄(Y가 카드 높이의
+        // 30% 이내로 가까움)이면 X로, 아니면 Y로 "이 카드 앞/뒤 중 어디에 놓을지"를 판단한다.
+        function computeInsertBeforeFromEvent(e, rect) {
+            const midY = rect.top + rect.height / 2;
+            const rowTolerance = rect.height * 0.3;
+            if (Math.abs(e.clientY - midY) < rowTolerance) return e.clientX < (rect.left + rect.width / 2);
+            return e.clientY < midY;
+        }
+
+        (function setupHomeWidgetDrag() {
+            const container = document.getElementById('home-sections-container');
+            if (!container) return;
+
+            // 편집 모드에서는 카드를 눌러도 곧바로 탭 이동이 안 되게 막는다 (편집 바 자체 클릭은 예외).
+            container.addEventListener('click', (e) => {
+                if (!homeSectionEditMode) return;
+                if (e.target.closest('.widget-edit-bar')) return;
+                const card = e.target.closest('.card[data-widget-id]');
+                if (card) { e.stopPropagation(); e.preventDefault(); }
+            }, true);
+
+            container.addEventListener('dragstart', (e) => {
+                const card = e.target.closest('.card[data-widget-id]');
+                if (!homeSectionEditMode || !card) return;
+                draggedWidgetId = card.dataset.widgetId;
+                e.dataTransfer.effectAllowed = 'move';
+                try { e.dataTransfer.setData('text/plain', draggedWidgetId); } catch (err) {}
+                requestAnimationFrame(() => card.classList.add('dragging-widget')); // 드래그 이미지가 찍힌 뒤에 숨겨야 자연스럽다
+            });
+
+            container.addEventListener('dragend', () => {
+                container.querySelectorAll('.dragging-widget').forEach(el => el.classList.remove('dragging-widget'));
+                container.querySelectorAll('.drag-over-target').forEach(el => el.classList.remove('drag-over-target'));
+                draggedWidgetId = null;
+            });
+
+            container.addEventListener('dragover', (e) => {
+                if (!homeSectionEditMode || !draggedWidgetId) return;
+                e.preventDefault(); // 이게 있어야 drop 이벤트가 발생한다
+                container.querySelectorAll('.drag-over-target').forEach(el => el.classList.remove('drag-over-target'));
+                const overCard = e.target.closest('.card[data-widget-id]');
+                if (overCard && overCard.dataset.widgetId !== draggedWidgetId) overCard.classList.add('drag-over-target');
+            });
+
+            container.addEventListener('drop', (e) => {
+                if (!homeSectionEditMode || !draggedWidgetId) return;
+                e.preventDefault();
+                container.querySelectorAll('.drag-over-target').forEach(el => el.classList.remove('drag-over-target'));
+
+                const overCard = e.target.closest('.card[data-widget-id]');
+                if (overCard && overCard.dataset.widgetId !== draggedWidgetId) {
+                    const toSection = loadHomeLayout().find(s => s.widgets.includes(overCard.dataset.widgetId));
+                    if (!toSection) return;
+                    const rect = overCard.getBoundingClientRect();
+                    const before = computeInsertBeforeFromEvent(e, rect);
+                    const overIdx = toSection.widgets.indexOf(overCard.dataset.widgetId);
+                    moveWidgetToPosition(draggedWidgetId, toSection.id, before ? overIdx : overIdx + 1);
+                    return;
+                }
+
+                // 카드가 아니라 섹션의 빈 공간(그리드 배경)에 놓으면 그 섹션 맨 끝으로 옮긴다.
+                const overGrid = e.target.closest('[data-section-grid]');
+                const overSectionEl = overGrid && overGrid.closest('.home-section');
+                if (overSectionEl) moveWidgetToPosition(draggedWidgetId, overSectionEl.dataset.sectionId, Infinity);
+            });
+        })();
 
         window.renameHomeSection = function(sectionId, newLabel) {
             const layout = loadHomeLayout();
@@ -4039,7 +4165,6 @@
             saveHomeLayout(layout);
             const titleInput = document.querySelector(`.home-section[data-section-id="${sectionId}"] [data-section-title]`);
             if (titleInput) titleInput.value = section.label;
-            if (homeSectionEditMode) renderHomeEditControls(); // 다른 위젯의 "다른 섹션으로 이동" 목록 라벨도 갱신
         }
 
         // 섹션 제목 input에서 값이 바뀌면(엔터/포커스 아웃) 저장한다
@@ -4056,6 +4181,8 @@
             document.querySelectorAll('#home-sections-container [data-section-title]').forEach(inp => { inp.readOnly = !homeSectionEditMode; });
             const btn = document.getElementById('btn-edit-home-layout');
             if (btn) btn.textContent = homeSectionEditMode ? '✅ 편집 완료' : '🧩 위젯 순서 편집';
+            const resetBtn = document.getElementById('btn-reset-home-layout');
+            if (resetBtn) resetBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
             if (homeSectionEditMode) renderHomeEditControls();
             else removeHomeWidgetEditBars();
         }
@@ -4940,19 +5067,143 @@
         }
         applyCustomBackgroundFromIndexedDB();
 
-        window.handleCustomBackgroundUpload = async function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        // =========================================================================
+        // 배경화면 부분 잘라 쓰기(크롭): 사진을 통째로 쓰는 대신, 16:9 프레임 안에서 드래그로
+        // 위치를 옮기고 슬라이더로 확대해서 원하는 부분만 잘라 저장한다. 미리보기와 실제 저장 모두
+        // 같은 canvas 좌표 계산을 쓰므로 "보이는 그대로" 잘린다.
+        // =========================================================================
+        let bgCropImg = null;
+        let bgCropObjectUrl = null;
+        let bgCropMinScale = 1;
+        let bgCropScale = 1;
+        let bgCropOffsetX = 0;
+        let bgCropOffsetY = 0;
+        let bgCropFrameW = 0;
+        let bgCropFrameH = 0;
+        let bgCropDragging = false;
+        let bgCropDragStart = null; // { x, y, offsetX, offsetY }
+
+        function clampBgCropOffset() {
+            const destW = bgCropImg.width * bgCropScale;
+            const destH = bgCropImg.height * bgCropScale;
+            bgCropOffsetX = Math.min(0, Math.max(bgCropFrameW - destW, bgCropOffsetX));
+            bgCropOffsetY = Math.min(0, Math.max(bgCropFrameH - destH, bgCropOffsetY));
+        }
+
+        function drawBgCropPreview() {
+            const canvas = document.getElementById('bg-crop-canvas');
+            if (!canvas || !bgCropImg) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(bgCropImg, bgCropOffsetX, bgCropOffsetY, bgCropImg.width * bgCropScale, bgCropImg.height * bgCropScale);
+        }
+
+        window.openBgCropModal = function(file) {
+            if (bgCropObjectUrl) { URL.revokeObjectURL(bgCropObjectUrl); bgCropObjectUrl = null; }
+            bgCropObjectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                bgCropImg = img;
+                const frame = document.getElementById('bg-crop-frame');
+                const canvas = document.getElementById('bg-crop-canvas');
+                const rect = frame.getBoundingClientRect();
+                // 레티나 화면에서도 또렷하게 보이도록 devicePixelRatio만큼 canvas 실제 해상도를 올린다.
+                const dpr = window.devicePixelRatio || 1;
+                bgCropFrameW = rect.width * dpr;
+                bgCropFrameH = rect.height * dpr;
+                canvas.width = bgCropFrameW;
+                canvas.height = bgCropFrameH;
+                // 프레임을 빈틈없이 덮는 최소 배율(=cover) - 여기서부터 확대만 가능하게 한다.
+                bgCropMinScale = Math.max(bgCropFrameW / img.width, bgCropFrameH / img.height);
+                bgCropScale = bgCropMinScale;
+                bgCropOffsetX = (bgCropFrameW - img.width * bgCropScale) / 2;
+                bgCropOffsetY = (bgCropFrameH - img.height * bgCropScale) / 2;
+                document.getElementById('bg-crop-zoom').value = 0;
+                drawBgCropPreview();
+                document.getElementById('bg-crop-modal').style.display = 'flex';
+            };
+            img.src = bgCropObjectUrl;
+        };
+
+        window.closeBgCropModal = function() {
+            document.getElementById('bg-crop-modal').style.display = 'none';
+            if (bgCropObjectUrl) { URL.revokeObjectURL(bgCropObjectUrl); bgCropObjectUrl = null; }
+            bgCropImg = null;
+            const fileInput = document.getElementById('bg-upload-input');
+            if (fileInput) fileInput.value = ''; // 같은 파일을 다시 선택해도 change 이벤트가 뜨도록 초기화
+        };
+
+        window.applyCroppedBackground = async function() {
+            if (!bgCropImg) return;
             const statusEl = document.getElementById('settings-bg-status');
             if (statusEl) statusEl.textContent = '저장 중...';
             try {
-                await saveBgBlobToIndexedDB(file);
-                applyBgBlobToPage(file);
+                // 미리보기 canvas를 그대로 저장하지 않고, 지금 보이는 영역만큼만 원본 이미지에서
+                // 다시 잘라내 별도의 출력 해상도로 그린다 (미리보기가 축소돼 있어도 화질이 유지된다).
+                const OUTPUT_W = 1600;
+                const OUTPUT_H = Math.round(OUTPUT_W * (bgCropFrameH / bgCropFrameW));
+                const srcX = -bgCropOffsetX / bgCropScale;
+                const srcY = -bgCropOffsetY / bgCropScale;
+                const srcW = bgCropFrameW / bgCropScale;
+                const srcH = bgCropFrameH / bgCropScale;
+                const outCanvas = document.createElement('canvas');
+                outCanvas.width = OUTPUT_W;
+                outCanvas.height = OUTPUT_H;
+                const outCtx = outCanvas.getContext('2d');
+                outCtx.drawImage(bgCropImg, srcX, srcY, srcW, srcH, 0, 0, OUTPUT_W, OUTPUT_H);
+                const blob = await new Promise(resolve => outCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+                await saveBgBlobToIndexedDB(blob);
+                applyBgBlobToPage(blob);
                 if (statusEl) statusEl.textContent = '배경화면이 적용되었습니다. (이 브라우저에만 저장돼요)';
+                window.closeBgCropModal();
             } catch (e) {
                 console.error('배경화면 저장 오류:', e);
                 if (statusEl) statusEl.textContent = '저장에 실패했습니다.';
             }
+        };
+
+        (function setupBgCropInteractions() {
+            const frame = document.getElementById('bg-crop-frame');
+            const zoomSlider = document.getElementById('bg-crop-zoom');
+            if (!frame || !zoomSlider) return;
+
+            frame.addEventListener('pointerdown', (e) => {
+                if (!bgCropImg) return;
+                bgCropDragging = true;
+                frame.classList.add('grabbing');
+                frame.setPointerCapture(e.pointerId);
+                bgCropDragStart = { x: e.clientX, y: e.clientY, offsetX: bgCropOffsetX, offsetY: bgCropOffsetY };
+            });
+            frame.addEventListener('pointermove', (e) => {
+                if (!bgCropDragging || !bgCropImg) return;
+                const dpr = window.devicePixelRatio || 1;
+                bgCropOffsetX = bgCropDragStart.offsetX + (e.clientX - bgCropDragStart.x) * dpr;
+                bgCropOffsetY = bgCropDragStart.offsetY + (e.clientY - bgCropDragStart.y) * dpr;
+                clampBgCropOffset();
+                drawBgCropPreview();
+            });
+            const endDrag = () => { bgCropDragging = false; frame.classList.remove('grabbing'); };
+            frame.addEventListener('pointerup', endDrag);
+            frame.addEventListener('pointercancel', endDrag);
+
+            zoomSlider.addEventListener('input', () => {
+                if (!bgCropImg) return;
+                const t = Number(zoomSlider.value) / 100; // 0~1
+                const prevScale = bgCropScale;
+                bgCropScale = bgCropMinScale * (1 + t * 2); // 최대 minScale의 3배까지 확대
+                // 확대/축소 중심이 프레임 한가운데가 되도록 오프셋을 같이 보정한다.
+                const cx = bgCropFrameW / 2, cy = bgCropFrameH / 2;
+                bgCropOffsetX = cx - (cx - bgCropOffsetX) * (bgCropScale / prevScale);
+                bgCropOffsetY = cy - (cy - bgCropOffsetY) * (bgCropScale / prevScale);
+                clampBgCropOffset();
+                drawBgCropPreview();
+            });
+        })();
+
+        window.handleCustomBackgroundUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            window.openBgCropModal(file);
         };
 
         window.resetCustomBackground = async function() {
