@@ -136,17 +136,26 @@
         .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 2px 0; margin-bottom: 4px; flex-shrink: 0; overflow: visible; }
         .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { padding: 2px 14px; }
 
-        /* 접힘/펼침 모두 같은 로고 이미지를 쓴다 (기존 가로형 로고는 폐기) - width만 상태별로 바꿔서
-           자연스럽게 커지고 작아지게 한다. 사이드바 자체의 width transition과 같은 곡선을 써서 서로 안 어긋나게 맞춘다. */
-        .sidebar-logo { display: flex; align-items: center; justify-content: center; width: 100%; overflow: visible; }
+        /* 접힘: 정사각 캐릭터 아이콘 / 펼침: 가로형 워드마크 로고 - 서로 비율이 다른 이미지라
+           src를 바꿔치기하면 전환 중간에 "이미지가 툭 바뀌는" 느낌이 난다. 그래서 두 이미지를 같은
+           자리에 절대위치로 겹쳐두고, 사이드바 폭 transition과 같은 시간 동안 opacity만 크로스페이드한다.
+           object-fit:contain을 써서 두 이미지의 원본 비율이 서로 달라도 잘리지 않는다. */
+        .sidebar-logo { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; overflow: visible; transition: height 0.25s cubic-bezier(.4,0,.2,1); }
         .sidebar-logo img {
             display: block;
-            width: 48px;
-            height: auto;
-            max-width: 100%;
-            transition: width 0.25s cubic-bezier(.4,0,.2,1);
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            transition: opacity 0.2s ease;
         }
-        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img, .sidebar.pinned-expanded .sidebar-logo img { width: 108px; }
+        .sidebar-logo-collapsed { opacity: 1; }
+        .sidebar-logo-expanded { opacity: 0; }
+        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { height: 84px; }
+        .sidebar:hover .sidebar-logo-collapsed, .sidebar.mobile-open .sidebar-logo-collapsed, .sidebar.touch-expanded .sidebar-logo-collapsed, .sidebar.pinned-expanded .sidebar-logo-collapsed { opacity: 0; }
+        .sidebar:hover .sidebar-logo-expanded, .sidebar.mobile-open .sidebar-logo-expanded, .sidebar.touch-expanded .sidebar-logo-expanded, .sidebar.pinned-expanded .sidebar-logo-expanded { opacity: 1; }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
         .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
 
@@ -432,7 +441,7 @@
 
         /* 피드 페이지네이션: 누적 높이가 3000px를 넘으면 다음 페이지로 나누고, 하단에 1~5, 6~10처럼
            5페이지씩 묶어서 보여준다. 양 끝 화살표로 이전/다음 묶음으로 이동한다. */
-        .community-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 18px; padding-top: 4px; }
+        .community-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 18px; padding-top: 4px; grid-column: 1 / -1; }
         .community-page-btn, .community-page-arrow { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
         .community-page-btn:hover, .community-page-arrow:hover { background: var(--surface-color); }
         .community-page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -1769,7 +1778,8 @@
             <div class="sidebar-menu-container">
                 <div class="sidebar-header">
                     <div class="sidebar-logo">
-                        <img src="./assets/logo-collapsed.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <img class="sidebar-logo-collapsed" src="./assets/logo-collapsed.png" alt="1-2 Community 로고">
+                        <img class="sidebar-logo-expanded" src="./assets/logo-wide.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <span class="sidebar-logo-fallback-text" style="display:none; font-size:16px; font-weight:800; letter-spacing:-0.3px; background:linear-gradient(90deg, var(--brand-navy), var(--brand-blue)); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;">1-2</span>
                     </div>
                 </div>
@@ -4771,6 +4781,7 @@
 
         window.setNoticeHubTab = function(tab) {
             noticeHubTab = tab;
+            gmwResetPage('noticeHub');
             document.querySelectorAll('.notice-hub-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
             renderNoticeHub();
         };
@@ -4906,6 +4917,10 @@
                 return;
             }
             listEl.innerHTML = regularItems.map(it => it.type === 'notice' ? renderNoticeHubCard(it.id, it.data) : renderPollHubCard(it.id, it.data)).join('');
+
+            gmwResetPageIfQueryChanged('noticeHub', query);
+            gmwApplyPagination('noticeHub', listEl, '.notice-hub-card');
+            gmwBindImageRecalc('noticeHub', listEl, '.notice-hub-card');
         }
         window.renderNoticeHub = renderNoticeHub; // 검색창 등 인라인 이벤트 핸들러(oninput)는 window 스코프에서 찾으므로 명시적으로 노출
 
@@ -7863,20 +7878,128 @@
         let communityTab = 'all'; // 'all' | 'latest' | 'popular' (사진은 별도 탭이 아니라 게시글 콘텐츠로만 표현한다)
         window.setCommunityTab = function(tab) {
             communityTab = tab;
-            communityFeedPage = 1;
+            gmwResetPage('communityFeed');
             document.querySelectorAll('.community-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
             renderPostsList(latestPostsData);
         };
 
-        // 피드 페이지네이션 상태. 검색어가 바뀌면 renderFeedList 안에서 감지해서 1페이지로 되돌린다.
-        let communityFeedPage = 1;
-        let communityFeedLastQuery = '';
-        window.goToCommunityFeedPage = function(page) {
-            communityFeedPage = page;
-            renderPostsList(latestPostsData);
-            const scrollHost = document.getElementById('community-feed-view');
+        // ===================== 공용 목록 페이지네이션 (커뮤니티/공지/자료실/공유음악 공용) =====================
+        // 목록이 누적 3000px를 넘으면 다음 페이지로 나눈다. 글/자료마다 이미지 유무·길이가 달라서
+        // 페이지당 개수는 고정이 아니라 실제 렌더링된 높이를 매번 재서 계산한다.
+        // 2열 그리드(자료실/공유음악)도 같은 알고리즘으로 처리하기 위해, 개별 아이템이 아니라
+        // 화면에 실제로 같은 줄(row)로 놓인 아이템들을 offsetTop으로 묶어서 "행" 단위로 누적한다 -
+        // 세로 1열 목록(커뮤니티/공지)에서는 각 아이템이 그 자체로 한 행이 되어 동일하게 동작한다.
+        const GMW_PAGE_HEIGHT_LIMIT = 3000;
+        const gmwPaginationState = {}; // listId -> { page, lastQuery }
+        const gmwPaginationRecalcTimers = {};
+        const gmwPageListConfig = {}; // listId -> { rerender, scrollHostId } - registered per list below
+
+        function gmwPageState(listId) {
+            return gmwPaginationState[listId] || (gmwPaginationState[listId] = { page: 1, lastQuery: '' });
+        }
+        function gmwResetPage(listId) { gmwPageState(listId).page = 1; }
+        function gmwResetPageIfQueryChanged(listId, query) {
+            const state = gmwPageState(listId);
+            if (query !== state.lastQuery) { state.lastQuery = query; state.page = 1; }
+        }
+
+        function gmwApplyPagination(listId, container, itemSelector) {
+            const state = gmwPageState(listId);
+            const oldBar = container.querySelector('.gmw-pagination-bar');
+            if (oldBar) oldBar.remove();
+            const items = Array.from(container.querySelectorAll(itemSelector));
+            if (items.length === 0) return;
+
+            // 같은 top에 놓인 아이템들을 한 행으로 묶는다 (그리드면 여러 개, 1열 목록이면 항상 1개).
+            const rows = [];
+            items.forEach(el => {
+                const top = Math.round(el.offsetTop);
+                let row = rows.find(r => Math.abs(r.top - top) < 2);
+                if (!row) { row = { top, items: [] }; rows.push(row); }
+                row.items.push(el);
+            });
+            rows.sort((a, b) => a.top - b.top);
+
+            let cumulative = 0, page = 1;
+            const pageOfRow = [];
+            rows.forEach((row, i) => {
+                // 다음 행과의 top 차이를 쓰면 margin이든 grid gap이든 실제 화면 간격이 그대로 반영된다.
+                // 마지막 행은 다음 행이 없으니 그냥 자기 내용 높이를 쓴다.
+                let rowHeight;
+                if (i < rows.length - 1) {
+                    rowHeight = rows[i + 1].top - row.top;
+                } else {
+                    rowHeight = Math.max(...row.items.map(el => el.offsetHeight));
+                }
+                if (cumulative > 0 && cumulative + rowHeight > GMW_PAGE_HEIGHT_LIMIT) { page++; cumulative = 0; }
+                cumulative += rowHeight;
+                pageOfRow.push(page);
+            });
+            const totalPages = page;
+
+            if (state.page > totalPages) state.page = totalPages;
+            if (state.page < 1) state.page = 1;
+
+            rows.forEach((row, i) => {
+                const show = pageOfRow[i] === state.page;
+                row.items.forEach(el => { el.style.display = show ? '' : 'none'; });
+            });
+
+            if (totalPages > 1) {
+                container.insertAdjacentHTML('beforeend', gmwPaginationBarHTML(listId, state.page, totalPages));
+            }
+        }
+
+        function gmwPaginationBarHTML(listId, currentPage, totalPages) {
+            const groupSize = 5;
+            const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+            const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
+            let html = '<div class="gmw-pagination-bar community-pagination">';
+            if (groupStart > 1) {
+                html += `<button class="community-page-arrow" onclick="gmwGoToPage('${listId}', ${groupStart - 1})">&lt;</button>`;
+            }
+            for (let p = groupStart; p <= groupEnd; p++) {
+                html += `<button class="community-page-btn ${p === currentPage ? 'active' : ''}" onclick="gmwGoToPage('${listId}', ${p})">${p}</button>`;
+            }
+            if (groupEnd < totalPages) {
+                html += `<button class="community-page-arrow" onclick="gmwGoToPage('${listId}', ${groupEnd + 1})">&gt;</button>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        window.gmwGoToPage = function(listId, page) {
+            gmwPageState(listId).page = page;
+            const cfg = gmwPageListConfig[listId];
+            if (cfg && cfg.rerender) cfg.rerender();
+            const scrollHost = cfg && cfg.scrollHostId ? document.getElementById(cfg.scrollHostId) : null;
             if (scrollHost) scrollHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
+
+        // 이미지가 로드되기 전엔 높이를 알 수 없어서 페이지 경계 계산이 틀어질 수 있다.
+        // 이미지 로드가 끝날 때마다 페이지네이션을 다시 계산해서 보정한다.
+        function gmwBindImageRecalc(listId, container, itemSelector) {
+            container.querySelectorAll('img:not([data-pgbound])').forEach((img) => {
+                img.dataset.pgbound = '1';
+                if (img.complete) return; // 이미 캐시돼서 로드 완료 상태면 최초 measurement에 이미 반영돼 있다
+                const handler = () => {
+                    if (gmwPaginationRecalcTimers[listId]) clearTimeout(gmwPaginationRecalcTimers[listId]);
+                    gmwPaginationRecalcTimers[listId] = setTimeout(() => {
+                        if (document.body.contains(container)) gmwApplyPagination(listId, container, itemSelector);
+                    }, 150);
+                };
+                img.addEventListener('load', handler, { once: true });
+                img.addEventListener('error', handler, { once: true });
+            });
+        }
+
+        // 목록별 등록: 페이지 버튼을 누르면 어떤 함수를 다시 불러서 다시 그릴지, 페이지 이동 시 어디로
+        // 스크롤할지. 실제 등록된 시점과 무관하게 클릭 시점에만 호출되므로 아래에서 선언되는 함수를
+        // 참조해도 안전하다.
+        gmwPageListConfig.communityFeed = { rerender: () => renderPostsList(latestPostsData), scrollHostId: 'community-feed-view' };
+        gmwPageListConfig.noticeHub = { rerender: () => renderNoticeHub(), scrollHostId: 'notice-hub-feed-view' };
+        gmwPageListConfig.materials = { rerender: () => renderMergedMaterials(), scrollHostId: 'tab-materials' };
+        gmwPageListConfig.sharedMusic = { rerender: () => renderSharedMusicList(), scrollHostId: 'music-panel-shared' };
 
         // --- 피드 / 글쓰기 / 상세 화면 전환 ---
         let communityView = 'feed'; // 'feed' | 'compose' | 'detail'
@@ -8099,85 +8222,9 @@
                 html += `</div>`;
                 container.innerHTML = html;
 
-                if (query !== communityFeedLastQuery) {
-                    communityFeedLastQuery = query;
-                    communityFeedPage = 1;
-                }
-                applyFeedPagination(container);
-                bindFeedImageRecalc(container);
-        }
-
-        // 이미지가 로드되기 전엔 높이를 알 수 없어서(특히 그리드 이미지) 페이지 경계 계산이 틀어질 수 있다.
-        // 이미지 로드가 끝날 때마다 페이지네이션을 다시 계산해서 보정한다.
-        let feedPaginationRecalcTimer = null;
-        function scheduleFeedPaginationRecalc(container) {
-            if (feedPaginationRecalcTimer) clearTimeout(feedPaginationRecalcTimer);
-            feedPaginationRecalcTimer = setTimeout(() => {
-                if (document.body.contains(container)) applyFeedPagination(container);
-            }, 150);
-        }
-        function bindFeedImageRecalc(container) {
-            container.querySelectorAll('img:not([data-pgbound])').forEach((img) => {
-                img.dataset.pgbound = '1';
-                if (img.complete) return; // 이미 캐시돼서 로드 완료 상태면 최초 measurement에 이미 반영돼 있다
-                const handler = () => scheduleFeedPaginationRecalc(container);
-                img.addEventListener('load', handler, { once: true });
-                img.addEventListener('error', handler, { once: true });
-            });
-        }
-
-        // 렌더링된 .feed-post들의 실제 높이를 재서 누적 3000px가 넘을 때마다 다음 페이지로 나눈다.
-        // 게시글마다 이미지 유무/본문 길이가 달라서 페이지당 글 개수는 고정이 아니라 매번 다시 계산된다.
-        function applyFeedPagination(container) {
-            const posts = Array.from(container.querySelectorAll('.feed-post'));
-            const oldPagination = container.querySelector('.community-pagination');
-            if (oldPagination) oldPagination.remove();
-            if (posts.length === 0) return;
-
-            const PAGE_HEIGHT_LIMIT = 3000;
-            const pageOfPost = [];
-            let cumulative = 0;
-            let page = 1;
-            posts.forEach((el) => {
-                const marginBottom = parseFloat(getComputedStyle(el).marginBottom) || 0;
-                const elHeight = el.offsetHeight + marginBottom;
-                if (cumulative > 0 && cumulative + elHeight > PAGE_HEIGHT_LIMIT) {
-                    page++;
-                    cumulative = 0;
-                }
-                cumulative += elHeight;
-                pageOfPost.push(page);
-            });
-            const totalPages = page;
-
-            if (communityFeedPage > totalPages) communityFeedPage = totalPages;
-            if (communityFeedPage < 1) communityFeedPage = 1;
-
-            posts.forEach((el, i) => {
-                el.style.display = (pageOfPost[i] === communityFeedPage) ? '' : 'none';
-            });
-
-            if (totalPages > 1) {
-                container.insertAdjacentHTML('beforeend', communityFeedPaginationHTML(communityFeedPage, totalPages));
-            }
-        }
-
-        function communityFeedPaginationHTML(currentPage, totalPages) {
-            const groupSize = 5;
-            const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
-            const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
-            let html = '<div class="community-pagination">';
-            if (groupStart > 1) {
-                html += `<button class="community-page-arrow" onclick="goToCommunityFeedPage(${groupStart - 1})">&lt;</button>`;
-            }
-            for (let p = groupStart; p <= groupEnd; p++) {
-                html += `<button class="community-page-btn ${p === currentPage ? 'active' : ''}" onclick="goToCommunityFeedPage(${p})">${p}</button>`;
-            }
-            if (groupEnd < totalPages) {
-                html += `<button class="community-page-arrow" onclick="goToCommunityFeedPage(${groupEnd + 1})">&gt;</button>`;
-            }
-            html += '</div>';
-            return html;
+                gmwResetPageIfQueryChanged('communityFeed', query);
+                gmwApplyPagination('communityFeed', container, '.feed-post');
+                gmwBindImageRecalc('communityFeed', container, '.feed-post');
         }
 
         function renderPostDetailView(postsData) {
@@ -9444,11 +9491,13 @@
 
         window.setMaterialsSortMode = function(mode) {
             materialsSortMode = mode;
+            gmwResetPage('materials');
             renderMergedMaterials();
         };
 
         window.setMaterialsCategoryFilter = function(cat) {
             materialsCategoryFilter = cat;
+            gmwResetPage('materials');
             renderMergedMaterials();
         };
 
@@ -10499,6 +10548,10 @@
                 return;
             }
             listEl.innerHTML = tracks.map(t => renderMusicTrackCard(t, sharedMusicLikedIds, sharedMusicDownloadedIds)).join('');
+
+            gmwResetPageIfQueryChanged('sharedMusic', q);
+            gmwApplyPagination('sharedMusic', listEl, '.music-track-card');
+            gmwBindImageRecalc('sharedMusic', listEl, '.music-track-card');
         };
 
         // Step 4-1/4-5: 파일 선택 즉시 ID3 태그를 읽어서 제목/아티스트를 미리 채운다.
@@ -10853,6 +10906,10 @@
                     </div>
                 `;
             }).join('');
+
+            gmwResetPageIfQueryChanged('materials', q);
+            gmwApplyPagination('materials', container, '.archive-file-card');
+            gmwBindImageRecalc('materials', container, '.archive-file-card');
         }
         window.renderMergedMaterials = renderMergedMaterials; // 검색창 등 인라인 이벤트 핸들러(oninput)는 window 스코프에서 찾으므로 명시적으로 노출
 
@@ -14092,20 +14149,6 @@
         .gmw-pip-btn.pip-main:hover{ filter: brightness(1.08); }
         .gmw-pip-btn.toggle.active{ background: rgba(224,165,58,0.2); border-color: rgba(224,165,58,0.4); color: #e0a53a; }
 
-        /* Focus + MixTape가 동시에 떠 있는 "both" 상태는 창 자체가 훨씬 커서(sizeForPiP 참고),
-           안의 요소들도 그만큼 키우지 않으면 넓은 창에 작은 위젯만 덩그러니 있는 느낌이 난다. */
-        .gmw-pip-card.gmw-pip-both .gmw-pip-row{ padding: 18px 22px; gap: 16px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-wrap{ width: 64px; height: 64px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-text span:first-child{ font-size: 16px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-text span:last-child{ font-size: 9.5px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-title{ font-size: 17px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-status, .gmw-pip-card.gmw-pip-both .gmw-pip-sub{ font-size: 12.5px; margin-top: 5px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-dot{ width: 7px; height: 7px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-art{ width: 60px; height: 60px; font-size: 24px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-actions{ gap: 8px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-btn{ width: 42px; height: 42px; font-size: 16px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-btn.focus-toggle{ width: 46px; height: 46px; font-size: 18px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-btn.pip-main{ width: 48px; height: 48px; font-size: 20px; }
     </style>
 
     <div id="gmw-pip-root" style="display:none;">
@@ -14308,7 +14351,7 @@
         }
 
         function sizeForPiP(showFocus, showMix){
-            if (showFocus && showMix) return { width: 654, height: 308 };
+            if (showFocus && showMix) return { width: 420, height: 172 };
             if (showMix) return { width: 400, height: 92 };
             return { width: 320, height: 88 };
         }
