@@ -3836,7 +3836,7 @@
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const notes = {}; snap.forEach(d => { notes[d.id] = d.data().text || ''; });
                 const targets = ['국어', '영어', '수학', '통합사회', '통합과학'];
-                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; font-size:13px;"><strong style="color:var(--primary); flex-shrink:0; white-space:nowrap;">${sub}</strong> <span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${notes[sub] || '미등록'}</span></div>`).join('');
+                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="margin-bottom:8px; font-size:13px;"><strong style="color:var(--primary); display:block; margin-bottom:2px;">${sub}</strong><span style="color:var(--text-main); word-break:break-word;">${notes[sub] || '미등록'}</span></div>`).join('');
             });
             // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
@@ -10277,6 +10277,13 @@
         function escapeHtml(str) {
             return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
+        // 시험 탭이 display:none인 동안(로그인 직후 기본 탭은 홈이므로 거의 항상 그렇다)
+        // scrollHeight가 0으로 계산되어 textarea가 한 줄 높이에 고정되는 문제가 있었다.
+        // 그래서 값 자체를 계산하는 이 함수를 따로 빼서, 탭이 실제로 보일 때 다시 호출한다.
+        function autoResizeExamNoteTextarea(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+        window.resizeExamNoteTextareas = function() {
+            document.querySelectorAll('#exam-notes-container .subject-input').forEach(autoResizeExamNoteTextarea);
+        };
         function listenToExamNotes() {
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const container = document.getElementById('exam-notes-container'); container.innerHTML = '';
@@ -10286,9 +10293,8 @@
                     row.innerHTML = `<span class="subject-name">${sub}</span><textarea class="subject-input" id="note-${sub}" rows="1" placeholder="${sub} 범위를 업데이트하세요.">${escapeHtml(data[sub] || '')}</textarea><button onclick="saveExamNote('${sub}')" class="btn-sub" style="color:var(--primary); border-color:var(--primary);">저장</button>`;
                     container.appendChild(row);
                     const ta = row.querySelector('textarea');
-                    const autoResize = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
-                    ta.addEventListener('input', autoResize);
-                    autoResize();
+                    ta.addEventListener('input', () => autoResizeExamNoteTextarea(ta));
+                    autoResizeExamNoteTextarea(ta);
                 });
             });
         }
@@ -13096,6 +13102,7 @@
         window.switchTab = function(tabId){
             _originalSwitchTab(tabId);
             if (tabId === 'home') updateHomePlannerMixtapeWidgets();
+            if (tabId === 'exam' && window.resizeExamNoteTextareas) window.resizeExamNoteTextareas();
             if (window.GlobalMiniController) window.GlobalMiniController.handlePageChange(tabId);
         };
 
