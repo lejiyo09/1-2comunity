@@ -343,12 +343,18 @@
         .header { margin-bottom: 30px; }
         .header h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
         .header p { color: var(--text-muted); font-size: 15px; }
-        /* 페이지 타이틀(각 탭의 .header h1/p)은 카드 배경 없이 페이지 배경(커스텀 배경화면 포함) 위에
-           바로 놓이므로, 어떤 배경이든 읽히도록 테두리를 준다. 색상 자체는 그대로 두고 테두리만 추가한다. */
-        .header h1, .header p {
+        /* 페이지 타이틀(각 탭의 .header h1)은 카드 배경 없이 페이지 배경(커스텀 배경화면 포함) 위에 바로
+           놓이므로, 게임 카드 제목처럼 테마와 무관하게 항상 흰 글씨 + 검은 테두리로 고정해 어떤 배경에서도
+           또렷하게 보이게 한다. */
+        .header h1 {
+            color: #fff;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
+        }
+        /* 세부 설명(.header p)은 기존과 동일하게 테마에 따라 테두리 색만 바꾸는 처리를 그대로 유지한다. */
+        .header p {
             text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
         }
-        body.gmw-site-dark .header h1, body.gmw-site-dark .header p {
+        body.gmw-site-dark .header p {
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
         }
 
@@ -1762,7 +1768,7 @@
                         <div class="nav-group-items">
                             <div class="nav-item nav-item-sub" data-tab="meal" onclick="switchTab('meal')"><span class="nav-label">급식표</span></div>
                             <div class="nav-item nav-item-sub" data-tab="timetable" onclick="switchTab('timetable')"><span class="nav-label">시간표 커스텀</span></div>
-                            <div class="nav-item nav-item-sub" data-tab="schedule" onclick="switchTab('schedule')"><span class="nav-label">반 공용 일정</span></div>
+                            <div class="nav-item nav-item-sub" data-tab="schedule" onclick="switchTab('schedule')"><span class="nav-label">캘린더</span></div>
                             <div class="nav-item nav-item-sub" data-tab="exam" onclick="switchTab('exam')"><span class="nav-label">시험/수행평가</span></div>
                             <div class="nav-item nav-item-sub" data-tab="cleaning" onclick="switchTab('cleaning')"><span class="nav-label">청소 1인1역</span></div>
                             <div class="nav-item nav-item-sub" data-tab="squad" id="nav-squad" onclick="switchTab('squad')"><span class="nav-label">스쿼드 메이커</span></div>
@@ -2267,8 +2273,8 @@
             <div id="tab-schedule" class="tab-content">
                 <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                     <div>
-                        <h1>반 공용 일정 📅</h1>
-                        <p>수행평가/지필평가/학교행사 등 우리 반 모든 일정을 한 눈에 확인하세요</p>
+                        <h1>캘린더 📅</h1>
+                        <p>수행평가/지필평가/학교행사 등 반 공용 일정과 나만 보이는 개인 일정을 한 곳에서 확인하세요</p>
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
                         <div id="schedule-tag-filter-anchor" style="position:relative;">
@@ -2312,6 +2318,10 @@
                     <span class="close-btn" onclick="document.getElementById('schedule-composer-modal').style.display='none';">&times;</span>
                     <h3 id="schedule-composer-title" style="font-size:17px; font-weight:800; margin-bottom:16px; color:var(--text-main);">일정 추가</h3>
                     <input type="hidden" id="schedule-editing-id" value="">
+                    <label id="schedule-form-personal-label" style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:14px; cursor:pointer;">
+                        <input type="checkbox" id="schedule-form-personal" style="width:auto; margin:0;">
+                        🔒 개인 일정으로 등록 (나만 보임, 반 공용에는 안 뜸)
+                    </label>
                     <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">날짜</label>
                     <input type="date" id="schedule-form-date" class="auth-input" style="margin-bottom:12px;">
                     <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">종료일 (여러 날에 걸친 일정인 경우에만 입력, 예: 9/28~10/2)</label>
@@ -2697,7 +2707,7 @@
             </div>
 
             <div id="tab-exam" class="tab-content">
-                <div class="header"><h1>📝 시험 / 수행평가 아카이브</h1><p>2반 공용 실시간 연동 노트 · 일정은 <span style="color:var(--primary); font-weight:700; cursor:pointer;" onclick="switchTab('schedule')">📅 반 공용 일정</span>에서 확인하세요</p></div>
+                <div class="header"><h1>📝 시험 / 수행평가 아카이브</h1><p>2반 공용 실시간 연동 노트 · 일정은 <span style="color:var(--primary); font-weight:700; cursor:pointer;" onclick="switchTab('schedule')">📅 캘린더</span>에서 확인하세요</p></div>
                 <div id="exam-secure-content" style="display: none;">
                     <div class="exam-container">
                         <div class="card" style="grid-column: 1 / -1;">
@@ -3870,7 +3880,7 @@
 
                         updatePokemonChampionsButton();
 
-                        listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule(); listenToShortcuts();
+                        listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule(); listenToPersonalSchedule(); listenToShortcuts();
                         // NEIS 학사일정 자동 동기화: 세션당 한 번만 시도하고, 브라우저별로 최근 동기화 후 일정 시간 내면 건너뛴다.
                         if (!neisSyncTriggered) {
                             neisSyncTriggered = true;
@@ -6849,7 +6859,9 @@
         function scheduleTagColor(tag) { return SCHEDULE_TAG_COLORS[tag] || '#8b5cf6'; }
 
         let scheduleViewDate = new Date();
-        let scheduleCache = {};
+        let scheduleCache = {}; // 반 공용(dashboard/shared_schedule) + 내 개인 일정(users/{uid}/personal_schedule)을 합친 것. 각 항목에 _source: 'shared'|'personal'을 붙여 구분한다.
+        let sharedScheduleData = {};
+        let personalScheduleData = {};
         let scheduleSelectedDateKey = null;
         let scheduleEditingId = null;
         let scheduleActiveTagFilter = new Set(); // 비어있으면 전체 표시
@@ -6857,16 +6869,34 @@
 
         function updateScheduleComposerVisibility() {
             const btn = document.getElementById('btn-write-schedule');
-            if (btn) btn.style.display = canWriteSchedule ? 'inline-flex' : 'none';
+            // 반 공용 일정 쓰기 권한이 없어도, 로그인만 했으면 "나만 보이는" 개인 일정은 누구나 추가할 수 있다.
+            if (btn) btn.style.display = currentUser ? 'inline-flex' : 'none';
+        }
+
+        function rebuildScheduleCache() {
+            scheduleCache = {};
+            Object.entries(sharedScheduleData).forEach(([id, ev]) => { scheduleCache[id] = { ...ev, _source: 'shared' }; });
+            Object.entries(personalScheduleData).forEach(([id, ev]) => { scheduleCache[id] = { ...ev, _source: 'personal' }; });
+            renderScheduleCalendar();
+            renderCurrentPeriodWidget(); // 지필고사 D-day가 이 안에서 scheduleCache를 쓰므로 즉시 갱신
+            const dayModal = document.getElementById('schedule-day-modal');
+            if (scheduleSelectedDateKey && dayModal && dayModal.style.display === 'flex') renderScheduleDayList();
         }
 
         function listenToSharedSchedule() {
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
-                scheduleCache = snap.val() || {};
-                renderScheduleCalendar();
-                renderCurrentPeriodWidget(); // 지필고사 D-day가 이 안에서 scheduleCache를 쓰므로 즉시 갱신
-                const dayModal = document.getElementById('schedule-day-modal');
-                if (scheduleSelectedDateKey && dayModal && dayModal.style.display === 'flex') renderScheduleDayList();
+                sharedScheduleData = snap.val() || {};
+                rebuildScheduleCache();
+            });
+        }
+
+        // 개인 일정은 완전히 나만 보이므로 Firebase 규칙을 새로 만들 필요 없이, 이미 본인만 읽고 쓸 수 있는
+        // users/{uid} 아래에 저장한다 (users/$uid의 .read/.write가 auth.uid === $uid로 이미 제한돼 있음).
+        function listenToPersonalSchedule() {
+            if (!currentUser) { personalScheduleData = {}; rebuildScheduleCache(); return; }
+            onValue(ref(db, `users/${currentUser.uid}/personal_schedule`), (snap) => {
+                personalScheduleData = snap.val() || {};
+                rebuildScheduleCache();
             });
         }
 
@@ -6912,7 +6942,8 @@
                 let chipsHtml = ''; const maxShow = 2;
                 matched.slice(0, maxShow).forEach(ev => {
                     const c = scheduleTagColor((ev.tags || [])[0]);
-                    chipsHtml += `<div class="exam-cal-event-chip" style="background:${c}22; color:${c};">${ev.subject ? `[${ev.subject}] ` : ''}${escapeNoticeText(ev.title)}</div>`;
+                    const lock = ev._source === 'personal' ? '🔒 ' : '';
+                    chipsHtml += `<div class="exam-cal-event-chip" style="background:${c}22; color:${c};">${lock}${ev.subject ? `[${ev.subject}] ` : ''}${escapeNoticeText(ev.title)}</div>`;
                 });
                 if (matched.length > maxShow) chipsHtml += `<div class="exam-cal-more">+ ${matched.length - maxShow}개 더</div>`;
                 html += `<div class="exam-cal-day ${otherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}" style="${dim ? 'opacity:0.3;' : ''}" onclick="openScheduleDayModal('${dateKey}')">
@@ -6929,7 +6960,7 @@
             const d = new Date(dateKey + 'T00:00:00');
             const weekday = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
             document.getElementById('schedule-day-modal-title').innerText = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${weekday})`;
-            document.getElementById('btn-add-schedule-in-day').style.display = canWriteSchedule ? 'block' : 'none';
+            document.getElementById('btn-add-schedule-in-day').style.display = currentUser ? 'block' : 'none';
             renderScheduleDayList();
             document.getElementById('schedule-day-modal').style.display = 'flex';
         }
@@ -6941,20 +6972,25 @@
             listEl.innerHTML = events.map(ev => {
                 const tagsHtml = (ev.tags || []).map(t => `<span style="font-size:10px; padding:2px 6px; border-radius:5px; background:${scheduleTagColor(t)}22; color:${scheduleTagColor(t)}; margin-right:4px;">${t}</span>`).join('');
                 const rangeHtml = (ev.endDate && ev.endDate !== ev.date) ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${ev.date} ~ ${ev.endDate}</div>` : '';
+                const isPersonal = ev._source === 'personal';
+                const canEditThis = isPersonal || (ev._source === 'shared' && canWriteSchedule); // 개인 일정은 항상 본인 것 - 공용은 canWriteSchedule 필요
+                const personalBadge = isPersonal ? `<span style="font-size:10px; padding:2px 6px; border-radius:5px; background:var(--surface-secondary); color:var(--text-muted); margin-right:4px;">🔒 개인</span>` : '';
                 return `<div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                         <div style="font-size:14px; font-weight:700; color:var(--text-main);">${ev.subject ? `[${escapeNoticeText(ev.subject)}] ` : ''}${escapeNoticeText(ev.title)}</div>
-                        ${canWriteSchedule ? `<div style="display:flex; gap:8px; flex-shrink:0;"><span onclick="openScheduleComposer('${ev.id}')" style="cursor:pointer; font-size:12px; color:var(--primary); font-weight:600;">수정</span><span onclick="deleteScheduleEvent('${ev.id}')" style="cursor:pointer; font-size:12px; color:#ef4444; font-weight:600;">삭제</span></div>` : ''}
+                        ${canEditThis ? `<div style="display:flex; gap:8px; flex-shrink:0;"><span onclick="openScheduleComposer('${ev.id}')" style="cursor:pointer; font-size:12px; color:var(--primary); font-weight:600;">수정</span><span onclick="deleteScheduleEvent('${ev.id}')" style="cursor:pointer; font-size:12px; color:#ef4444; font-weight:600;">삭제</span></div>` : ''}
                     </div>
                     ${rangeHtml}
-                    ${tagsHtml ? `<div style="margin-top:6px;">${tagsHtml}</div>` : ''}
+                    ${(personalBadge || tagsHtml) ? `<div style="margin-top:6px;">${personalBadge}${tagsHtml}</div>` : ''}
                     ${ev.content ? `<div style="font-size:12px; color:var(--text-muted); margin-top:6px; white-space:pre-wrap;">${escapeNoticeText(ev.content)}</div>` : ''}
                 </div>`;
             }).join('');
         }
 
         window.openScheduleComposer = function(id) {
-            if (!canWriteSchedule) return;
+            if (!currentUser) return; // 로그인만 하면 개인 일정은 누구나 추가 가능 - 공용 쓰기 권한은 아래에서 별도 처리
+            const personalCheckbox = document.getElementById('schedule-form-personal');
+            if (id && scheduleCache[id] && scheduleCache[id]._source === 'shared' && !canWriteSchedule) return; // 남의 공용 일정을 권한 없이 열려는 시도 방지
             scheduleEditingId = id;
             document.getElementById('schedule-editing-id').value = id || '';
             const titleEl = document.getElementById('schedule-composer-title');
@@ -6968,6 +7004,9 @@
                 document.getElementById('schedule-form-title').value = ev.title || '';
                 document.getElementById('schedule-form-content').value = ev.content || '';
                 (ev.tags || []).forEach(t => scheduleFormSelectedTags.add(t));
+                // 수정할 때는 개인/공용 구분을 바꿀 수 없다 (원래 저장된 곳에 그대로 저장)
+                personalCheckbox.checked = ev._source === 'personal';
+                personalCheckbox.disabled = true;
             } else {
                 titleEl.textContent = '일정 추가';
                 document.getElementById('schedule-form-date').value = scheduleSelectedDateKey || '';
@@ -6975,6 +7014,9 @@
                 document.getElementById('schedule-form-subject').value = '국어';
                 document.getElementById('schedule-form-title').value = '';
                 document.getElementById('schedule-form-content').value = '';
+                // 반 공용 쓰기 권한이 없으면 개인 일정만 가능하므로 체크박스를 강제로 고정한다
+                personalCheckbox.checked = !canWriteSchedule;
+                personalCheckbox.disabled = !canWriteSchedule;
             }
             renderScheduleFormTags();
             document.getElementById('schedule-day-modal').style.display = 'none';
@@ -6995,19 +7037,29 @@
         }
 
         window.submitScheduleForm = async function() {
-            if (!canWriteSchedule || !currentUser) return alert('작성 권한이 없습니다.');
+            if (!currentUser) return alert('로그인이 필요합니다.');
             const date = document.getElementById('schedule-form-date').value;
             const endDateInput = document.getElementById('schedule-form-enddate').value;
             const subject = document.getElementById('schedule-form-subject').value;
             const title = document.getElementById('schedule-form-title').value.trim();
             const content = document.getElementById('schedule-form-content').value.trim();
+            const isPersonal = document.getElementById('schedule-form-personal').checked;
+            if (!isPersonal && !canWriteSchedule) return alert('반 공용 일정 작성 권한이 없습니다. "개인 일정으로 등록"을 체크해주세요.');
             if (!date || !title) return alert('날짜와 제목을 입력해주세요.');
             if (endDateInput && endDateInput < date) return alert('종료일은 시작 날짜보다 빠를 수 없습니다.');
             const endDate = endDateInput || date;
             const tags = Array.from(scheduleFormSelectedTags);
             try {
                 if (scheduleEditingId) {
-                    await update(ref(db, `dashboard/shared_schedule/${scheduleEditingId}`), { date, endDate, subject, title, content, tags, updatedAt: Date.now() });
+                    const existing = scheduleCache[scheduleEditingId];
+                    const path = existing && existing._source === 'personal'
+                        ? `users/${currentUser.uid}/personal_schedule/${scheduleEditingId}`
+                        : `dashboard/shared_schedule/${scheduleEditingId}`;
+                    await update(ref(db, path), { date, endDate, subject, title, content, tags, updatedAt: Date.now() });
+                } else if (isPersonal) {
+                    await push(ref(db, `users/${currentUser.uid}/personal_schedule`), {
+                        date, endDate, subject, title, content, tags, createdAt: Date.now()
+                    });
                 } else {
                     await push(ref(db, 'dashboard/shared_schedule'), {
                         date, endDate, subject, title, content, tags, source: 'manual',
@@ -7019,9 +7071,13 @@
         }
 
         window.deleteScheduleEvent = async function(id) {
-            if (!canWriteSchedule) return;
+            if (!currentUser) return;
+            const ev = scheduleCache[id];
+            if (!ev) return;
+            if (ev._source === 'shared' && !canWriteSchedule) return;
             if (!confirm('이 일정을 삭제하시겠습니까?')) return;
-            try { await remove(ref(db, `dashboard/shared_schedule/${id}`)); renderScheduleDayList(); } catch (e) {}
+            const path = ev._source === 'personal' ? `users/${currentUser.uid}/personal_schedule/${id}` : `dashboard/shared_schedule/${id}`;
+            try { await remove(ref(db, path)); renderScheduleDayList(); } catch (e) {}
         }
 
         // 팝오버가 열려 있는 동안의 "임시 선택 상태". `완료`를 눌러야 scheduleActiveTagFilter에 확정 반영된다.
