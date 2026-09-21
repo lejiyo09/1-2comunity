@@ -129,33 +129,24 @@
         .sidebar:hover, .sidebar.mobile-open, .sidebar.touch-expanded, .sidebar.pinned-expanded { width: 260px; }
         body.gmw-site-dark .sidebar { background: rgba(16,24,42,0.62); border-right-color: rgba(255,255,255,0.07); }
 
-        .sidebar-menu-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; }
+        .sidebar-menu-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 6px; }
         .sidebar-menu-container::-webkit-scrollbar { width: 4px; }
         .sidebar-menu-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
-        .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 10px 0; margin-bottom: 10px; flex-shrink: 0; overflow: visible; }
-        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { justify-content: flex-start; padding: 10px 14px; }
+        .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 2px 0; margin-bottom: 4px; flex-shrink: 0; overflow: visible; }
+        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { padding: 2px 14px; }
 
-        /* 접힌 상태와 펼친 상태가 서로 다른 이미지(접힘: 정사각 캐릭터 아이콘 / 펼침: 기존 로고)라
-           src를 바꿔치기하면 전환 중간에 "이미지가 툭 바뀌는" 느낌이 난다. 그래서 두 이미지를 같은 자리에
-           절대위치로 겹쳐두고, 사이드바 폭 transition과 같은 시간 동안 opacity만 크로스페이드한다 - 실제로는
-           하나가 서서히 사라지고 다른 하나가 서서히 나타나는 것뿐이라 "교체" 대신 "전환"으로 느껴진다.
-           object-fit:contain을 써서 두 이미지의 원본 비율이 서로 달라도 잘리지 않는다. */
-        .sidebar-logo { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 60px; overflow: visible; transition: height 0.25s cubic-bezier(.4,0,.2,1); }
+        /* 접힘/펼침 모두 같은 로고 이미지를 쓴다 (기존 가로형 로고는 폐기) - width만 상태별로 바꿔서
+           자연스럽게 커지고 작아지게 한다. 사이드바 자체의 width transition과 같은 곡선을 써서 서로 안 어긋나게 맞춘다. */
+        .sidebar-logo { display: flex; align-items: center; justify-content: center; width: 100%; overflow: visible; }
         .sidebar-logo img {
             display: block;
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            transition: opacity 0.2s ease;
+            width: 48px;
+            height: auto;
+            max-width: 100%;
+            transition: width 0.25s cubic-bezier(.4,0,.2,1);
         }
-        .sidebar-logo-collapsed { object-position: center; opacity: 1; }
-        .sidebar-logo-expanded { object-position: left center; opacity: 0; }
-        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { height: 200px; justify-content: flex-start; }
-        .sidebar:hover .sidebar-logo-collapsed, .sidebar.mobile-open .sidebar-logo-collapsed, .sidebar.touch-expanded .sidebar-logo-collapsed, .sidebar.pinned-expanded .sidebar-logo-collapsed { opacity: 0; }
-        .sidebar:hover .sidebar-logo-expanded, .sidebar.mobile-open .sidebar-logo-expanded, .sidebar.touch-expanded .sidebar-logo-expanded, .sidebar.pinned-expanded .sidebar-logo-expanded { opacity: 1; }
+        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img, .sidebar.pinned-expanded .sidebar-logo img { width: 108px; }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
         .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
 
@@ -199,7 +190,7 @@
         .nav-item-sub { font-size: 14px; padding-left: 34px; }
 
         .sidebar-bottom-btn { border: none; background: none; width: 100%; text-align: left; font-family: inherit; margin-bottom: 8px; }
-        #btn-open-settings.sidebar-bottom-btn { margin-top: 14px; margin-bottom: 12px; border-top: 1px solid var(--border-color); padding-top: 20px; border-radius: 0; }
+        #btn-open-settings.sidebar-bottom-btn { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); }
         .sidebar-logout-btn { color: #ef4444; margin-bottom: 4px; }
         .sidebar-logout-btn:hover { background-color: rgba(239,68,68,0.12); }
 
@@ -321,7 +312,7 @@
             .sidebar.mobile-open { margin-left: 0; width: 260px; box-shadow: 0 0 0 100vmax rgba(15,23,42,0.45); }
             .sidebar .nav-label { opacity: 1; margin-left: 12px; transform: translateX(0); } /* 모바일은 hover가 없으니 열리면 항상 텍스트 표시 */
             .sidebar .nav-group-caret { opacity: 1; }
-            .sidebar .sidebar-expand-only { max-height: 320px; opacity: 1; transform: translateX(0); }
+            .sidebar.mobile-open .sidebar-expand-only { max-height: 320px; opacity: 1; transform: translateX(0); }
             .main { margin-left: 0; width: 100%; padding: 20px 16px 84px; }
             .dashboard-grid { grid-template-columns: 1fr !important; }
             #materials-container { grid-template-columns: 1fr !important; }
@@ -1778,8 +1769,7 @@
             <div class="sidebar-menu-container">
                 <div class="sidebar-header">
                     <div class="sidebar-logo">
-                        <img class="sidebar-logo-collapsed" src="./assets/logo-collapsed.png" alt="1-2 Community 로고">
-                        <img class="sidebar-logo-expanded" src="./assets/logo.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <img src="./assets/logo-collapsed.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <span class="sidebar-logo-fallback-text" style="display:none; font-size:16px; font-weight:800; letter-spacing:-0.3px; background:linear-gradient(90deg, var(--brand-navy), var(--brand-blue)); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;">1-2</span>
                     </div>
                 </div>
@@ -14101,6 +14091,21 @@
         .gmw-pip-btn.pip-main{ width: 30px; height: 30px; background: #e0a53a; border-color: #e0a53a; color: #211705; font-size: 13px; }
         .gmw-pip-btn.pip-main:hover{ filter: brightness(1.08); }
         .gmw-pip-btn.toggle.active{ background: rgba(224,165,58,0.2); border-color: rgba(224,165,58,0.4); color: #e0a53a; }
+
+        /* Focus + MixTape가 동시에 떠 있는 "both" 상태는 창 자체가 훨씬 커서(sizeForPiP 참고),
+           안의 요소들도 그만큼 키우지 않으면 넓은 창에 작은 위젯만 덩그러니 있는 느낌이 난다. */
+        .gmw-pip-card.gmw-pip-both .gmw-pip-row{ padding: 18px 22px; gap: 16px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-wrap{ width: 64px; height: 64px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-text span:first-child{ font-size: 16px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-text span:last-child{ font-size: 9.5px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-title{ font-size: 17px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-status, .gmw-pip-card.gmw-pip-both .gmw-pip-sub{ font-size: 12.5px; margin-top: 5px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-dot{ width: 7px; height: 7px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-art{ width: 60px; height: 60px; font-size: 24px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-actions{ gap: 8px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-btn{ width: 42px; height: 42px; font-size: 16px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-btn.focus-toggle{ width: 46px; height: 46px; font-size: 18px; }
+        .gmw-pip-card.gmw-pip-both .gmw-pip-btn.pip-main{ width: 48px; height: 48px; font-size: 20px; }
     </style>
 
     <div id="gmw-pip-root" style="display:none;">
@@ -14303,7 +14308,7 @@
         }
 
         function sizeForPiP(showFocus, showMix){
-            if (showFocus && showMix) return { width: 420, height: 172 };
+            if (showFocus && showMix) return { width: 654, height: 308 };
             if (showMix) return { width: 400, height: 92 };
             return { width: 320, height: 88 };
         }
