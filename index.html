@@ -14139,20 +14139,6 @@
         .gmw-pip-btn.pip-main:hover{ filter: brightness(1.08); }
         .gmw-pip-btn.toggle.active{ background: rgba(224,165,58,0.2); border-color: rgba(224,165,58,0.4); color: #e0a53a; }
 
-        /* Focus + MixTape가 동시에 떠 있는 "both" 상태는 창 자체가 훨씬 커서(sizeForPiP 참고),
-           안의 요소들도 그만큼 키우지 않으면 넓은 창에 작은 위젯만 덩그러니 있는 느낌이 난다. */
-        .gmw-pip-card.gmw-pip-both .gmw-pip-row{ padding: 18px 22px; gap: 16px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-wrap{ width: 64px; height: 64px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-text span:first-child{ font-size: 16px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-ring-text span:last-child{ font-size: 9.5px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-title{ font-size: 17px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-status, .gmw-pip-card.gmw-pip-both .gmw-pip-sub{ font-size: 12.5px; margin-top: 5px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-dot{ width: 7px; height: 7px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-art{ width: 60px; height: 60px; font-size: 24px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-actions{ gap: 8px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-btn{ width: 42px; height: 42px; font-size: 16px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-btn.focus-toggle{ width: 46px; height: 46px; font-size: 18px; }
-        .gmw-pip-card.gmw-pip-both .gmw-pip-btn.pip-main{ width: 48px; height: 48px; font-size: 20px; }
     </style>
 
     <div id="gmw-pip-root" style="display:none;">
@@ -14355,7 +14341,7 @@
         }
 
         function sizeForPiP(showFocus, showMix){
-            if (showFocus && showMix) return { width: 654, height: 308 };
+            if (showFocus && showMix) return { width: 420, height: 172 };
             if (showMix) return { width: 400, height: 92 };
             return { width: 320, height: 88 };
         }
