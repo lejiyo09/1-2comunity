@@ -4237,7 +4237,7 @@
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const notes = {}; snap.forEach(d => { notes[d.id] = d.data().text || ''; });
                 const targets = ['국어', '영어', '수학', '통합사회', '통합과학'];
-                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="margin-bottom:8px; font-size:13px;"><strong style="color:var(--primary); display:block; margin-bottom:2px;">${sub}</strong><span style="color:var(--text-main); word-break:break-word;">${notes[sub] || '미등록'}</span></div>`).join('');
+                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="margin-bottom:8px; font-size:13px;"><strong style="color:var(--primary); display:block; margin-bottom:2px;">${sub}</strong><span style="color:var(--text-main); word-break:break-word; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis;">${notes[sub] || '미등록'}</span></div>`).join('');
             });
             // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
