@@ -10121,6 +10121,7 @@
             try {
                 await musicDbAddTrackRefToPlaylist(targetId, addSingleTrackId);
                 closeAddSingleTrackModal();
+                if (window.MixTapeApp && window.MixTapeApp.refreshIfCurrent) window.MixTapeApp.refreshIfCurrent(targetId);
                 alert('플레이리스트에 추가했습니다.');
             } catch (e) {
                 console.error('플레이리스트 추가 오류:', e);
@@ -10293,17 +10294,10 @@
                 closeAddFromLibraryModal();
 
                 // 새로고침 없이 즉시 반영: 목록 화면의 곡 수를 바로 갱신하고, 지금 보고 있는 플레이어가
-                // 방금 추가한 그 플레이리스트라면 화면도 즉시 새로 그린다. 단, 그 플레이리스트가 지금
-                // "재생 중"이면 다시 불러오지 않는다 (switchPlaylist는 항상 재생을 처음부터 리셋하기
-                // 때문에, 듣고 있던 음악이 끊기지 않도록 이 경우만 예외로 둔다 - 다음에 그 플레이리스트를
-                // 다시 열면 자연히 반영된다).
+                // 방금 추가한 그 플레이리스트라면 목록도 즉시 새로 그린다. refreshIfCurrent()는
+                // switchToPlaylist()와 달리 재생을 멈추지 않으므로 재생 중이어도 안전하게 부를 수 있다.
                 await renderPlaylistNameList();
-                const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
-                const nowPlaying = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
-                const isPlayerVisible = document.getElementById('playlist-player-wrapper').style.display !== 'none';
-                if (currentId === targetId && isPlayerVisible && !(nowPlaying && nowPlaying.playing)) {
-                    await window.MixTapeApp.switchToPlaylist(targetId);
-                }
+                if (window.MixTapeApp && window.MixTapeApp.refreshIfCurrent) window.MixTapeApp.refreshIfCurrent(targetId);
 
                 alert('선택한 곡을 플레이리스트에 추가했습니다.');
             } catch (e) {
@@ -13299,7 +13293,7 @@
       records.sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
       records.forEach(rec => {
         const url = URL.createObjectURL(rec.blob);
-        const entry = { id: rec.id, blob: rec.blob, url, name: rec.name, duration: null, order: rec.order };
+        const entry = { id: rec.id, blob: rec.blob, url, name: rec.name, duration: null, order: rec.order, artwork: rec.artwork || null };
         playlist.push(entry);
         probeDuration(entry);
       });
@@ -13307,6 +13301,35 @@
       statusText.textContent = playlist.length ? `저장된 ${playlist.length}곡 불러옴` : "준비됨";
     }catch(err){
       console.warn("트랙을 불러오지 못했어요:", err);
+    }
+  }
+
+  // "내 음악"에서 곡을 이 플레이리스트에 추가했을 때 화면에 즉시 반영하기 위한 용도.
+  // switchPlaylist()는 항상 재생을 멈추고 처음부터 다시 불러오므로, 지금 이 플레이리스트를 재생
+  // 중일 때 그대로 쓰면 음악이 끊긴다. 대신 이미 있던 곡의 entry(같은 blob url)는 그대로 재사용하고
+  // 새로 추가된 곡만 새 entry를 만들어서, 재생 중인 곡의 currentIndex만 다시 찾아 갱신한다.
+  async function refreshCurrentPlaylistTracks(){
+    if (currentPlaylistId == null) return;
+    try{
+      const records = await dbGetTracksByPlaylist(currentPlaylistId);
+      records.sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+      const existingById = new Map(playlist.map(e => [e.id, e]));
+      const newPlaylist = records.map(rec => {
+        const existing = existingById.get(rec.id);
+        if (existing) return { ...existing, order: rec.order };
+        const url = URL.createObjectURL(rec.blob);
+        const entry = { id: rec.id, blob: rec.blob, url, name: rec.name, duration: null, order: rec.order, artwork: rec.artwork || null };
+        probeDuration(entry);
+        return entry;
+      });
+      const newIds = new Set(newPlaylist.map(e => e.id));
+      playlist.forEach(e => { if (!newIds.has(e.id) && e.url) URL.revokeObjectURL(e.url); });
+      const currentTrackId = (currentIndex >= 0 && playlist[currentIndex]) ? playlist[currentIndex].id : null;
+      playlist = newPlaylist;
+      currentIndex = currentTrackId != null ? playlist.findIndex(e => e.id === currentTrackId) : -1;
+      renderList();
+    }catch(err){
+      console.warn("플레이리스트 갱신 실패:", err);
     }
   }
 
@@ -13766,6 +13789,7 @@
       const hasTrack = currentIndex >= 0 && playlist[currentIndex];
       return {
         name: hasTrack ? playlist[currentIndex].name : null,
+        artwork: hasTrack ? (playlist[currentIndex].artwork || null) : null,
         playing: mixtapeRoot ? mixtapeRoot.classList.contains('playing') : false,
         currentTime: audio.currentTime || 0,
         duration: audio.duration || 0,
@@ -13809,6 +13833,8 @@
     // 기존 함수를 그대로 재사용 - 이미 같은 플레이리스트가 열려있으면 다시 로드하지 않는 기존 보호
     // 로직도 그대로 적용된다 (재생 중인 곡이 처음부터 다시 시작되지 않음).
     switchToPlaylist: function(id){ return switchPlaylist(id); },
+    // "내 음악"에서 이 플레이리스트로 곡을 추가했을 때, 재생을 끊지 않고 목록만 다시 그린다.
+    refreshIfCurrent: function(id){ if (id === currentPlaylistId) return refreshCurrentPlaylistTracks(); },
     getCurrentPlaylistId: function(){ return currentPlaylistId; },
     // 1-2 Music: 선택 모드 제어 - 별도 화면을 새로 만들지 않고 기존 트랙리스트에 체크박스만 켠다.
     enterSelectMode: function(){
@@ -13982,7 +14008,8 @@
         .gmw-inline-title{ font-size: 12.5px; font-weight: 700; color: #f2f3f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .gmw-inline-sub{ font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .gmw-inline-art{ width: 36px; height: 36px; border-radius: 8px; background: #1c180d; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; border: 1px solid rgba(224,165,58,0.25); }
+        .gmw-inline-art{ width: 36px; height: 36px; border-radius: 8px; background: #1c180d; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; border: 1px solid rgba(224,165,58,0.25); overflow: hidden; }
+        .gmw-inline-art img{ width: 100%; height: 100%; object-fit: cover; display: block; }
 
         .gmw-inline-actions{ display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .gmw-inline-btn{
@@ -14015,7 +14042,7 @@
 
     <div class="gmw-inline-container">
         <div id="gmw-inline-mixtape" class="gmw-inline-card gmw-inline-mixtape">
-            <div class="gmw-inline-art">📼</div>
+            <div class="gmw-inline-art" id="gmw-inline-mix-art">📼</div>
             <div class="gmw-inline-info">
                 <div class="gmw-inline-label">MixTape</div>
                 <div class="gmw-inline-title" id="gmw-inline-mix-title">노래 제목</div>
@@ -14176,7 +14203,7 @@
                 </div>
 
                 <div id="gmw-pip-mixtape" class="gmw-pip-row gmw-pip-mixtape">
-                    <div class="gmw-pip-art">📼</div>
+                    <div class="gmw-pip-art" id="gmw-pip-mix-art">📼</div>
                     <div class="gmw-pip-info">
                         <div class="gmw-pip-title" id="gmw-pip-mix-title">노래 제목</div>
                         <div class="gmw-pip-sub" id="gmw-pip-mix-sub">MixTape</div>
@@ -14240,6 +14267,22 @@
             return el && el.id ? el.id.replace(/^tab-/, '') : null;
         }
 
+        // 현재 곡의 앨범아트 Blob -> object URL. 매 렌더(초 단위 tick)마다 새로 만들면 안 되므로,
+        // 같은 Blob이면 이미 만든 URL을 그대로 재사용하고 곡이 바뀔 때만 새로 만들고 이전 것을 해제한다.
+        let mixArtworkCache = { blob: null, url: null };
+        function resolveMixArtworkUrl(blob){
+            if (!blob) {
+                if (mixArtworkCache.url) URL.revokeObjectURL(mixArtworkCache.url);
+                mixArtworkCache = { blob: null, url: null };
+                return null;
+            }
+            if (mixArtworkCache.blob === blob) return mixArtworkCache.url;
+            if (mixArtworkCache.url) URL.revokeObjectURL(mixArtworkCache.url);
+            const url = URL.createObjectURL(blob);
+            mixArtworkCache = { blob, url };
+            return url;
+        }
+
         function getFocusData(){
             try {
                 if (window.PlannerApp && typeof window.PlannerApp.getFocusWidgetData === 'function') {
@@ -14258,6 +14301,7 @@
                     if (!np || !np.name) return null;
                     return {
                         name: np.name, playlistName: np.playlistName || '',
+                        artworkUrl: resolveMixArtworkUrl(np.artwork || null),
                         index: np.index, total: np.total || 0,
                         currentTime: np.currentTime || 0, duration: np.duration || 0,
                         playing: !!np.playing, isShuffle: !!np.isShuffle, repeatMode: np.repeatMode || 0
@@ -14272,6 +14316,17 @@
             const m = Math.floor(sec / 60);
             const s = sec % 60;
             return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
+        // artEl은 기본적으로 "📼" 텍스트를 담은 박스. 앨범아트가 있으면 그 안에 <img>를 넣고,
+        // 없으면 다시 텍스트로 되돌린다. data-art-url로 마지막 반영한 URL을 기억해서 매 tick마다
+        // (곡이 안 바뀌었는데도) innerHTML을 다시 쓰지 않는다.
+        function updateMixArtEl(artEl, url){
+            if (!artEl) return;
+            const current = artEl.dataset.artUrl || '';
+            if (current === (url || '')) return;
+            artEl.dataset.artUrl = url || '';
+            artEl.innerHTML = url ? `<img src="${url}" onerror="this.parentElement.innerHTML='📼'; this.parentElement.dataset.artUrl='';">` : '📼';
         }
 
         function setRing(circleEl, pct, circumference){
@@ -14306,6 +14361,7 @@
             if (!visible) return false;
             document.getElementById('gmw-inline-mix-title').textContent = data.name;
             document.getElementById('gmw-inline-mix-sub').textContent = `${fmt(data.currentTime)} / ${fmt(data.duration)}`;
+            updateMixArtEl(document.getElementById('gmw-inline-mix-art'), data.artworkUrl);
             const playBtn = document.getElementById('gmw-inline-mix-play-btn');
             if (playBtn) playBtn.textContent = data.playing ? 'Ⅱ' : '▶';
             return true;
@@ -14336,6 +14392,7 @@
             pip$('gmw-pip-mix-cur').textContent = fmt(data.currentTime);
             pip$('gmw-pip-mix-dur').textContent = `/ ${fmt(data.duration)}`;
             pip$('gmw-pip-mix-title').textContent = data.name;
+            updateMixArtEl(pip$('gmw-pip-mix-art'), data.artworkUrl);
             const idx = (data.index != null && data.index >= 0) ? data.index + 1 : 0;
             pip$('gmw-pip-mix-sub').textContent = data.playlistName ? `${data.playlistName} · ${idx}/${data.total}` : `${idx}/${data.total}곡`;
             const playBtn = pip$('gmw-pip-mix-play-btn');
@@ -14350,10 +14407,12 @@
             return true;
         }
 
+        // 인라인 위젯(.gmw-inline-card)과 같은 288px 너비를 기준으로 잡는다 - 전역 PiP가
+        // 인라인보다 커 보인다는 피드백 반영. 세로는 실제 행 하나의 자연스러운 높이(패딩+링 46px)에 맞춘 값.
         function sizeForPiP(showFocus, showMix){
-            if (showFocus && showMix) return { width: 420, height: 172 };
-            if (showMix) return { width: 400, height: 92 };
-            return { width: 320, height: 88 };
+            if (showFocus && showMix) return { width: 288, height: 160 };
+            if (showMix) return { width: 288, height: 80 };
+            return { width: 288, height: 80 };
         }
 
         // ----- Window 상태 관리: "숨김"이 아니라 완전히 닫는다(Option A) -----
