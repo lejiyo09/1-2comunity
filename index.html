@@ -9529,12 +9529,13 @@
         // 🎵 Step 4: ID3v2 태그 파서 (외부 라이브러리 없이 가볍게 직접 구현)
         //
         // ID3v2.3/2.4의 가장 흔한 프레임(TIT2=제목, TPE1=아티스트, TALB=앨범, TYER/TDRC=연도,
-        // TCON=장르, APIC=앨범아트)만 읽는다. 태그가 없거나 형식이 다르면 조용히 null들을 반환하고,
+        // TCON=장르, APIC=앨범아트)을 읽는다. 태그가 없거나 형식이 다르면 조용히 null들을 반환하고,
         // 호출하는 쪽에서 파일명을 fallback으로 쓴다 (문서 4-5 요구사항: "확실하지 않으면 추측해서
-        // 확정하지 않는다").
+        // 확정하지 않는다"). artworkBlob은 object URL이 아니라 원본 Blob 그대로 반환한다 - 그래야
+        // IndexedDB에 저장했다가 나중에 다시 열어도(새로고침 이후에도) 유효한 URL을 새로 만들 수 있다.
         // =========================================================================
         async function parseId3Tags(file) {
-            const empty = { title: null, artist: null, album: null, year: null, genre: null, artworkUrl: null };
+            const empty = { title: null, artist: null, album: null, year: null, genre: null, artworkBlob: null };
             try {
                 // ID3v2 헤더는 파일 맨 앞에 있고, 태그 전체 크기를 알려주므로 그만큼만 읽으면 충분하다
                 // (전체 파일을 다 읽지 않아도 돼서 큰 파일에서도 빠르다)
@@ -9569,9 +9570,32 @@
                         else if (frameId === 'TALB') result.album = text || null;
                         else if (frameId === 'TYER' || frameId === 'TDRC') result.year = (text.match(/\d{4}/) || [null])[0];
                         else if (frameId === 'TCON') result.genre = text || null;
+                    } else if (frameId === 'APIC' && frameBytes.length > 4 && !result.artworkBlob) {
+                        // APIC 구조: [인코딩 1B][MIME 문자열 + null][그림종류 1B][설명 문자열 + null(들)][원본 이미지 바이너리]
+                        // 이미지가 여러 개(앞표지/뒷표지 등)면 맨 처음 것만 쓴다.
+                        try {
+                            const encByte = frameBytes[0];
+                            let pos = 1;
+                            let mimeEnd = pos;
+                            while (mimeEnd < frameBytes.length && frameBytes[mimeEnd] !== 0) mimeEnd++;
+                            const mime = decoder(frameBytes.slice(pos, mimeEnd), 0);
+                            pos = mimeEnd + 1; // null 종료 바이트 건너뛰기
+                            pos += 1; // 그림 종류(picture type) 1바이트 건너뛰기
+                            if (encByte === 1 || encByte === 2) {
+                                while (pos + 1 < frameBytes.length && !(frameBytes[pos] === 0 && frameBytes[pos + 1] === 0)) pos += 2;
+                                pos += 2;
+                            } else {
+                                while (pos < frameBytes.length && frameBytes[pos] !== 0) pos++;
+                                pos += 1;
+                            }
+                            const imageBytes = frameBytes.slice(pos);
+                            if (mime && mime !== '-->' && imageBytes.length > 0) {
+                                result.artworkBlob = new Blob([imageBytes], { type: mime });
+                            }
+                        } catch (e) {
+                            console.warn('앨범아트(APIC) 파싱 실패(무시):', e);
+                        }
                     }
-                    // APIC(앨범아트)는 이미지 바이너리를 다시 인코딩해야 해서, 지금 단계에서는 정확도가
-                    // 낮은 추측이 되기 쉬워 일부러 건너뛴다 (문서 4-5: "확실하지 않으면 확정하지 않는다").
 
                     offset = frameStart + frameSize;
                 }
@@ -9660,15 +9684,17 @@
         // 순수하게 "내 음악"에만 저장한다 - 어떤 플레이리스트에도 자동으로 연결하지 않는다.
         // (기존 musicDbAddTrackBlobToPlaylist는 항상 특정 플레이리스트에 바로 연결했지만,
         // MP3 직접 추가는 "내 음악" 라이브러리에만 저장되고 플레이리스트 추가는 별도 동작이다)
-        async function musicDbAddTrackOnly(blob, title, artist, sourceType) {
+        async function musicDbAddTrackOnly(blob, title, artist, sourceType, artworkBlob) {
             const db = await openMusicDB();
             const name = artist ? `${title} - ${artist}` : title; // 기존 엔진(마퀴/테이프 라벨 등)이 쓰는 단일 표시문자열과 호환
+            const rec = {
+                name, title, artist: artist || '', blob,
+                sourceType: sourceType || 'local',
+                createdAt: Date.now()
+            };
+            if (artworkBlob) rec.artwork = artworkBlob; // ID3 APIC에서 추출한 앨범아트 (있을 때만 저장)
             return new Promise((resolve, reject) => {
-                const req = db.transaction('tracks', 'readwrite').objectStore('tracks').add({
-                    name, title, artist: artist || '', blob,
-                    sourceType: sourceType || 'local',
-                    createdAt: Date.now()
-                });
+                const req = db.transaction('tracks', 'readwrite').objectStore('tracks').add(rec);
                 req.onsuccess = () => resolve(req.result);
                 req.onerror = () => reject(req.error);
             });
@@ -9788,6 +9814,9 @@
         }
 
         // 🎵 내 음악 (플레이리스트와 무관한 전체 라이브러리 뷰)
+        // 렌더링할 때마다 앨범아트용 object URL을 새로 만드므로, 이전 것들을 여기 모아뒀다가
+        // 다음 렌더링 직전에 해제한다 (안 그러면 검색/정렬할 때마다 URL이 계속 쌓여서 샌다).
+        let myMusicArtworkUrls = [];
         window.renderMyMusicList = async function() {
             const listEl = document.getElementById('mymusic-list');
             if (!listEl) return;
@@ -9807,12 +9836,20 @@
                     listEl.innerHTML = `<div class="card" style="text-align:center; color:var(--text-muted);">${tracks.length === 0 ? '아직 내 음악이 없습니다.<br>+ MP3 추가로 곡을 넣거나 공유 음악을 저장해보세요.' : '검색 결과가 없습니다.'}</div>`;
                     return;
                 }
+                myMusicArtworkUrls.forEach(url => URL.revokeObjectURL(url));
+                myMusicArtworkUrls = [];
                 listEl.innerHTML = filtered.map(t => {
                     const safeName = escapeNoticeText(t._title).replace(/'/g, "\\'");
+                    let artHtml = musicTrackIcon();
+                    if (t.artwork) {
+                        const artUrl = URL.createObjectURL(t.artwork);
+                        myMusicArtworkUrls.push(artUrl);
+                        artHtml = `<img src="${artUrl}" onerror="this.parentElement.textContent='${musicTrackIcon()}'">`;
+                    }
                     return `
                         <div class="music-track-card" style="margin-bottom:8px;">
                             <div class="music-track-top">
-                                <div class="music-track-art">${musicTrackIcon()}</div>
+                                <div class="music-track-art">${artHtml}</div>
                                 <div style="min-width:0; flex:1;">
                                     <div class="music-track-title">${escapeNoticeText(t._title)}</div>
                                     <div class="music-track-artist">${t._artist ? escapeNoticeText(t._artist) : (t.sourceType === 'community' ? '친구 공유 음악' : '아티스트 미상')}</div>
@@ -9872,27 +9909,31 @@
         };
 
         // --- 🎵 내 음악에 MP3 추가 (제목/가수를 사용자가 직접 입력) ---
+        let myMusicAddArtworkBlob = null; // 파일 선택 시 ID3에서 추출한 앨범아트 - 제출할 때 같이 저장한다
         window.openMyMusicAddModal = function() {
             document.getElementById('mymusic-add-file').value = '';
             document.getElementById('mymusic-add-title').value = '';
             document.getElementById('mymusic-add-artist').value = '';
             document.getElementById('mymusic-add-filename').textContent = '';
+            myMusicAddArtworkBlob = null;
             document.getElementById('mymusic-add-modal').style.display = 'flex';
         };
         window.closeMyMusicAddModal = function() {
             document.getElementById('mymusic-add-modal').style.display = 'none';
         };
-        // 파일 선택 시 ID3 태그가 있으면 제목/가수를 미리 채운다 (없으면 파일명만 안내로 보여줌 - 억지로 채우지 않음)
+        // 파일 선택 시 ID3 태그가 있으면 제목/가수/앨범아트를 미리 채운다 (없으면 파일명만 안내로 보여줌 - 억지로 채우지 않음)
         window.handleMyMusicFileSelected = async function(event) {
             const file = event.target.files[0];
             if (!file) return;
             document.getElementById('mymusic-add-filename').textContent = `📎 ${file.name}`;
             const titleInput = document.getElementById('mymusic-add-title');
             const artistInput = document.getElementById('mymusic-add-artist');
+            myMusicAddArtworkBlob = null;
             try {
                 const tags = await parseId3Tags(file);
                 if (!titleInput.value.trim() && tags.title) titleInput.value = tags.title;
                 if (!artistInput.value.trim() && tags.artist) artistInput.value = tags.artist;
+                myMusicAddArtworkBlob = tags.artworkBlob || null;
             } catch (e) { /* 태그 없으면 사용자가 직접 입력 */ }
         };
         window.submitMyMusicAdd = async function() {
@@ -9903,7 +9944,7 @@
             if (!file) return alert('MP3 파일을 선택해주세요.');
             if (!title) return alert('제목을 입력해주세요.');
             try {
-                await musicDbAddTrackOnly(file, title, artist, 'local');
+                await musicDbAddTrackOnly(file, title, artist, 'local', myMusicAddArtworkBlob);
                 closeMyMusicAddModal();
                 renderMyMusicList();
                 alert('내 음악에 추가되었습니다.');
@@ -13758,21 +13799,23 @@
             display: none;
             align-items: center;
             gap: 10px;
-            padding: 11px 13px;
+            padding: 12px 14px;
             width: 288px;
             max-width: calc(100vw - 40px);
             box-sizing: border-box;
-            background: rgba(18, 19, 23, 0.68);
-            backdrop-filter: blur(16px) saturate(150%);
-            -webkit-backdrop-filter: blur(16px) saturate(150%);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 12px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+            /* 유리판 느낌은 opacity가 아니라 "반투명 그라데이션 배경 + backdrop-filter blur"로 만든다 -
+               opacity를 쓰면 안의 글씨/버튼까지 같이 흐려진다. */
+            background: linear-gradient(135deg, rgba(42, 46, 56, 0.74), rgba(14, 16, 21, 0.7));
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 16px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.08);
             font-family: 'Pretendard', sans-serif;
             cursor: pointer;
-            transition: box-shadow .15s ease, transform .15s ease;
+            transition: box-shadow .18s ease, transform .18s ease;
         }
-        .gmw-inline-card:hover{ box-shadow: 0 10px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06); transform: translateY(-1px); }
+        .gmw-inline-card:hover{ box-shadow: 0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); transform: translateY(-2px); }
 
         .gmw-inline-ring-wrap{ position: relative; width: 42px; height: 42px; flex-shrink: 0; }
         .gmw-inline-ring{ width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -13873,8 +13916,10 @@
             box-sizing: border-box;
             width: 100%;
             height: 100%;
-            padding: 0;
-            background: #111827;
+            padding: 6px;
+            /* Document PiP 창은 뒤에 실제 페이지가 없어서 backdrop-filter가 비칠 대상이 없다.
+               그래서 카드 뒤에 어두운 base color를 깔아 최소한 카드 테두리/그림자가 떠 보이게 한다. */
+            background: #0c0e13;
             display: flex;
             font-family: 'Pretendard', -apple-system, sans-serif;
             -webkit-font-smoothing: antialiased;
@@ -13883,13 +13928,15 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            border-radius: 3px;
+            border-radius: 14px;
             overflow: hidden;
-            background: rgba(21, 23, 28, 0.68);
-            backdrop-filter: blur(14px) saturate(150%);
-            -webkit-backdrop-filter: blur(14px) saturate(150%);
-            border: 1px solid rgba(255,255,255,0.10);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+            /* 유리(glass) 느낌은 opacity가 아니라 반투명 background + backdrop-filter로만 낸다.
+               opacity를 쓰면 안의 텍스트/버튼까지 같이 흐려지기 때문. */
+            background: linear-gradient(135deg, rgba(42, 46, 56, 0.74), rgba(14, 16, 21, 0.7));
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255,255,255,0.14);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
         }
 
         .gmw-pip-row{
@@ -13916,8 +13963,6 @@
         .gmw-pip-ring-text span:last-child{ font-size: 7px; color: rgba(255,255,255,0.4); font-variant-numeric: tabular-nums; }
 
         .gmw-pip-info{ flex: 1; min-width: 0; }
-        .gmw-pip-label{ font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6f8fd6; margin-bottom: 2px; }
-        .gmw-pip-mixtape .gmw-pip-label{ color: #c98f2e; }
         .gmw-pip-title{ font-size: 12.5px; font-weight: 600; color: #eceef1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.1px; }
         .gmw-pip-mixtape .gmw-pip-title{ color: #efe9d8; }
         .gmw-pip-status{ display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: #7d838c; margin-top: 3px; }
@@ -13927,16 +13972,18 @@
         @keyframes gmw-pip-pulse{ 0%,100%{ opacity: 1; } 50%{ opacity: .4; } }
 
         .gmw-pip-art{
-            width: 40px; height: 40px; border-radius: 2px; flex-shrink: 0;
+            width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
             background: #1c180d;
             border: 1px solid rgba(224,165,58,0.22);
             display: flex; align-items: center; justify-content: center;
             font-size: 17px;
+            overflow: hidden;
         }
+        .gmw-pip-art img{ width: 100%; height: 100%; object-fit: cover; display: block; }
 
         .gmw-pip-actions{ display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
         .gmw-pip-btn{
-            width: 24px; height: 24px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.08);
+            width: 24px; height: 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
             background: rgba(255,255,255,0.05); color: #cfd3d8;
             display: flex; align-items: center; justify-content: center;
             font-size: 10.5px; cursor: pointer; flex-shrink: 0;
@@ -13969,7 +14016,6 @@
                         </div>
                     </div>
                     <div class="gmw-pip-info">
-                        <div class="gmw-pip-label">Focus 모드</div>
                         <div class="gmw-pip-title" id="gmw-pip-focus-title">과제명</div>
                         <div class="gmw-pip-status"><span class="gmw-pip-dot"></span><span id="gmw-pip-focus-status">집중 중</span></div>
                     </div>

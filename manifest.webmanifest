@@ -1,0 +1,14 @@
+{
+  "name": "1-2 커뮤니티",
+  "short_name": "1-2 커뮤니티",
+  "description": "한일고등학교 1학년 2반 학급 커뮤니티",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16305c",
+  "theme_color": "#16305c",
+  "icons": [
+    { "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
