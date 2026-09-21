@@ -1762,11 +1762,16 @@
 </head>
 <body>
     <div id="auth-container">
+        <span id="auth-container-close" onclick="hideLoginScreen()" style="display:none; position:absolute; top:20px; right:24px; font-size:26px; color:var(--text-muted); cursor:pointer; z-index:2;">&times;</span>
         <div class="auth-card" id="login-form">
             <div class="auth-title">한일고 1-2 대시보드</div>
             <div class="auth-subtitle">학교 이메일 계정으로 로그인하세요.</div>
             <input type="email" id="login-email" class="auth-input" placeholder="학교 이메일 (예: 20261206@hanilgo.cnehs.kr)">
             <input type="password" id="login-password" class="auth-input" placeholder="비밀번호">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted); margin-bottom:12px; cursor:pointer;">
+                <input type="checkbox" id="login-remember-me" checked style="width:auto; margin:0;">
+                로그인 상태 저장 (체크 해제 시 브라우저를 닫으면 로그아웃돼요)
+            </label>
             <button class="auth-btn" id="btn-login">로그인</button>
             <div class="auth-toggle" onclick="toggleAuthForm(false)">계정이 없으신가요? <span>회원가입</span></div>
         </div>
@@ -1792,10 +1797,14 @@
                 </div>
 
                 <div class="sidebar-expand-only">
-                    <div class="user-profile" id="user-profile-card">
+                    <div class="user-profile" id="user-profile-card" style="display:none;">
                         <div id="profile-nick-line" style="margin-bottom:6px;">👤 <strong id="profile-nick-text">불러오는 중...</strong></div>
                         <div id="profile-role-line" style="color:var(--text-secondary); margin-bottom:10px;">소속: <span id="profile-role-text">—</span></div>
                         <button onclick="setNickname()" style="width:100%; padding:6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer;">✏️ 닉네임 설정/변경</button>
+                    </div>
+                    <div class="user-profile" id="guest-login-card" style="display:none;">
+                        <div style="margin-bottom:8px; font-size:12.5px; color:var(--text-secondary);">로그인하지 않은 상태예요. 둘러보는 건 자유롭지만, 글쓰기·좋아요 같은 활동은 로그인이 필요해요.</div>
+                        <button onclick="showLoginScreen()" style="width:100%; padding:8px; font-size:13px; border-radius:6px; border:none; background:var(--primary); color:#fff; font-weight:700; cursor:pointer;">🔑 로그인</button>
                     </div>
                 </div>
 
@@ -1838,10 +1847,9 @@
                         </div>
                         <div class="nav-group-items">
                             <div class="nav-item nav-item-sub" data-tab="planner" onclick="switchTab('planner')"><span class="nav-label">플래너</span></div>
+                            <div class="nav-item nav-item-sub" data-tab="materials" onclick="switchTab('materials')"><span class="nav-label">자료실</span></div>
                         </div>
                     </div>
-
-                    <div class="nav-item" data-tab="materials" onclick="switchTab('materials')"><span class="nav-icon">🗂</span><span class="nav-label">자료실</span></div>
 
                     <div class="nav-item" data-tab="mixtape" id="nav-mixtape" onclick="switchTab('mixtape')"><span class="nav-icon">🎵</span><span class="nav-label">1-2 Music</span></div>
                     <div class="nav-item" data-tab="pokemon" id="nav-pokemon" onclick="switchTab('pokemon')"><span class="nav-icon">🎮</span><span class="nav-label">게임</span></div>
@@ -1951,6 +1959,17 @@
             </div>
         </div>
 
+        <!-- "지금 우리 학교는" 위젯의 D-day 표시 대상 일정 선택 (개인별 설정, localStorage에만 저장) -->
+        <div id="school-now-dday-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-card" style="max-width: 400px; max-height: 80vh; overflow-y: auto;">
+                <span class="close-btn" onclick="closeSchoolNowDdayPicker()">&times;</span>
+                <h3 style="font-size:18px; font-weight:800; margin-bottom:6px; color:var(--text-main);">📌 D-day로 표시할 일정</h3>
+                <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:14px;">체크한 일정이 "지금 우리 학교는" 위젯에 D-day로 표시돼요. 나만 보이는 개인 설정이에요.</div>
+                <div id="school-now-dday-picker-list" style="margin-bottom:16px;"></div>
+                <button class="auth-btn" onclick="saveSchoolNowDdaySelection()">저장</button>
+            </div>
+        </div>
+
         <div id="settings-modal" class="modal-overlay" style="display:none;">
             <div class="modal-card" style="max-width: 380px;">
                 <span class="close-btn" onclick="document.getElementById('settings-modal').style.display='none';" style="position:absolute; top:16px; right:20px; cursor:pointer; font-size:22px; color:var(--text-muted);">&times;</span>
@@ -1964,6 +1983,29 @@
                     <button id="settings-theme-toggle" style="width:52px; height:30px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-color); position:relative; cursor:pointer; flex-shrink:0;">
                         <span id="settings-theme-knob" style="position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:var(--primary); transition: transform .18s ease;"></span>
                     </button>
+                </div>
+
+                <div id="settings-presence-section" style="padding:14px 0; border-bottom:1px solid var(--border-color); display:none;">
+                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:2px;">온라인 상태</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">친구들에게 내 상태가 어떻게 보일지 선택해요</div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <button class="settings-presence-option" data-status="online" onclick="setMyPresenceStatus('online')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">정상 접속 상태입니다</span>
+                        </button>
+                        <button class="settings-presence-option" data-status="away" onclick="setMyPresenceStatus('away')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#eab308; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">자리 비움</span>
+                        </button>
+                        <button class="settings-presence-option" data-status="busy" onclick="setMyPresenceStatus('busy')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">다른 용무 중</span>
+                        </button>
+                        <button class="settings-presence-option" data-status="invisible" onclick="setMyPresenceStatus('invisible')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#9ca3af; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">보이지 않음 (오프라인으로 표시)</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0;">
@@ -2091,7 +2133,7 @@
                         <div id="daily-missions-widget">불러오는 중...</div>
                     </div>
                     <div class="card" data-widget-id="w-period">
-                        <div class="card-title">🕒 지금 학교는</div>
+                        <div class="card-title">🕒 지금 우리 학교는</div>
                         <div id="current-period-widget">불러오는 중...</div>
                     </div>
                 </div>
@@ -2840,7 +2882,7 @@
                         <span class="close-btn" onclick="closeProfileModal()">&times;</span>
                         <div class="modal-profile-header">
                             <div class="profile-avatar-container">
-                                <img id="modal-img" src="https://via.placeholder.com/150" alt="프로필 사진">
+                                <img id="modal-img" src="https://via.placeholder.com/150" alt="프로필 사진" onclick="easterEggBumpProfileXP()">
                                 <input type="file" id="modal-file-input" style="display:none;" onchange="uploadProfileImage()">
                                 <button onclick="document.getElementById('modal-file-input').click()" class="btn-sub" id="btn-edit-photo">사진 변경</button>
                             </div>
@@ -3226,8 +3268,11 @@
 
     <!-- ① Music Home -->
     <div id="music-panel-home" class="music-panel active">
-        <input type="text" id="music-home-search" class="auth-input" placeholder="🔍 노래, 가수 또는 키워드 검색" style="margin-bottom:20px; padding:14px 18px; font-size:15px;" onkeydown="if(event.key==='Enter') runMusicHomeSearch()">
+        <input type="text" id="music-home-search" class="auth-input" placeholder="🔍 노래, 가수 또는 키워드 검색" style="margin-bottom:20px; padding:14px 18px; font-size:15px;" oninput="runMusicHomeSearch()">
 
+        <div id="music-home-search-results" style="display:none;"></div>
+
+        <div id="music-home-default-sections">
         <div class="card music-home-nowplaying-card" style="margin-bottom:18px;">
             <div class="card-title">▶️ 재생 중</div>
             <div id="music-home-nowplaying" class="widget-text">재생 중인 곡이 없습니다.</div>
@@ -3263,6 +3308,7 @@
                 <div class="card-title" style="font-size:13px;">❤️ 좋아요</div>
                 <div id="music-home-likecount" class="widget-text">불러오는 중...</div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -3452,7 +3498,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, set, update, push, remove, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         // Firestore SDK 추가 - 정적/영구 커뮤니티 데이터(게시글/아카이브/공지/설문/프로필 등)는 이제 여기로 저장한다.
         // RTDB의 runTransaction과 이름이 겹치므로 Firestore 쪽은 fsRunTransaction으로 별칭을 준다.
         // Firestore 인스턴스는 "(default)" 데이터베이스를 쓰며 getFirestore(app, "community") 같은 지정을 하지 않는다.
@@ -3543,6 +3589,7 @@
         
         let profilesData = {}; // 스쿼드 연동용
         let isListeningToPosts = false;
+        let isListeningToGuestReadable = false; // 로그인 없이도 볼 수 있는 커뮤니티/공지/자료실 구독 여부
         let isListeningToSquad = false;
         let activeStudentNum = null;
 
@@ -3614,7 +3661,13 @@
         });
 
         document.getElementById('btn-login').addEventListener('click', async () => {
-            try { await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value); }
+            try {
+                const rememberMe = document.getElementById('login-remember-me')?.checked !== false;
+                // 체크하면(기본값) 브라우저를 닫아도 로그인이 유지되고, 체크 해제하면 탭/브라우저를
+                // 닫는 순간 로그아웃된다 (같은 계정으로 이후 다시 signIn하면 그때 선택으로 갱신됨).
+                await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+                await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value);
+            }
             catch(e) { alert("로그인 실패"); }
         });
 
@@ -3843,14 +3896,26 @@
 // --- 인증 & 권한 상태 변경 감지 ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                document.getElementById('auth-container').style.display = 'none'; 
+                document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('app-container').classList.add('authenticated');
-                
+
+                if (user.isAnonymous) {
+                    // 게스트(비로그인 열람) 모드: currentUser/currentUserInfo는 절대 채우지 않는다 -
+                    // 이래야 앱 전체에 이미 깔려있는 "!currentUser면 로그인 필요" 가드들이
+                    // 하나도 손대지 않아도 그대로 상호작용을 막아준다. 여기서는 읽기 전용 구독과
+                    // 사이드바 UI만 guest 모드로 맞춘다.
+                    applyGuestUI();
+                    return;
+                }
+
                 onValue(ref(db, `users/${user.uid}`), (snapshot) => {
                     const d = snapshot.val();
                     if(d) {
-                        currentUser = user; 
+                        currentUser = user;
                         currentUserInfo = d;
+                        // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
+                        document.getElementById('guest-login-card').style.display = 'none';
+                        document.getElementById('user-profile-card').style.display = 'block';
                         const is2Ban = d.role === "class2_member";
 
                         isAdmin = (d.grade === "1" && d.ban === "2" && parseInt(d.number) === 30);
@@ -3968,7 +4033,10 @@
                         }
 
                         if (is2Ban && !isListeningToPosts) {
-                            listenToPosts(); listenToArchive(); listenToArchiveStudy(); listenToArchiveEtc(); listenToExamNotes(); listenToCalendar(); listenToSeating(); listenToPokemonPosts(); listenToGames(); listenToGameCategories(); loadSupabaseMaterials();
+                            // listenToPosts/listenToArchiveStudy/listenToArchiveEtc/loadSupabaseMaterials는
+                            // 게스트 모드에서 이미 구독했을 수 있으니(isListeningToGuestReadable) 중복 구독하지 않는다.
+                            if (!isListeningToGuestReadable) { listenToPosts(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials(); isListeningToGuestReadable = true; }
+                            listenToArchive(); listenToExamNotes(); listenToCalendar(); listenToSeating(); listenToPokemonPosts(); listenToGames(); listenToGameCategories();
                             isListeningToPosts = true;
                         } else if (is2Ban) {
                             // 이미 리스닝 중이더라도 로그인 정보가 갱신되며 isAdmin이 바뀔 수 있으므로 버튼 표시 등을 다시 그려준다
@@ -3977,11 +4045,48 @@
                         if (!isListeningToSquad) { listenToSquad(); isListeningToSquad = true; }
                     }
                 });
-            } else { 
-                document.getElementById('auth-container').style.display = 'flex'; 
-                document.getElementById('app-container').classList.remove('authenticated'); 
+            } else {
+                // 진짜 로그아웃 상태(익명 세션도 없음): 익명으로라도 로그인해서 커뮤니티를 읽을 수 있게
+                // 시도한다. 이 콜백이 다시 익명 사용자로 한 번 더 불려서 위 user.isAnonymous 분기를 탄다.
+                // 프로젝트에서 익명 로그인 자체가 꺼져있는 등 실패하면 기존처럼 로그인 화면만 보여준다.
+                signInAnonymously(auth).catch(() => {
+                    document.getElementById('auth-container').style.display = 'flex';
+                    document.getElementById('app-container').classList.remove('authenticated');
+                });
             }
         });
+
+        // ===== 게스트(비로그인) 열람 모드 =====
+        // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/게임/플래너/프로필/자리 등은 그대로 로그인 필요.
+        function applyGuestUI() {
+            document.getElementById('user-profile-card').style.display = 'none';
+            document.getElementById('guest-login-card').style.display = 'block';
+            document.getElementById('welcome-title').innerText = '둘러보는 중이에요 🏠';
+
+            const communitySecure = document.getElementById('community-secure-content');
+            const communityLocked = document.getElementById('community-locked-content');
+            if (communitySecure) communitySecure.style.display = 'block';
+            if (communityLocked) communityLocked.style.display = 'none';
+            const materialsSecure = document.getElementById('materials-secure-content');
+            const materialsLocked = document.getElementById('materials-locked-content');
+            if (materialsSecure) materialsSecure.style.display = 'block';
+            if (materialsLocked) materialsLocked.style.display = 'none';
+
+            if (!isListeningToGuestReadable) {
+                listenToPosts(); listenToNotices(); listenToPolls(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials();
+                isListeningToGuestReadable = true;
+            }
+        }
+
+        window.showLoginScreen = function() {
+            // 실제로 되돌아갈 게스트 세션이 있을 때만(=지금 익명으로만 로그인된 상태) 닫기 버튼을 보여준다.
+            const canDismiss = !currentUser && auth.currentUser && auth.currentUser.isAnonymous;
+            document.getElementById('auth-container-close').style.display = canDismiss ? 'block' : 'none';
+            document.getElementById('auth-container').style.display = 'flex';
+        };
+        window.hideLoginScreen = function() {
+            document.getElementById('auth-container').style.display = 'none';
+        };
 
         // =========================================================================
         // 홈 대시보드 자유 배치: 섹션(카테고리) 이름 변경, 섹션 순서, 위젯을 다른 섹션으로
@@ -4223,7 +4328,7 @@
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const notes = {}; snap.forEach(d => { notes[d.id] = d.data().text || ''; });
                 const targets = ['국어', '영어', '수학', '통합사회', '통합과학'];
-                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="margin-bottom:8px; font-size:13px;"><strong style="color:var(--primary); display:block; margin-bottom:2px;">${sub}</strong><span style="color:var(--text-main); word-break:break-word;">${notes[sub] || '미등록'}</span></div>`).join('');
+                document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="margin-bottom:8px; font-size:13px;"><strong style="color:var(--primary); display:block; margin-bottom:2px;">${sub}</strong><span style="color:var(--text-main); word-break:break-word; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis;">${notes[sub] || '미등록'}</span></div>`).join('');
             });
             // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
@@ -5964,26 +6069,62 @@
             }
             html += `</div>`;
 
-            const nextExam = findNearestTaggedScheduleEvent('지필평가');
+            // 예전엔 '지필평가' 태그가 붙은 일정으로 고정돼 있었는데, 이제는 사용자가 직접 고른
+            // 일정들의 D-day를 보여준다 (개인별 설정, hanilgo_schoolnow_dday_ids). 삭제된 일정의
+            // id가 남아있어도 scheduleCache에서 조회가 안 되면 자동으로 걸러진다.
+            const selectedDdayEvents = schoolNowDdayIds
+                .map(id => scheduleCache[id] ? { id, ...scheduleCache[id] } : null)
+                .filter(Boolean)
+                .sort((a, b) => a.date.localeCompare(b.date));
             html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); font-size:12px;">`;
-            html += nextExam
-                ? `<strong style="color:#ef4444;">📝 지필고사 ${scheduleDDayLabel(nextExam.date)}</strong> <span style="color:var(--text-muted);">(${nextExam.title})</span>`
-                : `<span style="color:var(--text-muted);">📝 예정된 지필고사가 없습니다</span>`;
+            if (selectedDdayEvents.length > 0) {
+                html += selectedDdayEvents.map(ev =>
+                    `<div style="margin-bottom:3px;"><strong style="color:#ef4444;">📌 ${escapeNoticeText(ev.title)} ${scheduleDDayLabel(ev.date)}</strong></div>`
+                ).join('');
+            } else {
+                html += `<span style="color:var(--text-muted);">표시할 일정이 없습니다.</span>`;
+            }
+            html += `<span onclick="openSchoolNowDdayPicker()" style="color:var(--primary); cursor:pointer; font-weight:600; font-size:11px;">✏️ 일정 선택</span>`;
             html += `</div>`;
 
             el.innerHTML = html;
         }
         setInterval(renderCurrentPeriodWidget, 30000);
-        // 반 공용 일정(scheduleCache)에서 특정 태그가 붙은 일정 중 오늘 이후로 가장 가까운 것 하나를 찾는다.
-        // scheduleCache/getScheduleDateKey는 아래(반 공용 일정 섹션)에서 정의되지만, 이 함수는
-        // 실제 로그인 이후 비동기로 호출되므로(스크립트 전체가 먼저 파싱된 뒤 실행) 참조에 문제없다.
-        function findNearestTaggedScheduleEvent(tag) {
+
+        // "지금 우리 학교는" 위젯에 D-day로 표시할 일정 id 목록 - 나만 보이는 개인 설정이라
+        // Firebase가 아니라 이 브라우저의 localStorage에만 저장한다.
+        let schoolNowDdayIds = [];
+        try { schoolNowDdayIds = JSON.parse(localStorage.getItem('hanilgo_schoolnow_dday_ids') || '[]'); } catch (e) { schoolNowDdayIds = []; }
+
+        window.openSchoolNowDdayPicker = function() {
+            const modal = document.getElementById('school-now-dday-modal');
+            const listEl = document.getElementById('school-now-dday-picker-list');
+            if (!modal || !listEl) return;
             const todayKey = getScheduleDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-            const upcoming = Object.values(scheduleCache)
-                .filter(ev => ev && ev.date && (ev.tags || []).includes(tag) && (ev.endDate || ev.date) >= todayKey)
-                .sort((a, b) => a.date.localeCompare(b.date));
-            return upcoming[0] || null;
-        }
+            const upcoming = Object.entries(scheduleCache)
+                .filter(([, ev]) => ev && ev.date && (ev.endDate || ev.date) >= todayKey)
+                .sort((a, b) => a[1].date.localeCompare(b[1].date));
+            listEl.innerHTML = upcoming.length === 0
+                ? `<div class="widget-text">표시할 수 있는 예정된 일정이 없습니다.</div>`
+                : upcoming.map(([id, ev]) => `
+                    <label style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border-color); cursor:pointer;">
+                        <input type="checkbox" class="school-now-dday-check" value="${id}" ${schoolNowDdayIds.includes(id) ? 'checked' : ''}>
+                        <span style="flex:1; font-size:13px; color:var(--text-main);">${escapeNoticeText(ev.title)}</span>
+                        <span style="font-size:11px; color:var(--text-muted);">${ev.date}</span>
+                    </label>
+                `).join('');
+            modal.style.display = 'flex';
+        };
+        window.closeSchoolNowDdayPicker = function() {
+            document.getElementById('school-now-dday-modal').style.display = 'none';
+        };
+        window.saveSchoolNowDdaySelection = function() {
+            const checked = Array.from(document.querySelectorAll('.school-now-dday-check:checked')).map(el => el.value);
+            schoolNowDdayIds = checked;
+            try { localStorage.setItem('hanilgo_schoolnow_dday_ids', JSON.stringify(checked)); } catch (e) {}
+            closeSchoolNowDdayPicker();
+            renderCurrentPeriodWidget();
+        };
 
         // =========================================================================
         // 일일 미션 - 완료 상태는 계정별로 Firebase Realtime Database에 저장한다.
@@ -7038,6 +7179,11 @@
             return Number.isInteger(n) && n >= 1 && n <= 26;
         }
 
+        // 자동(연결 여부) 상태 위에 사용자가 직접 고르는 상태를 얹는다: online(기본)/away/busy/invisible.
+        // invisible은 실제로는 연결돼 있어도 다른 사람에게는 offline과 똑같이 보인다(Discord의 "보이지 않음"과 동일).
+        const PRESENCE_STATUS_COLORS = { online: '#22c55e', away: '#eab308', busy: '#ef4444', offline: '#9ca3af' };
+        const PRESENCE_STATUS_KEY = 'hanilgo_my_presence_status';
+
         function setupPresence() {
             if (!currentUser || !currentUserInfo) return;
             // 온라인 현황 집계 대상 밖의 계정(관리자/부담임/담임/타반)은 Presence 자체를 등록하지 않는다.
@@ -7053,6 +7199,10 @@
                 onDisconnect(conRef).remove();
                 set(conRef, true).catch(() => {});
                 set(ref(db, `presence/${currentUser.uid}/number`), myNumber).catch(() => {});
+                // 접속할 때마다 이 브라우저에 저장해둔 마지막 상태(자리비움/다른 용무 중/보이지 않음)를 다시 적용한다.
+                let savedStatus = 'online';
+                try { savedStatus = localStorage.getItem(PRESENCE_STATUS_KEY) || 'online'; } catch (e) {}
+                set(ref(db, `presence/${currentUser.uid}/status`), savedStatus).catch(() => {});
                 myPresenceConnections.push(conRef);
             });
         }
@@ -7069,15 +7219,29 @@
             });
         }
 
-        // 온라인으로 집계되는 "학생 번호(1~26)" 집합. 1~26 범위를 벗어나는 번호(30/40/98 등)는
-        // presence 데이터에 남아있더라도 여기서 걸러져 온라인 집계에 절대 포함되지 않는다.
+        // "학생 번호(1~26)" -> presence 데이터 한 명 (1~26 범위를 벗어나는 번호는 여기서 걸러진다)
+        function getPresenceEntryByNumber(num) {
+            return Object.values(presenceData).find(p => {
+                if (!p) return false;
+                const n = Number(p.number);
+                return Number.isInteger(n) && n >= 1 && n <= 26 && String(n) === String(num);
+            }) || null;
+        }
+        // 이 번호 학생이 지금 남에게 어떻게 보이는지: 'online' | 'away' | 'busy' | 'offline'.
+        // 연결이 아예 없거나(진짜 오프라인), 상태를 'invisible'로 골랐으면(보이지 않음) 똑같이 'offline'으로 취급한다.
+        function getPresenceStatusForNumber(num) {
+            const entry = getPresenceEntryByNumber(num);
+            if (!entry || !entry.connections || Object.keys(entry.connections).length === 0) return 'offline';
+            const status = entry.status || 'online';
+            if (status === 'away' || status === 'busy') return status;
+            return status === 'invisible' ? 'offline' : 'online';
+        }
+        // 온라인(자리비움/다른 용무 중 포함, 보이지 않음 제외)으로 집계되는 "학생 번호" 집합.
         function getOnlineNumbersSet() {
             const s = new Set();
-            Object.values(presenceData).forEach(p => {
-                if (!p || !p.connections || Object.keys(p.connections).length === 0) return;
-                const n = Number(p.number);
-                if (Number.isInteger(n) && n >= 1 && n <= 26) s.add(String(n));
-            });
+            for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) {
+                if (getPresenceStatusForNumber(i) !== 'offline') s.add(String(i));
+            }
             return s;
         }
         function isNumberOnline(num) { return getOnlineNumbersSet().has(String(num)); }
@@ -7085,7 +7249,6 @@
         function getOnlineCount() { return Math.min(CLASS_ROSTER_SIZE, getOnlineNumbersSet().size); }
 
         function renderPresenceWidgets() {
-            const online = getOnlineNumbersSet();
             const onlineCount = getOnlineCount();
             // 홈 대시보드에는 더 이상 우리 반 위젯을 표시하지 않는다 (친구들 프로필 화면 전용).
             const profileSummaryEl = document.getElementById('presence-profile-summary');
@@ -7098,7 +7261,7 @@
                 const num = card.getAttribute('data-num');
                 if (!num) return;
                 const dot = card.querySelector('.pf-online-dot');
-                if (dot) dot.style.background = online.has(num) ? '#22c55e' : '#9ca3af';
+                if (dot) dot.style.background = PRESENCE_STATUS_COLORS[getPresenceStatusForNumber(num)];
             });
         }
 
@@ -7108,25 +7271,50 @@
         }
 
         function renderPresenceModalList() {
-            const online = getOnlineNumbersSet();
-            const onlineCount = getOnlineCount();
-            let onlineHtml = '', offlineHtml = '';
+            const groups = { online: [], away: [], busy: [], offline: [] };
             for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) {
                 const name = resolveStudentDisplayName(i) || `${i}번`;
                 const sData = profilesData[`student_${i}`] || {};
                 const appearance = getProfileAppearance(sData.xp || 0, sData.appearance);
                 const styledName = renderStyledName(name, appearance, null, escapeNoticeText); // 온라인 현황도 이름 효과/배지가 그대로 보이도록 공용 렌더러 사용
-                const isOn = online.has(String(i));
-                const row = `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:var(--text-main);"><span style="width:8px; height:8px; border-radius:50%; background:${isOn ? '#22c55e' : '#9ca3af'}; flex-shrink:0;"></span>${i}번 ${styledName}</div>`;
-                if (isOn) onlineHtml += row; else offlineHtml += row;
+                const status = getPresenceStatusForNumber(i);
+                const row = `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:var(--text-main);"><span style="width:8px; height:8px; border-radius:50%; background:${PRESENCE_STATUS_COLORS[status]}; flex-shrink:0;"></span>${i}번 ${styledName}</div>`;
+                groups[status].push(row);
             }
             document.getElementById('presence-modal-list').innerHTML = `
-                <div style="font-size:12px; font-weight:700; color:#16a34a; margin:8px 0 4px;">🟢 온라인 ${onlineCount}명</div>
-                ${onlineHtml || '<div class="widget-text">없음</div>'}
-                <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin:16px 0 4px;">⚪ 오프라인 ${CLASS_ROSTER_SIZE - onlineCount}명</div>
-                ${offlineHtml}
+                <div style="font-size:12px; font-weight:700; color:#16a34a; margin:8px 0 4px;">🟢 온라인 ${groups.online.length}명</div>
+                ${groups.online.join('') || '<div class="widget-text">없음</div>'}
+                <div style="font-size:12px; font-weight:700; color:#ca8a04; margin:16px 0 4px;">🟡 자리비움 ${groups.away.length}명</div>
+                ${groups.away.join('') || '<div class="widget-text">없음</div>'}
+                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 4px;">🔴 다른 용무 중 ${groups.busy.length}명</div>
+                ${groups.busy.join('') || '<div class="widget-text">없음</div>'}
+                <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin:16px 0 4px;">⚪ 오프라인 ${groups.offline.length}명</div>
+                ${groups.offline.join('') || '<div class="widget-text">없음</div>'}
             `;
         }
+
+        // 설정 모달의 "온라인 상태" 선택 UI. 반 명단(1~26번) 학생이 아니면 애초에 presence 자체가
+        // 없으므로 섹션 자체를 숨긴다.
+        window.updatePresenceSettingsUI = function() {
+            const section = document.getElementById('settings-presence-section');
+            if (!section) return;
+            if (!isRosterStudentInfo(currentUserInfo)) { section.style.display = 'none'; return; }
+            section.style.display = 'block';
+            let current = 'online';
+            try { current = localStorage.getItem(PRESENCE_STATUS_KEY) || 'online'; } catch (e) {}
+            section.querySelectorAll('.settings-presence-option').forEach(btn => {
+                const on = btn.getAttribute('data-status') === current;
+                btn.style.borderColor = on ? 'var(--primary)' : 'var(--border-color)';
+                btn.style.background = on ? 'var(--primary-soft, rgba(37,99,235,0.08))' : 'var(--surface-secondary)';
+            });
+        };
+
+        window.setMyPresenceStatus = function(status) {
+            if (!currentUser || !isRosterStudentInfo(currentUserInfo)) return alert('온라인 상태를 설정할 수 있는 계정이 아닙니다.');
+            try { localStorage.setItem(PRESENCE_STATUS_KEY, status); } catch (e) {}
+            set(ref(db, `presence/${currentUser.uid}/status`), status).catch(() => {});
+            window.updatePresenceSettingsUI();
+        };
 
         // =========================================================================
         // 반 공용 일정 캘린더 (기존 수행평가 Firestore calendar 자동 미러링 포함)
@@ -7314,7 +7502,7 @@
         }
 
         window.submitScheduleForm = async function() {
-            if (!currentUser) return alert('로그인이 필요합니다.');
+            if (!currentUser) return showLoginScreen();
             const date = document.getElementById('schedule-form-date').value;
             const endDateInput = document.getElementById('schedule-form-enddate').value;
             const subject = document.getElementById('schedule-form-subject').value;
@@ -7736,7 +7924,7 @@
         // 좋아요/좋아요 수: 클릭 즉시 화면부터 바꾸고(낙관적 UI), 그 다음 Firestore 트랜잭션으로 실제 반영한다.
         // 실패하면 원래 상태로 되돌린다. (RTDB 시절과 동일한 원칙 - 실제 추가/취소 결과에 따라서만 likeCount를 ±1 한다.)
         window.toggleLike = async function(postId) {
-            if (!currentUser) return;
+            if (!currentUser) return showLoginScreen();
             const btn = document.getElementById(`like-btn-${postId}`);
             let optimisticLiked = null;
             if (btn) {
@@ -8014,7 +8202,8 @@
 
         // "+ 글쓰기" / 빠른 글쓰기 트리거는 항상 새 글 작성으로 시작한다 (수정 중이던 상태가 있으면 초기화)
         window.startNewPost = function() {
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             communityEditingPostId = null;
             const titleInput = document.getElementById('post-title');
             const contentEditable = document.getElementById('post-content');
@@ -9961,6 +10150,37 @@
             });
         }
 
+        // 내 음악 트랙 카드 하나의 HTML. mymusic-list와 Music Home 검색 결과 둘 다에서 재사용한다.
+        // 앨범아트를 Blob에서 object URL로 새로 만들 때마다 호출부가 나중에 해제할 수 있도록
+        // artworkUrlsSink 배열에 push해둔다 (호출부마다 자기 화면 영역의 URL을 따로 관리).
+        function myMusicTrackCardHTML(t, artworkUrlsSink) {
+            const title = t._title != null ? t._title : (t.title || t.name || '제목 없음');
+            const artist = t._artist != null ? t._artist : (t.artist || '');
+            const safeName = escapeNoticeText(title).replace(/'/g, "\\'");
+            let artHtml = musicTrackIcon();
+            if (t.artwork) {
+                const artUrl = URL.createObjectURL(t.artwork);
+                artworkUrlsSink.push(artUrl);
+                artHtml = `<img src="${artUrl}" onerror="this.parentElement.textContent='${musicTrackIcon()}'">`;
+            }
+            return `
+                <div class="music-track-card" style="margin-bottom:8px;">
+                    <div class="music-track-top">
+                        <div class="music-track-art">${artHtml}</div>
+                        <div style="min-width:0; flex:1;">
+                            <div class="music-track-title">${escapeNoticeText(title)}</div>
+                            <div class="music-track-artist">${artist ? escapeNoticeText(artist) : (t.sourceType === 'community' ? '친구 공유 음악' : '아티스트 미상')}</div>
+                        </div>
+                    </div>
+                    <div class="music-track-actions">
+                        <span onclick="playMyMusicTrack(${t.id}, '${safeName}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>
+                        <span onclick="openAddSingleTrackModal(${t.id})">＋ 플레이리스트</span>
+                        <span onclick="deleteMyMusicTrack(${t.id})" style="color:#ef4444;">삭제</span>
+                    </div>
+                </div>
+            `;
+        }
+
         // 🎵 내 음악 (플레이리스트와 무관한 전체 라이브러리 뷰)
         // 렌더링할 때마다 앨범아트용 object URL을 새로 만드므로, 이전 것들을 여기 모아뒀다가
         // 다음 렌더링 직전에 해제한다 (안 그러면 검색/정렬할 때마다 URL이 계속 쌓여서 샌다).
@@ -9986,31 +10206,7 @@
                 }
                 myMusicArtworkUrls.forEach(url => URL.revokeObjectURL(url));
                 myMusicArtworkUrls = [];
-                listEl.innerHTML = filtered.map(t => {
-                    const safeName = escapeNoticeText(t._title).replace(/'/g, "\\'");
-                    let artHtml = musicTrackIcon();
-                    if (t.artwork) {
-                        const artUrl = URL.createObjectURL(t.artwork);
-                        myMusicArtworkUrls.push(artUrl);
-                        artHtml = `<img src="${artUrl}" onerror="this.parentElement.textContent='${musicTrackIcon()}'">`;
-                    }
-                    return `
-                        <div class="music-track-card" style="margin-bottom:8px;">
-                            <div class="music-track-top">
-                                <div class="music-track-art">${artHtml}</div>
-                                <div style="min-width:0; flex:1;">
-                                    <div class="music-track-title">${escapeNoticeText(t._title)}</div>
-                                    <div class="music-track-artist">${t._artist ? escapeNoticeText(t._artist) : (t.sourceType === 'community' ? '친구 공유 음악' : '아티스트 미상')}</div>
-                                </div>
-                            </div>
-                            <div class="music-track-actions">
-                                <span onclick="playMyMusicTrack(${t.id}, '${safeName}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>
-                                <span onclick="openAddSingleTrackModal(${t.id})">＋ 플레이리스트</span>
-                                <span onclick="deleteMyMusicTrack(${t.id})" style="color:#ef4444;">삭제</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                listEl.innerHTML = filtered.map(t => myMusicTrackCardHTML(t, myMusicArtworkUrls)).join('');
             } catch (e) {
                 console.error('내 음악 로딩 오류:', e);
                 listEl.innerHTML = `<div class="card" style="text-align:center; color:var(--text-muted);">불러오지 못했습니다.<br>잠시 후 다시 시도해주세요.</div>`;
@@ -10407,13 +10603,56 @@
             } catch (e) { return new Set(); }
         }
 
-        window.runMusicHomeSearch = function() {
-            const q = document.getElementById('music-home-search')?.value || '';
-            switchMusicSection('shared');
-            setTimeout(() => {
-                const sharedInput = document.getElementById('music-shared-search');
-                if (sharedInput) { sharedInput.value = q; renderSharedMusicList(); }
-            }, 0);
+        // Music Home 검색: 다른 탭으로 이동시키지 않고, 공유 음악/내 음악 양쪽 결과를 이 화면 안에서
+        // 구분해서 보여준다. sharedMusicCache가 아직 한 번도 안 불러와졌으면(공유 음악 탭에 들어간
+        // 적 없으면) 먼저 채워두고, 그 다음부터는 매 입력마다 캐시를 그대로 필터링만 한다.
+        let musicHomeSearchArtworkUrls = [];
+        window.runMusicHomeSearch = async function() {
+            const q = (document.getElementById('music-home-search')?.value || '').trim().toLowerCase();
+            const resultsEl = document.getElementById('music-home-search-results');
+            const defaultEl = document.getElementById('music-home-default-sections');
+            if (!resultsEl || !defaultEl) return;
+
+            if (!q) {
+                resultsEl.style.display = 'none';
+                resultsEl.innerHTML = '';
+                defaultEl.style.display = 'block';
+                return;
+            }
+            defaultEl.style.display = 'none';
+            resultsEl.style.display = 'block';
+            resultsEl.innerHTML = '<div class="widget-text">검색 중...</div>';
+
+            if (Object.keys(sharedMusicCache).length === 0) {
+                try { await loadSharedMusic(); } catch (e) { /* loadSharedMusic이 자체적으로 에러 UI를 처리 */ }
+            }
+            const sharedMatches = Object.values(sharedMusicCache).filter(t =>
+                (t.title || '').toLowerCase().includes(q) || (t.artist || '').toLowerCase().includes(q)
+            );
+
+            let myMatches = [];
+            try {
+                const myTracks = await musicDbGetAllTracks();
+                myMatches = myTracks
+                    .map(t => ({ ...t, _title: t.title || t.name || '제목 없음', _artist: t.artist || '' }))
+                    .filter(t => t._title.toLowerCase().includes(q) || t._artist.toLowerCase().includes(q));
+            } catch (e) { console.warn('내 음악 검색 오류:', e); }
+
+            // 이번 검색 결과에서 새로 만든 앨범아트 URL이 이전 검색 결과 것을 대체하므로, 교체 직전에 해제한다.
+            musicHomeSearchArtworkUrls.forEach(url => URL.revokeObjectURL(url));
+            musicHomeSearchArtworkUrls = [];
+
+            let html = `<div class="dashboard-section-title">👥 공유 음악 (${sharedMatches.length})</div>`;
+            html += sharedMatches.length
+                ? `<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:22px;">${sharedMatches.map(t => renderMusicTrackCard(t, sharedMusicLikedIds, sharedMusicDownloadedIds)).join('')}</div>`
+                : `<div class="widget-text" style="margin-bottom:22px;">일치하는 공유 음악이 없습니다.</div>`;
+
+            html += `<div class="dashboard-section-title">🎵 내 음악 (${myMatches.length})</div>`;
+            html += myMatches.length
+                ? myMatches.map(t => myMusicTrackCardHTML(t, musicHomeSearchArtworkUrls)).join('')
+                : `<div class="widget-text">일치하는 내 음악이 없습니다.</div>`;
+
+            resultsEl.innerHTML = html;
         };
 
         function fmtMusicHomeTime(sec) {
@@ -10634,7 +10873,7 @@
             const fileInput = document.getElementById('music-share-file');
             const progressEl = document.getElementById('music-share-progress');
             const submitBtn = document.getElementById('music-share-submit-btn');
-            if (!currentUser) return alert("로그인이 필요합니다.");
+            if (!currentUser) return showLoginScreen();
             if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
             const file = fileInput.files.length > 0 ? fileInput.files[0] : null;
             if (!file) return alert("MP3 파일을 선택해주세요.");
@@ -10741,7 +10980,7 @@
 
         // 좋아요: optimistic UI - 클릭 즉시 반영 후 서버 요청, 실패하면 되돌린다.
         window.toggleMusicLike = async function(trackId) {
-            if (!currentUser) return alert("로그인이 필요합니다.");
+            if (!currentUser) return showLoginScreen();
             const btn = document.getElementById(`music-like-${trackId}`);
             const track = sharedMusicCache[trackId];
             const wasLiked = sharedMusicLikedIds.has(trackId);
@@ -11489,6 +11728,23 @@
 
             if (!isRestrictedViewer) listenToProfileComments(num);
         }
+
+        // 🥚 이스터에그: 학생 프로필 상세 관리 모달의 사진을 클릭하면 그 학생의 XP가 1씩 오른다.
+        // presenceData(번호 -> uid 매핑, 한 번이라도 로그인한 학생이면 존재)로 uid를 찾아서
+        // users/{uid}/xp의 진짜 원본 값을 직접 1 증가시킨다 (profiles/student_N.xp는 그 학생
+        // 본인 로그인 시 자동으로 다시 미러링되는 값이라 여기서 건드려도 곧 원래대로 덮어써진다).
+        window.easterEggBumpProfileXP = async function() {
+            if (!currentUser) return showLoginScreen();
+            const num = activeStudentNum;
+            if (num == null) return;
+            const uid = Object.keys(presenceData).find(id => presenceData[id] && String(presenceData[id].number) === String(num));
+            if (!uid) return; // 한 번도 로그인한 적 없는 학생은 uid를 알 방법이 없어 조용히 무시한다
+            try {
+                await runTransaction(ref(db, `users/${uid}/xp`), (current) => (typeof current === 'number' ? current : 0) + 1);
+            } catch (e) {
+                console.warn('이스터에그 XP 증가 실패(권한 등):', e);
+            }
+        };
 
         window.toggleSubAdmin = async function(num, makeSub) {
             if (!isAdmin) return alert("최고 관리자만 가능한 기능입니다.");
@@ -14976,6 +15232,7 @@
         if (openBtn) openBtn.addEventListener('click', () => {
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
+            if (window.updatePresenceSettingsUI) window.updatePresenceSettingsUI(); // 온라인 상태 선택 UI도 최신 상태로
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
