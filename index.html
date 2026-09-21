@@ -3460,14 +3460,11 @@
         const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
 
         // ===============================
-        // SUPABASE CONFIG (자료실 전용)
+        // SUPABASE CONFIG (자료실 전용 - Firebase 설정과는 완전히 별개)
         // ⚠️ 여기 쓰는 키는 반드시 publishable(anon) key여야 한다. service_role/secret 키는 절대 넣지 않는다.
-        // 예전엔 자료실 전용 별도 프로젝트(cryeosgmuxqyphntqqlc)를 썼었는데, 그 프로젝트가 삭제되어
-        // DNS 조회부터 실패하는 상태가 됐다. 그래서 지금은 1-2 Music과 같은 프로젝트를 함께 쓴다
-        // (materials 테이블/버킷/Edge Function 설정은 supabase/ 폴더 참고).
         // ===============================
-        const SUPABASE_URL = "https://robineymrvvtetuphkjt.supabase.co";
-        const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_qP4gdsjkyT9ee3HcY3YikA_lINsb52Q";
+        const SUPABASE_URL = "https://cryeosgmuxqyphntqqlc.supabase.co";
+        const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oXzL8eqnE-eVeBv4SGUIIA_c8wFi8u2";
         const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
         const MATERIALS_BUCKET = 'materials';
         // 업로드/삭제는 anon 키로 직접 하지 않고, 전부 Edge Function(서버에서 Firebase ID 토큰 검증 후
