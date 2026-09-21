@@ -482,11 +482,20 @@
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
         .dashboard-section-title { font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; margin: 4px 0 12px 2px; }
-        /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 순서 편집 UI - 개인별 커스텀, localStorage에만 저장 */
-        .home-section-controls { display: none; align-items: center; justify-content: space-between; background: var(--surface-secondary); border: 1px dashed var(--border-color); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
-        #home-sections-container.editing-sections .home-section-controls { display: flex; }
-        .home-section-arrows { display: flex; gap: 4px; }
+        /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 자유 배치 UI - 개인별 커스텀, localStorage에만 저장.
+           섹션 이름 변경(제목 input), 섹션 순서(화살표), 위젯을 다른 섹션으로 이동/순서 변경(카드별 편집 바)까지 지원. */
+        .home-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .dashboard-section-title-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; border: none; background: transparent; padding: 4px 2px; font-family: inherit; }
+        #home-sections-container.editing-sections .dashboard-section-title-input { border: 1px dashed var(--border-color); border-radius: 6px; padding: 4px 8px; background: var(--surface-secondary); cursor: text; }
+        .dashboard-section-title-input[readonly] { cursor: default; }
+        .home-section-arrows { display: none; gap: 4px; flex-shrink: 0; }
+        #home-sections-container.editing-sections .home-section-arrows { display: flex; }
         .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
+        #tab-home .home-section .card[data-widget-id] { position: relative; }
+        .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; gap: 4px; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        #home-sections-container.editing-sections .widget-edit-bar { display: flex; }
+        .widget-edit-bar button.btn-sub { padding: 2px 6px; font-size: 10px; }
+        .widget-edit-bar select { font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); padding: 2px 4px; max-width: 110px; }
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
@@ -1954,19 +1963,19 @@
                 <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                     <div>
                         <h1 id="welcome-title">반가워요!</h1>
-                        <p>슬기로운 1-2 학교생활 요약 정보 (클릭 시 상세 이동)</p>
+                        <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-top:6px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
                     </div>
                     <button id="btn-write-notice" class="auth-btn" style="display:none; width:auto; margin-top:4px; padding:10px 18px; font-size:13px; white-space:nowrap;" onclick="openNoticeComposer()">📢 공지 작성</button>
                 </div>
 
-                <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-bottom:14px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
-
                 <div id="home-sections-container">
                 <div class="home-section" data-section-id="shortcuts">
-                <div class="home-section-controls"><span class="home-section-label">🔗 바로가기</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">🔗 바로가기</div>
-                <div class="dashboard-grid">
-                    <div class="card" style="grid-column: span 3;">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="🔗 바로가기">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 3;">
                         <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
                             <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null)">+ 바로가기 추가</button>
                         </div>
@@ -1981,18 +1990,21 @@
                 </div>
 
                 <div class="home-section" data-section-id="priority-strip">
-                <div class="home-section-controls"><span class="home-section-label">⏱ 우선순위 (날씨·미션·지금 학교는)</span><span class="home-section-arrows"></span></div>
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="⏱ 우선순위 (날씨·미션·지금 학교는)">
+                    <span class="home-section-arrows"></span>
+                </div>
                 <!-- 우선순위 스트립: 왼쪽 날씨, 가운데 오늘의 미션(절반 크기로 축소), 오른쪽 지금 학교는 -->
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
-                    <div class="card">
+                <div class="dashboard-grid" data-section-grid style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
+                    <div class="card" data-widget-id="w-weather">
                         <div class="card-title">현재 날씨 🪟</div>
                         <div class="weather-info" id="weather-widget">데이터 동기화 중...</div>
                     </div>
-                    <div class="card">
+                    <div class="card" data-widget-id="w-missions">
                         <div class="card-title">🎯 오늘의 미션</div>
                         <div id="daily-missions-widget">불러오는 중...</div>
                     </div>
-                    <div class="card">
+                    <div class="card" data-widget-id="w-period">
                         <div class="card-title">🕒 지금 학교는</div>
                         <div id="current-period-widget">불러오는 중...</div>
                     </div>
@@ -2000,18 +2012,20 @@
                 </div>
 
                 <div class="home-section" data-section-id="today">
-                <div class="home-section-controls"><span class="home-section-label">📅 오늘 하루</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">📅 오늘 하루</div>
-                <div class="dashboard-grid">
-                    <div class="card clickable" onclick="switchTab('meal')">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="📅 오늘 하루">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card clickable" data-widget-id="w-meal" onclick="switchTab('meal')">
                         <div class="card-title" id="home-meal-title">오늘의 급식 🍱</div>
                         <div class="meal-desc" id="home-lunch-summary">로딩 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('timetable')">
+                    <div class="card clickable" data-widget-id="w-timetable" onclick="switchTab('timetable')">
                         <div class="card-title" id="home-timetable-title">오늘의 시간표 🗓️</div>
                         <div id="home-timetable-summary" class="widget-text">시간표를 불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('cleaning')">
+                    <div class="card clickable" data-widget-id="w-cleaning" onclick="switchTab('cleaning')">
                         <div class="card-title">청소 🧹</div>
                         <div id="home-cleaning-summary" style="font-size: 13px; padding: 4px 0;">불러오는 중...</div>
                     </div>
@@ -2019,33 +2033,35 @@
                 </div>
 
                 <div class="home-section" data-section-id="study-exam">
-                <div class="home-section-controls"><span class="home-section-label">📖 공부 & 시험</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">📖 공부 & 시험</div>
-                <div class="dashboard-grid">
-                    <div class="card clickable" onclick="openWeeklyReportModal()">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="📖 공부 & 시험">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card clickable" data-widget-id="w-report" onclick="openWeeklyReportModal()">
                         <div class="card-title">📊 이번 주 학습 리포트</div>
                         <div id="weekly-report-summary">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('exam')">
+                    <div class="card clickable" data-widget-id="w-exam" onclick="switchTab('exam')">
                         <div class="card-title">주요 과목 시험범위 📝</div>
                         <div id="home-exam-summary" class="widget-text">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('schedule')">
+                    <div class="card clickable" data-widget-id="w-calendar" onclick="switchTab('schedule')">
                         <div class="card-title">일정 📅</div>
                         <div id="home-calendar-summary" class="widget-text">불러오는 중...</div>
                     </div>
-                    <div class="card clickable home-mini-card" onclick="switchTab('planner')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-planner-time" onclick="switchTab('planner')">
                         <div class="home-mini-title">📖 오늘의 공부</div>
                         <div class="home-mini-value" id="home-planner-time">공부 기록 없음</div>
                         <div class="home-mini-sub" id="home-planner-target">목표를 설정해보세요</div>
                         <div class="home-mini-progress"><div class="home-mini-progress-bar" id="home-planner-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="card clickable home-mini-card" onclick="switchTab('planner')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-planner-tasks" onclick="switchTab('planner')">
                         <div class="home-mini-title">📋 오늘 할 일</div>
                         <div class="home-mini-value" id="home-planner-tasks">0 / 0</div>
                         <div class="home-mini-sub">완료 / 전체</div>
                     </div>
-                    <div class="card clickable home-mini-card" onclick="switchTab('mixtape')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-mixtape" onclick="switchTab('mixtape')">
                         <div class="home-mini-title">📼 현재 재생</div>
                         <div class="home-mini-value" id="home-mixtape-track">재생 중인 곡 없음</div>
                         <div class="home-mini-sub" id="home-mixtape-status">대기 중</div>
@@ -2054,10 +2070,12 @@
                 </div>
 
                 <div class="home-section" data-section-id="poll-community">
-                <div class="home-section-controls"><span class="home-section-label">🗳️ 설문 & 소통</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">🗳️ 설문 & 소통</div>
-                <div class="dashboard-grid">
-                    <div class="card">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="🗳️ 설문 & 소통">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card" data-widget-id="w-poll">
                         <div class="card-title">
                             <span>🗳️ 반 설문</span>
                             <span id="btn-write-poll-wrap" style="display:none;">
@@ -2066,7 +2084,7 @@
                         </div>
                         <div id="poll-widget">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 2;">
+                    <div class="card clickable" data-widget-id="w-community" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 2;">
                         <div class="card-title">입만사니 인기글 (최근 1주) 🔥</div>
                         <div id="home-popular-posts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
                     </div>
@@ -3876,77 +3894,163 @@
         });
 
         // =========================================================================
-        // 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통/우선순위 위젯) 순서 편집
+        // 홈 대시보드 자유 배치: 섹션(카테고리) 이름 변경, 섹션 순서, 위젯을 다른 섹션으로
+        // 이동, 섹션 안에서 위젯 순서까지 전부 자유롭게 편집.
         // - 완전히 개인별 커스텀이라 Firebase에 쓰지 않고 이 브라우저의 localStorage에만 저장한다.
         // - Firebase 규칙과 무관하게 항상 동작하고, 로그인 여부와도 무관하게(로그인 전에도) 적용된다.
         // =========================================================================
-        const HOME_SECTION_ORDER_KEY = 'hanilgo_home_section_order';
-        const HOME_SECTION_LABELS = {
-            'shortcuts': '🔗 바로가기',
-            'priority-strip': '⏱ 우선순위 (날씨·미션·지금 학교는)',
-            'today': '📅 오늘 하루',
-            'study-exam': '📖 공부 & 시험',
-            'poll-community': '🗳️ 설문 & 소통'
-        };
-        const DEFAULT_HOME_SECTION_ORDER = Object.keys(HOME_SECTION_LABELS);
+        const HOME_LAYOUT_KEY = 'hanilgo_home_layout_v2';
+        const DEFAULT_HOME_LAYOUT = [
+            { id: 'shortcuts', label: '🔗 바로가기', widgets: ['w-shortcuts'] },
+            { id: 'priority-strip', label: '⏱ 우선순위 (날씨·미션·지금 학교는)', widgets: ['w-weather', 'w-missions', 'w-period'] },
+            { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
+            { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
+            { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] }
+        ];
+        const DEFAULT_HOME_SECTION_IDS = DEFAULT_HOME_LAYOUT.map(s => s.id);
+        const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
         let homeSectionEditMode = false;
 
-        function loadHomeSectionOrder() {
+        function loadHomeLayout() {
             try {
-                const saved = JSON.parse(localStorage.getItem(HOME_SECTION_ORDER_KEY) || 'null');
-                // 순서 목록에 있는 섹션 id 구성이 지금 앱 버전과 완전히 같을 때만 신뢰한다
-                // (업데이트로 섹션이 추가/삭제됐으면 저장된 값을 버리고 기본 순서로 되돌아간다).
-                if (Array.isArray(saved) && saved.length === DEFAULT_HOME_SECTION_ORDER.length && DEFAULT_HOME_SECTION_ORDER.every(id => saved.includes(id))) return saved;
+                const saved = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
+                if (Array.isArray(saved) && saved.every(s => s && typeof s.id === 'string' && typeof s.label === 'string' && Array.isArray(s.widgets))) {
+                    // 저장된 레이아웃의 섹션 구성과 위젯 구성이 지금 앱 버전과 정확히 같을 때만 신뢰한다
+                    // (업데이트로 섹션/위젯이 추가·삭제됐으면 저장된 값을 버리고 기본 레이아웃으로 되돌아간다).
+                    const sameSections = saved.length === DEFAULT_HOME_SECTION_IDS.length && DEFAULT_HOME_SECTION_IDS.every(id => saved.some(s => s.id === id));
+                    const savedWidgetIds = saved.flatMap(s => s.widgets);
+                    const sameWidgets = savedWidgetIds.length === ALL_HOME_WIDGET_IDS.length
+                        && new Set(savedWidgetIds).size === ALL_HOME_WIDGET_IDS.length
+                        && ALL_HOME_WIDGET_IDS.every(id => savedWidgetIds.includes(id));
+                    if (sameSections && sameWidgets) return saved.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
+                }
             } catch (e) {}
-            return DEFAULT_HOME_SECTION_ORDER.slice();
+            return DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
         }
 
-        function applyHomeSectionOrder() {
+        function saveHomeLayout(layout) {
+            try { localStorage.setItem(HOME_LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {}
+        }
+
+        function applyHomeLayout() {
             const container = document.getElementById('home-sections-container');
             if (!container) return;
-            loadHomeSectionOrder().forEach(id => {
-                const el = container.querySelector(`.home-section[data-section-id="${id}"]`);
-                if (el) container.appendChild(el); // 순서대로 다시 appendChild하면 그 순서로 재배치된다
+            loadHomeLayout().forEach(section => {
+                const sectionEl = container.querySelector(`.home-section[data-section-id="${section.id}"]`);
+                if (!sectionEl) return;
+                container.appendChild(sectionEl); // 순서대로 다시 appendChild하면 섹션 순서가 그대로 재배치된다
+                const titleInput = sectionEl.querySelector('[data-section-title]');
+                if (titleInput && document.activeElement !== titleInput) titleInput.value = section.label;
+                const grid = sectionEl.querySelector('[data-section-grid]');
+                if (!grid) return;
+                section.widgets.forEach(widgetId => {
+                    const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (widgetEl) grid.appendChild(widgetEl); // 다른 섹션에 있던 위젯도 여기로 옮겨오고, 순서대로 재배치
+                });
             });
         }
 
-        function renderHomeSectionEditControls() {
-            const order = loadHomeSectionOrder();
-            order.forEach((id, idx) => {
-                const arrows = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-arrows`);
-                if (!arrows) return;
-                arrows.innerHTML = `
-                    ${idx > 0 ? `<button onclick="moveHomeSection('${id}', -1)" class="btn-sub">▲</button>` : ''}
-                    ${idx < order.length - 1 ? `<button onclick="moveHomeSection('${id}', 1)" class="btn-sub">▼</button>` : ''}
-                `;
+        function renderHomeEditControls() {
+            const layout = loadHomeLayout();
+            layout.forEach((section, sIdx) => {
+                const arrows = document.querySelector(`.home-section[data-section-id="${section.id}"] .home-section-arrows`);
+                if (arrows) {
+                    arrows.innerHTML = `
+                        ${sIdx > 0 ? `<button onclick="moveHomeSection('${section.id}', -1)" class="btn-sub">▲</button>` : ''}
+                        ${sIdx < layout.length - 1 ? `<button onclick="moveHomeSection('${section.id}', 1)" class="btn-sub">▼</button>` : ''}
+                    `;
+                }
+                const sectionOptionsHtml = layout.map(s => `<option value="${s.id}">${escapeHtml(s.label)}</option>`).join('');
+                section.widgets.forEach((widgetId, wIdx) => {
+                    const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (!widgetEl) return;
+                    let bar = widgetEl.querySelector(':scope > .widget-edit-bar');
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.className = 'widget-edit-bar';
+                        bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
+                        widgetEl.prepend(bar);
+                    }
+                    bar.innerHTML = `
+                        ${wIdx > 0 ? `<button class="btn-sub" onclick="moveWidget('${widgetId}', -1)">▲</button>` : ''}
+                        ${wIdx < section.widgets.length - 1 ? `<button class="btn-sub" onclick="moveWidget('${widgetId}', 1)">▼</button>` : ''}
+                        <select onchange="moveWidgetToSection('${widgetId}', this.value)">${sectionOptionsHtml}</select>
+                    `;
+                    bar.querySelector('select').value = section.id;
+                });
             });
         }
 
-        window.moveHomeSection = function(id, dir) {
-            const order = loadHomeSectionOrder();
-            const idx = order.indexOf(id);
+        function removeHomeWidgetEditBars() {
+            document.querySelectorAll('#home-sections-container .widget-edit-bar').forEach(el => el.remove());
+        }
+
+        window.moveHomeSection = function(sectionId, dir) {
+            const layout = loadHomeLayout();
+            const idx = layout.findIndex(s => s.id === sectionId);
             const swapIdx = idx + dir;
-            if (idx === -1 || swapIdx < 0 || swapIdx >= order.length) return;
-            [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
-            try { localStorage.setItem(HOME_SECTION_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
-            applyHomeSectionOrder();
-            renderHomeSectionEditControls();
+            if (idx === -1 || swapIdx < 0 || swapIdx >= layout.length) return;
+            [layout[idx], layout[swapIdx]] = [layout[swapIdx], layout[idx]];
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            renderHomeEditControls();
         }
+
+        window.moveWidget = function(widgetId, dir) {
+            const layout = loadHomeLayout();
+            const section = layout.find(s => s.widgets.includes(widgetId));
+            if (!section) return;
+            const idx = section.widgets.indexOf(widgetId);
+            const swapIdx = idx + dir;
+            if (swapIdx < 0 || swapIdx >= section.widgets.length) return;
+            [section.widgets[idx], section.widgets[swapIdx]] = [section.widgets[swapIdx], section.widgets[idx]];
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            renderHomeEditControls();
+        }
+
+        window.moveWidgetToSection = function(widgetId, targetSectionId) {
+            const layout = loadHomeLayout();
+            const fromSection = layout.find(s => s.widgets.includes(widgetId));
+            const toSection = layout.find(s => s.id === targetSectionId);
+            if (!fromSection || !toSection || fromSection === toSection) return;
+            fromSection.widgets = fromSection.widgets.filter(id => id !== widgetId);
+            toSection.widgets.push(widgetId); // 옮긴 섹션의 맨 끝에 추가 - 이후 ▲로 원하는 위치로 옮기면 됨
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            renderHomeEditControls();
+        }
+
+        window.renameHomeSection = function(sectionId, newLabel) {
+            const layout = loadHomeLayout();
+            const section = layout.find(s => s.id === sectionId);
+            if (!section) return;
+            section.label = newLabel.trim() || section.label;
+            saveHomeLayout(layout);
+            const titleInput = document.querySelector(`.home-section[data-section-id="${sectionId}"] [data-section-title]`);
+            if (titleInput) titleInput.value = section.label;
+            if (homeSectionEditMode) renderHomeEditControls(); // 다른 위젯의 "다른 섹션으로 이동" 목록 라벨도 갱신
+        }
+
+        // 섹션 제목 input에서 값이 바뀌면(엔터/포커스 아웃) 저장한다
+        document.getElementById('home-sections-container').addEventListener('change', (e) => {
+            if (!e.target.matches('[data-section-title]')) return;
+            const sectionEl = e.target.closest('.home-section');
+            if (sectionEl) window.renameHomeSection(sectionEl.dataset.sectionId, e.target.value);
+        });
 
         window.toggleHomeSectionEditMode = function() {
             homeSectionEditMode = !homeSectionEditMode;
             const container = document.getElementById('home-sections-container');
             if (container) container.classList.toggle('editing-sections', homeSectionEditMode);
+            document.querySelectorAll('#home-sections-container [data-section-title]').forEach(inp => { inp.readOnly = !homeSectionEditMode; });
             const btn = document.getElementById('btn-edit-home-layout');
             if (btn) btn.textContent = homeSectionEditMode ? '✅ 편집 완료' : '🧩 위젯 순서 편집';
-            if (homeSectionEditMode) renderHomeSectionEditControls();
+            if (homeSectionEditMode) renderHomeEditControls();
+            else removeHomeWidgetEditBars();
         }
 
-        Object.entries(HOME_SECTION_LABELS).forEach(([id, label]) => {
-            const labelEl = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-label`);
-            if (labelEl) labelEl.textContent = label;
-        });
-        applyHomeSectionOrder(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 순서를 바로 적용
+        applyHomeLayout(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 레이아웃을 바로 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
