@@ -1976,6 +1976,29 @@
                     </button>
                 </div>
 
+                <div id="settings-presence-section" style="padding:14px 0; border-bottom:1px solid var(--border-color); display:none;">
+                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:2px;">온라인 상태</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">친구들에게 내 상태가 어떻게 보일지 선택해요</div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <button class="settings-presence-option" data-status="online" onclick="setMyPresenceStatus('online')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">정상 접속 상태입니다</span>
+                        </button>
+                        <button class="settings-presence-option" data-status="away" onclick="setMyPresenceStatus('away')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#eab308; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">자리 비움</span>
+                        </button>
+                        <button class="settings-presence-option" data-status="busy" onclick="setMyPresenceStatus('busy')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">다른 용무 중</span>
+                        </button>
+                        <button class="settings-presence-option" data-status="invisible" onclick="setMyPresenceStatus('invisible')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#9ca3af; flex-shrink:0;"></span>
+                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">보이지 않음 (오프라인으로 표시)</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0;">
                     <div>
                         <div style="font-weight:700; font-size:14px; color:var(--text-main);">사이드바 항상 펼치기</div>
@@ -7088,6 +7111,11 @@
             return Number.isInteger(n) && n >= 1 && n <= 26;
         }
 
+        // 자동(연결 여부) 상태 위에 사용자가 직접 고르는 상태를 얹는다: online(기본)/away/busy/invisible.
+        // invisible은 실제로는 연결돼 있어도 다른 사람에게는 offline과 똑같이 보인다(Discord의 "보이지 않음"과 동일).
+        const PRESENCE_STATUS_COLORS = { online: '#22c55e', away: '#eab308', busy: '#ef4444', offline: '#9ca3af' };
+        const PRESENCE_STATUS_KEY = 'hanilgo_my_presence_status';
+
         function setupPresence() {
             if (!currentUser || !currentUserInfo) return;
             // 온라인 현황 집계 대상 밖의 계정(관리자/부담임/담임/타반)은 Presence 자체를 등록하지 않는다.
@@ -7103,6 +7131,10 @@
                 onDisconnect(conRef).remove();
                 set(conRef, true).catch(() => {});
                 set(ref(db, `presence/${currentUser.uid}/number`), myNumber).catch(() => {});
+                // 접속할 때마다 이 브라우저에 저장해둔 마지막 상태(자리비움/다른 용무 중/보이지 않음)를 다시 적용한다.
+                let savedStatus = 'online';
+                try { savedStatus = localStorage.getItem(PRESENCE_STATUS_KEY) || 'online'; } catch (e) {}
+                set(ref(db, `presence/${currentUser.uid}/status`), savedStatus).catch(() => {});
                 myPresenceConnections.push(conRef);
             });
         }
@@ -7119,15 +7151,29 @@
             });
         }
 
-        // 온라인으로 집계되는 "학생 번호(1~26)" 집합. 1~26 범위를 벗어나는 번호(30/40/98 등)는
-        // presence 데이터에 남아있더라도 여기서 걸러져 온라인 집계에 절대 포함되지 않는다.
+        // "학생 번호(1~26)" -> presence 데이터 한 명 (1~26 범위를 벗어나는 번호는 여기서 걸러진다)
+        function getPresenceEntryByNumber(num) {
+            return Object.values(presenceData).find(p => {
+                if (!p) return false;
+                const n = Number(p.number);
+                return Number.isInteger(n) && n >= 1 && n <= 26 && String(n) === String(num);
+            }) || null;
+        }
+        // 이 번호 학생이 지금 남에게 어떻게 보이는지: 'online' | 'away' | 'busy' | 'offline'.
+        // 연결이 아예 없거나(진짜 오프라인), 상태를 'invisible'로 골랐으면(보이지 않음) 똑같이 'offline'으로 취급한다.
+        function getPresenceStatusForNumber(num) {
+            const entry = getPresenceEntryByNumber(num);
+            if (!entry || !entry.connections || Object.keys(entry.connections).length === 0) return 'offline';
+            const status = entry.status || 'online';
+            if (status === 'away' || status === 'busy') return status;
+            return status === 'invisible' ? 'offline' : 'online';
+        }
+        // 온라인(자리비움/다른 용무 중 포함, 보이지 않음 제외)으로 집계되는 "학생 번호" 집합.
         function getOnlineNumbersSet() {
             const s = new Set();
-            Object.values(presenceData).forEach(p => {
-                if (!p || !p.connections || Object.keys(p.connections).length === 0) return;
-                const n = Number(p.number);
-                if (Number.isInteger(n) && n >= 1 && n <= 26) s.add(String(n));
-            });
+            for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) {
+                if (getPresenceStatusForNumber(i) !== 'offline') s.add(String(i));
+            }
             return s;
         }
         function isNumberOnline(num) { return getOnlineNumbersSet().has(String(num)); }
@@ -7135,7 +7181,6 @@
         function getOnlineCount() { return Math.min(CLASS_ROSTER_SIZE, getOnlineNumbersSet().size); }
 
         function renderPresenceWidgets() {
-            const online = getOnlineNumbersSet();
             const onlineCount = getOnlineCount();
             // 홈 대시보드에는 더 이상 우리 반 위젯을 표시하지 않는다 (친구들 프로필 화면 전용).
             const profileSummaryEl = document.getElementById('presence-profile-summary');
@@ -7148,7 +7193,7 @@
                 const num = card.getAttribute('data-num');
                 if (!num) return;
                 const dot = card.querySelector('.pf-online-dot');
-                if (dot) dot.style.background = online.has(num) ? '#22c55e' : '#9ca3af';
+                if (dot) dot.style.background = PRESENCE_STATUS_COLORS[getPresenceStatusForNumber(num)];
             });
         }
 
@@ -7158,25 +7203,50 @@
         }
 
         function renderPresenceModalList() {
-            const online = getOnlineNumbersSet();
-            const onlineCount = getOnlineCount();
-            let onlineHtml = '', offlineHtml = '';
+            const groups = { online: [], away: [], busy: [], offline: [] };
             for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) {
                 const name = resolveStudentDisplayName(i) || `${i}번`;
                 const sData = profilesData[`student_${i}`] || {};
                 const appearance = getProfileAppearance(sData.xp || 0, sData.appearance);
                 const styledName = renderStyledName(name, appearance, null, escapeNoticeText); // 온라인 현황도 이름 효과/배지가 그대로 보이도록 공용 렌더러 사용
-                const isOn = online.has(String(i));
-                const row = `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:var(--text-main);"><span style="width:8px; height:8px; border-radius:50%; background:${isOn ? '#22c55e' : '#9ca3af'}; flex-shrink:0;"></span>${i}번 ${styledName}</div>`;
-                if (isOn) onlineHtml += row; else offlineHtml += row;
+                const status = getPresenceStatusForNumber(i);
+                const row = `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:var(--text-main);"><span style="width:8px; height:8px; border-radius:50%; background:${PRESENCE_STATUS_COLORS[status]}; flex-shrink:0;"></span>${i}번 ${styledName}</div>`;
+                groups[status].push(row);
             }
             document.getElementById('presence-modal-list').innerHTML = `
-                <div style="font-size:12px; font-weight:700; color:#16a34a; margin:8px 0 4px;">🟢 온라인 ${onlineCount}명</div>
-                ${onlineHtml || '<div class="widget-text">없음</div>'}
-                <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin:16px 0 4px;">⚪ 오프라인 ${CLASS_ROSTER_SIZE - onlineCount}명</div>
-                ${offlineHtml}
+                <div style="font-size:12px; font-weight:700; color:#16a34a; margin:8px 0 4px;">🟢 온라인 ${groups.online.length}명</div>
+                ${groups.online.join('') || '<div class="widget-text">없음</div>'}
+                <div style="font-size:12px; font-weight:700; color:#ca8a04; margin:16px 0 4px;">🟡 자리비움 ${groups.away.length}명</div>
+                ${groups.away.join('') || '<div class="widget-text">없음</div>'}
+                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 4px;">🔴 다른 용무 중 ${groups.busy.length}명</div>
+                ${groups.busy.join('') || '<div class="widget-text">없음</div>'}
+                <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin:16px 0 4px;">⚪ 오프라인 ${groups.offline.length}명</div>
+                ${groups.offline.join('') || '<div class="widget-text">없음</div>'}
             `;
         }
+
+        // 설정 모달의 "온라인 상태" 선택 UI. 반 명단(1~26번) 학생이 아니면 애초에 presence 자체가
+        // 없으므로 섹션 자체를 숨긴다.
+        window.updatePresenceSettingsUI = function() {
+            const section = document.getElementById('settings-presence-section');
+            if (!section) return;
+            if (!isRosterStudentInfo(currentUserInfo)) { section.style.display = 'none'; return; }
+            section.style.display = 'block';
+            let current = 'online';
+            try { current = localStorage.getItem(PRESENCE_STATUS_KEY) || 'online'; } catch (e) {}
+            section.querySelectorAll('.settings-presence-option').forEach(btn => {
+                const on = btn.getAttribute('data-status') === current;
+                btn.style.borderColor = on ? 'var(--primary)' : 'var(--border-color)';
+                btn.style.background = on ? 'var(--primary-soft, rgba(37,99,235,0.08))' : 'var(--surface-secondary)';
+            });
+        };
+
+        window.setMyPresenceStatus = function(status) {
+            if (!currentUser || !isRosterStudentInfo(currentUserInfo)) return alert('온라인 상태를 설정할 수 있는 계정이 아닙니다.');
+            try { localStorage.setItem(PRESENCE_STATUS_KEY, status); } catch (e) {}
+            set(ref(db, `presence/${currentUser.uid}/status`), status).catch(() => {});
+            window.updatePresenceSettingsUI();
+        };
 
         // =========================================================================
         // 반 공용 일정 캘린더 (기존 수행평가 Firestore calendar 자동 미러링 포함)
@@ -15076,6 +15146,7 @@
         if (openBtn) openBtn.addEventListener('click', () => {
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
+            if (window.updatePresenceSettingsUI) window.updatePresenceSettingsUI(); // 온라인 상태 선택 UI도 최신 상태로
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
