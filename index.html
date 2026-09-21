@@ -2882,7 +2882,7 @@
                         <span class="close-btn" onclick="closeProfileModal()">&times;</span>
                         <div class="modal-profile-header">
                             <div class="profile-avatar-container">
-                                <img id="modal-img" src="https://via.placeholder.com/150" alt="프로필 사진">
+                                <img id="modal-img" src="https://via.placeholder.com/150" alt="프로필 사진" onclick="easterEggBumpProfileXP()">
                                 <input type="file" id="modal-file-input" style="display:none;" onchange="uploadProfileImage()">
                                 <button onclick="document.getElementById('modal-file-input').click()" class="btn-sub" id="btn-edit-photo">사진 변경</button>
                             </div>
@@ -11728,6 +11728,23 @@
 
             if (!isRestrictedViewer) listenToProfileComments(num);
         }
+
+        // 🥚 이스터에그: 학생 프로필 상세 관리 모달의 사진을 클릭하면 그 학생의 XP가 1씩 오른다.
+        // presenceData(번호 -> uid 매핑, 한 번이라도 로그인한 학생이면 존재)로 uid를 찾아서
+        // users/{uid}/xp의 진짜 원본 값을 직접 1 증가시킨다 (profiles/student_N.xp는 그 학생
+        // 본인 로그인 시 자동으로 다시 미러링되는 값이라 여기서 건드려도 곧 원래대로 덮어써진다).
+        window.easterEggBumpProfileXP = async function() {
+            if (!currentUser) return showLoginScreen();
+            const num = activeStudentNum;
+            if (num == null) return;
+            const uid = Object.keys(presenceData).find(id => presenceData[id] && String(presenceData[id].number) === String(num));
+            if (!uid) return; // 한 번도 로그인한 적 없는 학생은 uid를 알 방법이 없어 조용히 무시한다
+            try {
+                await runTransaction(ref(db, `users/${uid}/xp`), (current) => (typeof current === 'number' ? current : 0) + 1);
+            } catch (e) {
+                console.warn('이스터에그 XP 증가 실패(권한 등):', e);
+            }
+        };
 
         window.toggleSubAdmin = async function(num, makeSub) {
             if (!isAdmin) return alert("최고 관리자만 가능한 기능입니다.");
