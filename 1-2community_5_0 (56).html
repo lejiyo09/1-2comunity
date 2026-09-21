@@ -2794,7 +2794,9 @@
       <div class="flex flex-col min-w-0">
         <div onclick="PlannerApp.openDdayModal()" class="cursor-pointer font-black text-indigo-400 hover:text-indigo-300 transition text-lg sm:text-xl tracking-tight" id="dday-display">D-Day 설정</div>
         <div class="flex items-center gap-1.5 mt-0.5">
+          <button onclick="PlannerApp.changeCurrentDate(-1)" class="text-slate-400 hover:text-white transition text-xs px-1 font-bold" title="전날 기록 보기">‹</button>
           <div id="current-date" class="text-[10px] sm:text-xs font-bold text-slate-400">2026.08.11 (화)</div>
+          <button onclick="PlannerApp.changeCurrentDate(1)" id="btn-next-date" class="text-slate-400 hover:text-white transition text-xs px-1 font-bold disabled:opacity-30 disabled:pointer-events-none" title="다음날 기록 보기">›</button>
           <div id="real-time-clock" class="text-[10px] sm:text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shadow-sm">00:00:00</div>
           <div id="viewing-status" ondblclick="PlannerApp.toggleTimeMachine()" class="hidden cursor-pointer transition-all duration-300 select-none" title="더블클릭 시 과거 권한 켜기/끄기">과거 기록 열람중</div>
           <button onclick="PlannerApp.returnToToday()" id="btn-today" class="hidden px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[9px] font-bold transition">오늘로</button>
@@ -10878,7 +10880,7 @@
       UI.totalAchieve = document.getElementById('total-achievement'); UI.totalBar = document.getElementById('total-progress-bar');
       UI.zenTime = document.getElementById('zen-time-display'); UI.zenTaskBar = document.getElementById('zen-task-progress-bar');
       UI.clock = document.getElementById('real-time-clock'); UI.viewStatus = document.getElementById('viewing-status');
-      UI.btnToday = document.getElementById('btn-today'); UI.currentDate = document.getElementById('current-date');
+      UI.btnToday = document.getElementById('btn-today'); UI.currentDate = document.getElementById('current-date'); UI.btnNextDate = document.getElementById('btn-next-date');
       UI.zenView = document.getElementById('zen-view'); UI.normalView = document.getElementById('normal-view-container');
     }
 
@@ -11673,8 +11675,20 @@
     function saveDiary(showAlertFlag = true) { ensureDailyRecord(currentDateStr); state.records[currentDateStr].diary = document.getElementById('diary-textarea').value; saveData(); if (showAlertFlag) { closeModal('modal-diary'); uiAlert('기록장이 안전하게 저장되었습니다!', {icon:'📖', title:'저장 완료'}); } if (!document.getElementById('modal-calendar').classList.contains('hidden')) renderCalendar(); }
     
     function lockTimeMachineIfActive() { if(isTimeMachineUnlocked) { isTimeMachineUnlocked = false; updateViewingStatusUI(); } }
-    function updateHeaderDate() { const days = ['일', '월', '화', '수', '목', '금', '토']; if(UI.currentDate) UI.currentDate.innerText = `${currentDateStr.replace(/-/g, '.')} (${days[new Date(currentDateStr).getDay()]})`; if(UI.btnToday) UI.btnToday.classList.toggle('hidden', currentDateStr === todayStr); updateViewingStatusUI(); updateWorkspaceView(); }
+    function updateHeaderDate() { const days = ['일', '월', '화', '수', '목', '금', '토']; if(UI.currentDate) UI.currentDate.innerText = `${currentDateStr.replace(/-/g, '.')} (${days[new Date(currentDateStr).getDay()]})`; if(UI.btnToday) UI.btnToday.classList.toggle('hidden', currentDateStr === todayStr); if(UI.btnNextDate) UI.btnNextDate.disabled = (currentDateStr === todayStr); updateViewingStatusUI(); updateWorkspaceView(); }
     function returnToToday() { lockTimeMachineIfActive(); currentDateStr = todayStr; switchView('view-main'); }
+    // 달력 모달을 열지 않고도 하루씩 앞뒤로 넘겨보는 빠른 기록 열람 (오늘보다 미래로는 못 감)
+    function changeCurrentDate(delta) {
+      lockTimeMachineIfActive();
+      if (timerState.isRunning) stopTimer();
+      const curr = new Date(currentDateStr);
+      curr.setDate(curr.getDate() + delta);
+      const newDateStr = getLocalDateStr(curr);
+      if (newDateStr > todayStr) return;
+      currentDateStr = newDateStr;
+      ensureDailyRecord(currentDateStr);
+      switchView('view-main');
+    }
 
     function openCalendarModal() { renderCalendar(); document.getElementById('modal-calendar').classList.remove('hidden'); }
     function changeMonth(delta) { calMonth += delta; if(calMonth > 11) { calMonth = 0; calYear++; } else if(calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
@@ -11878,6 +11892,7 @@
       resetEditMode,
       resumeTimer,
       returnToToday,
+      changeCurrentDate,
       safeJSONParse,
       sanitizeState,
       saveData,
