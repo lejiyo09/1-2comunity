@@ -134,7 +134,7 @@
         .sidebar-menu-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
         .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 2px 0; margin-bottom: 4px; flex-shrink: 0; overflow: visible; }
-        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { justify-content: flex-start; padding: 2px 14px; }
+        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { padding: 2px 14px; }
 
         /* 접힘/펼침 모두 같은 로고 이미지를 쓴다 (기존 가로형 로고는 폐기) - width만 상태별로 바꿔서
            자연스럽게 커지고 작아지게 한다. 사이드바 자체의 width transition과 같은 곡선을 써서 서로 안 어긋나게 맞춘다. */
@@ -146,8 +146,7 @@
             max-width: 100%;
             transition: width 0.25s cubic-bezier(.4,0,.2,1);
         }
-        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { justify-content: flex-start; }
-        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img, .sidebar.pinned-expanded .sidebar-logo img { width: 72px; }
+        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img, .sidebar.pinned-expanded .sidebar-logo img { width: 108px; }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
         .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
 
@@ -191,7 +190,7 @@
         .nav-item-sub { font-size: 14px; padding-left: 34px; }
 
         .sidebar-bottom-btn { border: none; background: none; width: 100%; text-align: left; font-family: inherit; margin-bottom: 8px; }
-        #btn-open-settings.sidebar-bottom-btn { margin-top: 14px; margin-bottom: 12px; border-top: 1px solid var(--border-color); padding-top: 20px; border-radius: 0; }
+        #btn-open-settings.sidebar-bottom-btn { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); }
         .sidebar-logout-btn { color: #ef4444; margin-bottom: 4px; }
         .sidebar-logout-btn:hover { background-color: rgba(239,68,68,0.12); }
 
