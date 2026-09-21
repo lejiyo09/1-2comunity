@@ -126,7 +126,7 @@
             z-index: 300; overflow: hidden;
             transition: width 0.25s cubic-bezier(.4,0,.2,1);
         }
-        .sidebar:hover, .sidebar.mobile-open, .sidebar.touch-expanded { width: 260px; }
+        .sidebar:hover, .sidebar.mobile-open, .sidebar.touch-expanded, .sidebar.pinned-expanded { width: 260px; }
         body.gmw-site-dark .sidebar { background: rgba(16,24,42,0.62); border-right-color: rgba(255,255,255,0.07); }
 
         .sidebar-menu-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; }
@@ -134,7 +134,7 @@
         .sidebar-menu-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
         .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 10px 0; margin-bottom: 10px; flex-shrink: 0; overflow: visible; }
-        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header { justify-content: flex-start; padding: 10px 14px; }
+        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { justify-content: flex-start; padding: 10px 14px; }
 
         /* 로고: 접힘/펼침 상태 모두 완전히 같은 이미지를 쓰고, width만 상태별로 바꿔서 자연스럽게
            커지고 작아지게 한다. height는 항상 auto라 원본 비율이 유지되고 절대 위아래가 잘리지 않는다.
@@ -151,15 +151,15 @@
                                    몰래 줄어드는 원인이었다 → 실사용 비율에 여유를 두고 200px로 올림. */
             transition: width 0.25s cubic-bezier(.4,0,.2,1); /* 사이드바 폭 transition과 동일한 곡선 */
         }
-        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo { justify-content: flex-start; }
-        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img {
+        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { justify-content: flex-start; }
+        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img, .sidebar.pinned-expanded .sidebar-logo img {
             width: 100%;      /* 펼쳐진 사이드바에서 아래 프로필 위젯(.user-profile)과 같은 좌우 여백을 쓰도록 가로폭을 꽉 채움 - 세로는 auto라 비율대로 같이 커짐 */
         }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
-        .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text { font-size: 19px; }
+        .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
 
         .sidebar-expand-only { flex-shrink: 0; max-height: 0; opacity: 0; overflow: hidden; transform: translateX(-6px); transition: opacity 0.12s ease, transform 0.12s ease, max-height 0.18s ease; }
-        .sidebar:hover .sidebar-expand-only, .sidebar.mobile-open .sidebar-expand-only, .sidebar.touch-expanded .sidebar-expand-only {
+        .sidebar:hover .sidebar-expand-only, .sidebar.mobile-open .sidebar-expand-only, .sidebar.touch-expanded .sidebar-expand-only, .sidebar.pinned-expanded .sidebar-expand-only {
             max-height: 320px; opacity: 1; transform: translateX(0);
             transition: opacity 0.18s ease 0.1s, transform 0.18s ease 0.1s, max-height 0.22s ease;
         }
@@ -174,7 +174,7 @@
         .nav-item.active { background-color: var(--primary-soft); color: var(--primary); }
         .nav-icon { font-size: 19px; flex-shrink: 0; width: 22px; text-align: center; }
         .nav-label { display: inline-block; white-space: nowrap; opacity: 0; margin-left: 0; transform: translateX(-6px); transition: opacity 0.12s ease, transform 0.12s ease; }
-        .sidebar:hover .nav-label, .sidebar.mobile-open .nav-label, .sidebar.touch-expanded .nav-label {
+        .sidebar:hover .nav-label, .sidebar.mobile-open .nav-label, .sidebar.touch-expanded .nav-label, .sidebar.pinned-expanded .nav-label {
             opacity: 1; margin-left: 12px; transform: translateX(0);
             transition: opacity 0.18s ease 0.08s, transform 0.18s ease 0.08s;
         }
@@ -184,14 +184,14 @@
         .nav-group-header:hover { background-color: rgba(255,255,255,0.55); }
         body.gmw-site-dark .nav-group-header:hover { background-color: rgba(255,255,255,0.07); }
         .nav-group-caret { font-size: 11px; margin-left: auto; opacity: 0; transition: opacity 0.12s ease, transform 0.2s ease; }
-        .sidebar:hover .nav-group-caret, .sidebar.mobile-open .nav-group-caret, .sidebar.touch-expanded .nav-group-caret { opacity: 1; transition: opacity 0.18s ease 0.08s, transform 0.2s ease; }
+        .sidebar:hover .nav-group-caret, .sidebar.mobile-open .nav-group-caret, .sidebar.touch-expanded .nav-group-caret, .sidebar.pinned-expanded .nav-group-caret { opacity: 1; transition: opacity 0.18s ease 0.08s, transform 0.2s ease; }
         .nav-group.expanded .nav-group-caret { transform: rotate(180deg); }
         .nav-group-items {
             display: flex; flex-direction: column; gap: 2px; padding-left: 6px; margin-bottom: 0;
             max-height: 0; opacity: 0; overflow: hidden; transform: translateY(-4px);
             transition: max-height 0.18s ease, opacity 0.12s ease, transform 0.12s ease, margin-bottom 0.18s ease;
         }
-        .sidebar:hover .nav-group.expanded .nav-group-items, .sidebar.mobile-open .nav-group.expanded .nav-group-items, .sidebar.touch-expanded .nav-group.expanded .nav-group-items {
+        .sidebar:hover .nav-group.expanded .nav-group-items, .sidebar.mobile-open .nav-group.expanded .nav-group-items, .sidebar.touch-expanded .nav-group.expanded .nav-group-items, .sidebar.pinned-expanded .nav-group.expanded .nav-group-items {
             max-height: 400px; opacity: 1; margin-bottom: 4px; transform: translateY(0);
             transition: max-height 0.2s ease, opacity 0.16s ease 0.04s, transform 0.16s ease 0.04s, margin-bottom 0.18s ease;
         }
@@ -477,6 +477,11 @@
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
         .dashboard-section-title { font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; margin: 4px 0 12px 2px; }
+        /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 순서 편집 UI - 개인별 커스텀, localStorage에만 저장 */
+        .home-section-controls { display: none; align-items: center; justify-content: space-between; background: var(--surface-secondary); border: 1px dashed var(--border-color); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+        #home-sections-container.editing-sections .home-section-controls { display: flex; }
+        .home-section-arrows { display: flex; gap: 4px; }
+        .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
@@ -1885,14 +1890,38 @@
                     </button>
                 </div>
 
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border-color);">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0;">
                     <div>
-                        <div style="font-weight:700; font-size:14px; color:var(--text-main);">전역 미니플레이어 (PiP)</div>
-                        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">다른 탭/창으로 이동 시 Focus·MixTape를 PiP로 표시</div>
+                        <div style="font-weight:700; font-size:14px; color:var(--text-main);">사이드바 항상 펼치기</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">마우스를 올리지 않아도 사이드바가 넓게 펼쳐진 상태로 고정돼요</div>
                     </div>
-                    <button id="settings-pip-toggle" style="width:52px; height:30px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-color); position:relative; cursor:pointer; flex-shrink:0;">
-                        <span id="settings-pip-knob" style="position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:var(--primary); transition: transform .18s ease;"></span>
+                    <button id="settings-sidebar-pin-toggle" style="width:52px; height:30px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-color); position:relative; cursor:pointer; flex-shrink:0;">
+                        <span id="settings-sidebar-pin-knob" style="position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:var(--primary); transition: transform .18s ease;"></span>
                     </button>
+                </div>
+
+                <div style="padding:14px 0; border-bottom:1px solid var(--border-color);">
+                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:2px;">미니 플레이어 (PiP)</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Focus·MixTape 재생 중일 때 작은 미니 플레이어로 계속 보여줘요</div>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0;">
+                        <div>
+                            <div style="font-weight:600; font-size:13px; color:var(--text-main);">커뮤니티 내부 PiP</div>
+                            <div style="font-size:11.5px; color:var(--text-muted); margin-top:1px;">사이트 안을 보는 동안 화면 구석에 미니 플레이어 표시</div>
+                        </div>
+                        <button id="settings-pip-inline-toggle" style="width:44px; height:26px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-color); position:relative; cursor:pointer; flex-shrink:0;">
+                            <span id="settings-pip-inline-knob" style="position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--primary); transition: transform .18s ease;"></span>
+                        </button>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0;">
+                        <div>
+                            <div style="font-weight:600; font-size:13px; color:var(--text-main);">전역 PiP</div>
+                            <div style="font-size:11.5px; color:var(--text-muted); margin-top:1px;">다른 탭/창으로 이동해도 미니 플레이어 유지</div>
+                        </div>
+                        <button id="settings-pip-toggle" style="width:44px; height:26px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-color); position:relative; cursor:pointer; flex-shrink:0;">
+                            <span id="settings-pip-knob" style="position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--primary); transition: transform .18s ease;"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <div style="padding:14px 0; border-bottom:1px solid var(--border-color);">
@@ -1925,6 +1954,11 @@
                     <button id="btn-write-notice" class="auth-btn" style="display:none; width:auto; margin-top:4px; padding:10px 18px; font-size:13px; white-space:nowrap;" onclick="openNoticeComposer()">📢 공지 작성</button>
                 </div>
 
+                <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-bottom:14px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
+
+                <div id="home-sections-container">
+                <div class="home-section" data-section-id="shortcuts">
+                <div class="home-section-controls"><span class="home-section-label">🔗 바로가기</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">🔗 바로가기</div>
                 <div class="dashboard-grid">
                     <div class="card" style="grid-column: span 3;">
@@ -1939,7 +1973,10 @@
                         </style>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="priority-strip">
+                <div class="home-section-controls"><span class="home-section-label">⏱ 우선순위 (날씨·미션·지금 학교는)</span><span class="home-section-arrows"></span></div>
                 <!-- 우선순위 스트립: 왼쪽 날씨, 가운데 오늘의 미션(절반 크기로 축소), 오른쪽 지금 학교는 -->
                 <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
                     <div class="card">
@@ -1955,7 +1992,10 @@
                         <div id="current-period-widget">불러오는 중...</div>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="today">
+                <div class="home-section-controls"><span class="home-section-label">📅 오늘 하루</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">📅 오늘 하루</div>
                 <div class="dashboard-grid">
                     <div class="card clickable" onclick="switchTab('meal')">
@@ -1971,7 +2011,10 @@
                         <div id="home-cleaning-summary" style="font-size: 13px; padding: 4px 0;">불러오는 중...</div>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="study-exam">
+                <div class="home-section-controls"><span class="home-section-label">📖 공부 & 시험</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">📖 공부 & 시험</div>
                 <div class="dashboard-grid">
                     <div class="card clickable" onclick="openWeeklyReportModal()">
@@ -2003,7 +2046,10 @@
                         <div class="home-mini-sub" id="home-mixtape-status">대기 중</div>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="poll-community">
+                <div class="home-section-controls"><span class="home-section-label">🗳️ 설문 & 소통</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">🗳️ 설문 & 소통</div>
                 <div class="dashboard-grid">
                     <div class="card">
@@ -2019,6 +2065,8 @@
                         <div class="card-title">입만사니 인기글 (최근 1주) 🔥</div>
                         <div id="home-popular-posts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
                     </div>
+                </div>
+                </div>
                 </div>
 
             </div>
@@ -2634,7 +2682,7 @@
                             <div id="assessment-subject-rows"></div>
                         </div>
                         <div class="card" style="grid-column: 1 / -1;">
-                            <div class="card-title">📖 과목별 시험 범위 (2반 공용 노트)</div>
+                            <div class="card-title">📖 과목별 시험 범위 (2반 공용 노트) <button onclick="addExamSubject()" class="btn-sub" style="font-size:11px; padding:5px 10px;">+ 과목 추가</button></div>
                             <div id="exam-notes-container"></div>
                         </div>
                     </div>
@@ -3821,6 +3869,79 @@
                 document.getElementById('app-container').classList.remove('authenticated'); 
             }
         });
+
+        // =========================================================================
+        // 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통/우선순위 위젯) 순서 편집
+        // - 완전히 개인별 커스텀이라 Firebase에 쓰지 않고 이 브라우저의 localStorage에만 저장한다.
+        // - Firebase 규칙과 무관하게 항상 동작하고, 로그인 여부와도 무관하게(로그인 전에도) 적용된다.
+        // =========================================================================
+        const HOME_SECTION_ORDER_KEY = 'hanilgo_home_section_order';
+        const HOME_SECTION_LABELS = {
+            'shortcuts': '🔗 바로가기',
+            'priority-strip': '⏱ 우선순위 (날씨·미션·지금 학교는)',
+            'today': '📅 오늘 하루',
+            'study-exam': '📖 공부 & 시험',
+            'poll-community': '🗳️ 설문 & 소통'
+        };
+        const DEFAULT_HOME_SECTION_ORDER = Object.keys(HOME_SECTION_LABELS);
+        let homeSectionEditMode = false;
+
+        function loadHomeSectionOrder() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(HOME_SECTION_ORDER_KEY) || 'null');
+                // 순서 목록에 있는 섹션 id 구성이 지금 앱 버전과 완전히 같을 때만 신뢰한다
+                // (업데이트로 섹션이 추가/삭제됐으면 저장된 값을 버리고 기본 순서로 되돌아간다).
+                if (Array.isArray(saved) && saved.length === DEFAULT_HOME_SECTION_ORDER.length && DEFAULT_HOME_SECTION_ORDER.every(id => saved.includes(id))) return saved;
+            } catch (e) {}
+            return DEFAULT_HOME_SECTION_ORDER.slice();
+        }
+
+        function applyHomeSectionOrder() {
+            const container = document.getElementById('home-sections-container');
+            if (!container) return;
+            loadHomeSectionOrder().forEach(id => {
+                const el = container.querySelector(`.home-section[data-section-id="${id}"]`);
+                if (el) container.appendChild(el); // 순서대로 다시 appendChild하면 그 순서로 재배치된다
+            });
+        }
+
+        function renderHomeSectionEditControls() {
+            const order = loadHomeSectionOrder();
+            order.forEach((id, idx) => {
+                const arrows = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-arrows`);
+                if (!arrows) return;
+                arrows.innerHTML = `
+                    ${idx > 0 ? `<button onclick="moveHomeSection('${id}', -1)" class="btn-sub">▲</button>` : ''}
+                    ${idx < order.length - 1 ? `<button onclick="moveHomeSection('${id}', 1)" class="btn-sub">▼</button>` : ''}
+                `;
+            });
+        }
+
+        window.moveHomeSection = function(id, dir) {
+            const order = loadHomeSectionOrder();
+            const idx = order.indexOf(id);
+            const swapIdx = idx + dir;
+            if (idx === -1 || swapIdx < 0 || swapIdx >= order.length) return;
+            [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+            try { localStorage.setItem(HOME_SECTION_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+            applyHomeSectionOrder();
+            renderHomeSectionEditControls();
+        }
+
+        window.toggleHomeSectionEditMode = function() {
+            homeSectionEditMode = !homeSectionEditMode;
+            const container = document.getElementById('home-sections-container');
+            if (container) container.classList.toggle('editing-sections', homeSectionEditMode);
+            const btn = document.getElementById('btn-edit-home-layout');
+            if (btn) btn.textContent = homeSectionEditMode ? '✅ 편집 완료' : '🧩 위젯 순서 편집';
+            if (homeSectionEditMode) renderHomeSectionEditControls();
+        }
+
+        Object.entries(HOME_SECTION_LABELS).forEach(([id, label]) => {
+            const labelEl = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-label`);
+            if (labelEl) labelEl.textContent = label;
+        });
+        applyHomeSectionOrder(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 순서를 바로 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
@@ -7007,6 +7128,7 @@
                         source: 'neis',
                         school: NEIS_SCHOOL_NAME,
                         neisYmd: aaYmd,
+                        createdAt: Date.now(), // shared_schedule의 RTDB 검증 규칙이 date/title/createdAt을 필수로 요구해서, 이게 없으면 매번 permission_denied로 조용히 실패해 캘린더에 하나도 안 뜨게 된다.
                         updatedAt: Date.now()
                     }));
                 });
@@ -10290,7 +10412,11 @@
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const container = document.getElementById('exam-notes-container'); container.innerHTML = '';
                 const data = {}; snap.forEach(d => { data[d.id] = d.data().text || ''; });
-                subjects.forEach(sub => {
+                // 기본 6과목 + 누군가 "+ 과목 추가"로 새로 만든 과목(exam_notes에 문서가 있으면) 전부 보여준다.
+                // 홈 위젯(listenToHomeWidgets의 targets)은 기본 6과목 배열을 그대로 쓰므로 새 과목이 거기엔 안 뜬다.
+                const allSubjects = [...subjects];
+                Object.keys(data).forEach(sub => { if (!allSubjects.includes(sub)) allSubjects.push(sub); });
+                allSubjects.forEach(sub => {
                     const row = document.createElement('div'); row.className = 'subject-row';
                     row.innerHTML = `<span class="subject-name">${sub}</span><textarea class="subject-input" id="note-${sub}" rows="1" placeholder="${sub} 범위를 업데이트하세요.">${escapeHtml(data[sub] || '')}</textarea><button onclick="saveExamNote('${sub}')" class="btn-sub" style="color:var(--primary); border-color:var(--primary);">저장</button>`;
                     container.appendChild(row);
@@ -10301,6 +10427,13 @@
             });
         }
         window.saveExamNote = async function(sub) { try { await setDoc(doc(fdb, 'exam_notes', sub), { text: document.getElementById(`note-${sub}`).value.trim() }); alert(`저장 완료`); } catch(e) {} }
+        // 새 과목을 exam_notes에 빈 문서로 만들어 목록에 추가한다 (2반 정회원이면 누구나 - 기존 시험범위 쓰기 권한과 동일).
+        window.addExamSubject = async function() {
+            const name = (prompt('추가할 과목명을 입력하세요.') || '').trim();
+            if (!name) return;
+            try { await setDoc(doc(fdb, 'exam_notes', name), { text: '' }, { merge: true }); }
+            catch (e) { alert('과목 추가 중 오류가 발생했습니다.'); }
+        }
 
         // 기존 calendar 구조(각 이벤트에 date 필드)를 그대로 유지하면서
         // 날짜/과목별로 그룹핑해 보여준다. 기존 {date, text} 형태의 옛날 게시물도 호환된다.
@@ -13254,6 +13387,8 @@
         .gmw-inline-btn.popout{ color: rgba(255,255,255,0.55); background: transparent; border-color: transparent; font-size: 12px; }
         body.gmw-pip-disabled .gmw-inline-btn.popout{ display: none; }
         .gmw-inline-btn.popout:hover{ background: rgba(255,255,255,0.1); color: #f2f3f5; }
+        .gmw-inline-btn.close{ color: rgba(255,255,255,0.4); background: transparent; border-color: transparent; font-size: 11px; }
+        .gmw-inline-btn.close:hover{ background: rgba(255,255,255,0.1); color: #f2f3f5; }
 
         @media (max-width: 480px){
             .gmw-inline-container{ right: 10px; bottom: 10px; }
@@ -13274,6 +13409,7 @@
                 <button class="gmw-inline-btn mix-main" id="gmw-inline-mix-play-btn" title="재생 / 일시정지">▶</button>
                 <button class="gmw-inline-btn" id="gmw-inline-mix-next-btn" title="다음 곡">⏭</button>
                 <button class="gmw-inline-btn popout" id="gmw-inline-mix-popout-btn" title="미니 플레이어로 분리">⇱</button>
+                <button class="gmw-inline-btn close" id="gmw-inline-mix-close-btn" title="닫기">✕</button>
             </div>
         </div>
 
@@ -13297,6 +13433,7 @@
                 <button class="gmw-inline-btn primary" id="gmw-inline-focus-toggle-btn" title="일시정지 / 재개">Ⅱ</button>
                 <button class="gmw-inline-btn stop" id="gmw-inline-focus-stop-btn" title="완전 정지">■</button>
                 <button class="gmw-inline-btn popout" id="gmw-inline-focus-popout-btn" title="미니 플레이어로 분리">⇱</button>
+                <button class="gmw-inline-btn close" id="gmw-inline-focus-close-btn" title="닫기">✕</button>
             </div>
         </div>
     </div>
@@ -13472,7 +13609,10 @@
         };
 
         function isPiPSupported(){ return 'documentPictureInPicture' in window; }
-        function isPiPEnabled(){ return localStorage.getItem('hanilgo_pip_enabled') !== '0'; }
+        function isPiPEnabled(){ return localStorage.getItem('hanilgo_pip_enabled') !== '0'; } // 전역 PiP: 다른 탭/창으로 나가면 뜨는 진짜 브라우저 PiP
+        function isInlineEnabled(){ return localStorage.getItem('hanilgo_pip_inline_enabled') !== '0'; } // 커뮤니티 내부 PiP: 사이트 안을 보는 동안 뜨는 인라인 미니 위젯
+        let focusInlineDismissed = false; // "닫기" 버튼으로 숨긴 뒤, 해당 활동이 완전히 끝났다가 다시 시작되면 초기화된다
+        let mixInlineDismissed = false;
 
         function getCurrentPage(){
             const el = document.querySelector('.tab-content.active');
@@ -13523,7 +13663,8 @@
         // ===================== INLINE 위젯 (사이트 디자인과 통일된 밝은 카드) =====================
 
         function renderInlineFocus(data, suppressed){
-            const visible = !!data && !suppressed && state.mode === 'inline';
+            if (!data) focusInlineDismissed = false; // 활동이 끝나면 다음 번엔 다시 보이도록 닫힘 상태를 초기화
+            const visible = !!data && !suppressed && state.mode === 'inline' && isInlineEnabled() && !focusInlineDismissed;
             inlineFocusCard.style.display = visible ? 'flex' : 'none';
             if (!visible) return false;
             const pct = data.targetSec > 0 ? (data.elapsedSec / data.targetSec) * 100 : 0;
@@ -13538,7 +13679,8 @@
         }
 
         function renderInlineMix(data, suppressed){
-            const visible = !!data && !suppressed && state.mode === 'inline';
+            if (!data) mixInlineDismissed = false; // 재생이 끝나면 다음 번엔 다시 보이도록 닫힘 상태를 초기화
+            const visible = !!data && !suppressed && state.mode === 'inline' && isInlineEnabled() && !mixInlineDismissed;
             inlineMixCard.style.display = visible ? 'flex' : 'none';
             if (!visible) return false;
             document.getElementById('gmw-inline-mix-title').textContent = data.name;
@@ -13746,6 +13888,11 @@
             render();
         }
 
+        function setInlineEnabled(enabled){
+            localStorage.setItem('hanilgo_pip_inline_enabled', enabled ? '1' : '0');
+            render();
+        }
+
         // ===================== 사이트 <-> 바깥 전환 감지 =====================
 
         // Document PiP의 requestWindow()는 "최근의 실제 사용자 제스처(클릭 등)"가 있어야만 허용된다.
@@ -13807,6 +13954,7 @@
             const inFocusToggle = document.getElementById('gmw-inline-focus-toggle-btn');
             const inFocusStop = document.getElementById('gmw-inline-focus-stop-btn');
             const inFocusPopout = document.getElementById('gmw-inline-focus-popout-btn');
+            const inFocusClose = document.getElementById('gmw-inline-focus-close-btn');
             if (inFocusToggle) inFocusToggle.addEventListener('click', (e) => {
                 stop(e);
                 if (!window.PlannerApp) return;
@@ -13816,16 +13964,19 @@
             });
             if (inFocusStop) inFocusStop.addEventListener('click', (e) => { stop(e); if (window.PlannerApp) window.PlannerApp.stopTimer(); });
             if (inFocusPopout) inFocusPopout.addEventListener('click', (e) => { stop(e); popOut(); });
+            if (inFocusClose) inFocusClose.addEventListener('click', (e) => { stop(e); focusInlineDismissed = true; render(); });
             if (inlineFocusCard) inlineFocusCard.addEventListener('click', () => window.switchTab('planner'));
 
             const inMixPrev = document.getElementById('gmw-inline-mix-prev-btn');
             const inMixPlay = document.getElementById('gmw-inline-mix-play-btn');
             const inMixNext = document.getElementById('gmw-inline-mix-next-btn');
             const inMixPopout = document.getElementById('gmw-inline-mix-popout-btn');
+            const inMixClose = document.getElementById('gmw-inline-mix-close-btn');
             if (inMixPrev) inMixPrev.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.prevTrack(); });
             if (inMixPlay) inMixPlay.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.togglePlay(); });
             if (inMixNext) inMixNext.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.nextTrack(); });
             if (inMixPopout) inMixPopout.addEventListener('click', (e) => { stop(e); popOut(); });
+            if (inMixClose) inMixClose.addEventListener('click', (e) => { stop(e); mixInlineDismissed = true; render(); });
             if (inlineMixCard) inlineMixCard.addEventListener('click', () => window.switchTab('mixtape'));
 
             // ---- PiP 컨트롤 ----
@@ -13865,7 +14016,9 @@
             open: () => { const { showFocus, showMix } = render(); openPiPIfPossible(showFocus, showMix); },
             close: destroyPiPWindow,
             isPiPEnabled,
-            setPiPEnabled
+            setPiPEnabled,
+            isInlineEnabled,
+            setInlineEnabled
         };
 
         if (document.readyState === 'loading') {
@@ -14059,10 +14212,32 @@
         const themeKnob = document.getElementById('settings-theme-knob');
         const pipToggle = document.getElementById('settings-pip-toggle');
         const pipKnob = document.getElementById('settings-pip-knob');
+        const pipInlineToggle = document.getElementById('settings-pip-inline-toggle');
+        const pipInlineKnob = document.getElementById('settings-pip-inline-knob');
+        const sidebarPinToggle = document.getElementById('settings-sidebar-pin-toggle');
+        const sidebarPinKnob = document.getElementById('settings-sidebar-pin-knob');
+        const SIDEBAR_PIN_KEY = 'hanilgo_sidebar_pinned'; // 개인별(브라우저별) 설정 - 예전 4.0처럼 사이드바를 항상 펼쳐둔다
 
         function setKnob(knobEl, on){
             knobEl.style.transform = on ? 'translateX(22px)' : 'translateX(0)';
         }
+        function setSmallKnob(knobEl, on){
+            knobEl.style.transform = on ? 'translateX(18px)' : 'translateX(0)';
+        }
+
+        function isSidebarPinned(){ return localStorage.getItem(SIDEBAR_PIN_KEY) === '1'; }
+        function applySidebarPinUI(){
+            const pinned = isSidebarPinned();
+            const sidebarEl = document.getElementById('sidebar');
+            if (sidebarEl) sidebarEl.classList.toggle('pinned-expanded', pinned);
+            setKnob(sidebarPinKnob, pinned);
+        }
+        applySidebarPinUI();
+        if (sidebarPinToggle) sidebarPinToggle.addEventListener('click', () => {
+            const next = !isSidebarPinned();
+            localStorage.setItem(SIDEBAR_PIN_KEY, next ? '1' : '0');
+            applySidebarPinUI();
+        });
 
         // 우선순위: ① 사용자가 사이트에서 직접 선택한 테마 > ② 시스템(Chromebook) 테마 > ③ 기본값(라이트)
         function getManualTheme(){ return localStorage.getItem(THEME_KEY); } // 'light' | 'dark' | null(자동)
@@ -14082,9 +14257,13 @@
         function isPiPEnabledNow(){
             return window.GlobalMiniController ? window.GlobalMiniController.isPiPEnabled() : (localStorage.getItem('hanilgo_pip_enabled') !== '0');
         }
+        function isInlinePiPEnabledNow(){
+            return window.GlobalMiniController ? window.GlobalMiniController.isInlineEnabled() : (localStorage.getItem('hanilgo_pip_inline_enabled') !== '0');
+        }
 
         function applyPipToggleUI(){
-            setKnob(pipKnob, isPiPEnabledNow());
+            setSmallKnob(pipKnob, isPiPEnabledNow());
+            setSmallKnob(pipInlineKnob, isInlinePiPEnabledNow());
         }
 
         // 초기 상태 반영
@@ -14114,7 +14293,14 @@
             const next = !isPiPEnabledNow();
             if (window.GlobalMiniController) window.GlobalMiniController.setPiPEnabled(next);
             else localStorage.setItem('hanilgo_pip_enabled', next ? '1' : '0');
-            setKnob(pipKnob, next);
+            setSmallKnob(pipKnob, next);
+        });
+
+        if (pipInlineToggle) pipInlineToggle.addEventListener('click', () => {
+            const next = !isInlinePiPEnabledNow();
+            if (window.GlobalMiniController) window.GlobalMiniController.setInlineEnabled(next);
+            else localStorage.setItem('hanilgo_pip_inline_enabled', next ? '1' : '0');
+            setSmallKnob(pipInlineKnob, next);
         });
     })();
     </script>
