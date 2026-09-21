@@ -477,6 +477,11 @@
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
         .dashboard-section-title { font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; margin: 4px 0 12px 2px; }
+        /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 순서 편집 UI - 개인별 커스텀, localStorage에만 저장 */
+        .home-section-controls { display: none; align-items: center; justify-content: space-between; background: var(--surface-secondary); border: 1px dashed var(--border-color); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+        #home-sections-container.editing-sections .home-section-controls { display: flex; }
+        .home-section-arrows { display: flex; gap: 4px; }
+        .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
@@ -1925,6 +1930,11 @@
                     <button id="btn-write-notice" class="auth-btn" style="display:none; width:auto; margin-top:4px; padding:10px 18px; font-size:13px; white-space:nowrap;" onclick="openNoticeComposer()">📢 공지 작성</button>
                 </div>
 
+                <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-bottom:14px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
+
+                <div id="home-sections-container">
+                <div class="home-section" data-section-id="shortcuts">
+                <div class="home-section-controls"><span class="home-section-label">🔗 바로가기</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">🔗 바로가기</div>
                 <div class="dashboard-grid">
                     <div class="card" style="grid-column: span 3;">
@@ -1939,7 +1949,10 @@
                         </style>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="priority-strip">
+                <div class="home-section-controls"><span class="home-section-label">⏱ 우선순위 (날씨·미션·지금 학교는)</span><span class="home-section-arrows"></span></div>
                 <!-- 우선순위 스트립: 왼쪽 날씨, 가운데 오늘의 미션(절반 크기로 축소), 오른쪽 지금 학교는 -->
                 <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
                     <div class="card">
@@ -1955,7 +1968,10 @@
                         <div id="current-period-widget">불러오는 중...</div>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="today">
+                <div class="home-section-controls"><span class="home-section-label">📅 오늘 하루</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">📅 오늘 하루</div>
                 <div class="dashboard-grid">
                     <div class="card clickable" onclick="switchTab('meal')">
@@ -1971,7 +1987,10 @@
                         <div id="home-cleaning-summary" style="font-size: 13px; padding: 4px 0;">불러오는 중...</div>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="study-exam">
+                <div class="home-section-controls"><span class="home-section-label">📖 공부 & 시험</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">📖 공부 & 시험</div>
                 <div class="dashboard-grid">
                     <div class="card clickable" onclick="openWeeklyReportModal()">
@@ -2003,7 +2022,10 @@
                         <div class="home-mini-sub" id="home-mixtape-status">대기 중</div>
                     </div>
                 </div>
+                </div>
 
+                <div class="home-section" data-section-id="poll-community">
+                <div class="home-section-controls"><span class="home-section-label">🗳️ 설문 & 소통</span><span class="home-section-arrows"></span></div>
                 <div class="dashboard-section-title">🗳️ 설문 & 소통</div>
                 <div class="dashboard-grid">
                     <div class="card">
@@ -2019,6 +2041,8 @@
                         <div class="card-title">입만사니 인기글 (최근 1주) 🔥</div>
                         <div id="home-popular-posts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
                     </div>
+                </div>
+                </div>
                 </div>
 
             </div>
@@ -2634,7 +2658,7 @@
                             <div id="assessment-subject-rows"></div>
                         </div>
                         <div class="card" style="grid-column: 1 / -1;">
-                            <div class="card-title">📖 과목별 시험 범위 (2반 공용 노트)</div>
+                            <div class="card-title">📖 과목별 시험 범위 (2반 공용 노트) <button onclick="addExamSubject()" class="btn-sub" style="font-size:11px; padding:5px 10px;">+ 과목 추가</button></div>
                             <div id="exam-notes-container"></div>
                         </div>
                     </div>
@@ -3821,6 +3845,79 @@
                 document.getElementById('app-container').classList.remove('authenticated'); 
             }
         });
+
+        // =========================================================================
+        // 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통/우선순위 위젯) 순서 편집
+        // - 완전히 개인별 커스텀이라 Firebase에 쓰지 않고 이 브라우저의 localStorage에만 저장한다.
+        // - Firebase 규칙과 무관하게 항상 동작하고, 로그인 여부와도 무관하게(로그인 전에도) 적용된다.
+        // =========================================================================
+        const HOME_SECTION_ORDER_KEY = 'hanilgo_home_section_order';
+        const HOME_SECTION_LABELS = {
+            'shortcuts': '🔗 바로가기',
+            'priority-strip': '⏱ 우선순위 (날씨·미션·지금 학교는)',
+            'today': '📅 오늘 하루',
+            'study-exam': '📖 공부 & 시험',
+            'poll-community': '🗳️ 설문 & 소통'
+        };
+        const DEFAULT_HOME_SECTION_ORDER = Object.keys(HOME_SECTION_LABELS);
+        let homeSectionEditMode = false;
+
+        function loadHomeSectionOrder() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(HOME_SECTION_ORDER_KEY) || 'null');
+                // 순서 목록에 있는 섹션 id 구성이 지금 앱 버전과 완전히 같을 때만 신뢰한다
+                // (업데이트로 섹션이 추가/삭제됐으면 저장된 값을 버리고 기본 순서로 되돌아간다).
+                if (Array.isArray(saved) && saved.length === DEFAULT_HOME_SECTION_ORDER.length && DEFAULT_HOME_SECTION_ORDER.every(id => saved.includes(id))) return saved;
+            } catch (e) {}
+            return DEFAULT_HOME_SECTION_ORDER.slice();
+        }
+
+        function applyHomeSectionOrder() {
+            const container = document.getElementById('home-sections-container');
+            if (!container) return;
+            loadHomeSectionOrder().forEach(id => {
+                const el = container.querySelector(`.home-section[data-section-id="${id}"]`);
+                if (el) container.appendChild(el); // 순서대로 다시 appendChild하면 그 순서로 재배치된다
+            });
+        }
+
+        function renderHomeSectionEditControls() {
+            const order = loadHomeSectionOrder();
+            order.forEach((id, idx) => {
+                const arrows = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-arrows`);
+                if (!arrows) return;
+                arrows.innerHTML = `
+                    ${idx > 0 ? `<button onclick="moveHomeSection('${id}', -1)" class="btn-sub">▲</button>` : ''}
+                    ${idx < order.length - 1 ? `<button onclick="moveHomeSection('${id}', 1)" class="btn-sub">▼</button>` : ''}
+                `;
+            });
+        }
+
+        window.moveHomeSection = function(id, dir) {
+            const order = loadHomeSectionOrder();
+            const idx = order.indexOf(id);
+            const swapIdx = idx + dir;
+            if (idx === -1 || swapIdx < 0 || swapIdx >= order.length) return;
+            [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+            try { localStorage.setItem(HOME_SECTION_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+            applyHomeSectionOrder();
+            renderHomeSectionEditControls();
+        }
+
+        window.toggleHomeSectionEditMode = function() {
+            homeSectionEditMode = !homeSectionEditMode;
+            const container = document.getElementById('home-sections-container');
+            if (container) container.classList.toggle('editing-sections', homeSectionEditMode);
+            const btn = document.getElementById('btn-edit-home-layout');
+            if (btn) btn.textContent = homeSectionEditMode ? '✅ 편집 완료' : '🧩 위젯 순서 편집';
+            if (homeSectionEditMode) renderHomeSectionEditControls();
+        }
+
+        Object.entries(HOME_SECTION_LABELS).forEach(([id, label]) => {
+            const labelEl = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-label`);
+            if (labelEl) labelEl.textContent = label;
+        });
+        applyHomeSectionOrder(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 순서를 바로 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
@@ -10290,7 +10387,11 @@
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
                 const container = document.getElementById('exam-notes-container'); container.innerHTML = '';
                 const data = {}; snap.forEach(d => { data[d.id] = d.data().text || ''; });
-                subjects.forEach(sub => {
+                // 기본 6과목 + 누군가 "+ 과목 추가"로 새로 만든 과목(exam_notes에 문서가 있으면) 전부 보여준다.
+                // 홈 위젯(listenToHomeWidgets의 targets)은 기본 6과목 배열을 그대로 쓰므로 새 과목이 거기엔 안 뜬다.
+                const allSubjects = [...subjects];
+                Object.keys(data).forEach(sub => { if (!allSubjects.includes(sub)) allSubjects.push(sub); });
+                allSubjects.forEach(sub => {
                     const row = document.createElement('div'); row.className = 'subject-row';
                     row.innerHTML = `<span class="subject-name">${sub}</span><textarea class="subject-input" id="note-${sub}" rows="1" placeholder="${sub} 범위를 업데이트하세요.">${escapeHtml(data[sub] || '')}</textarea><button onclick="saveExamNote('${sub}')" class="btn-sub" style="color:var(--primary); border-color:var(--primary);">저장</button>`;
                     container.appendChild(row);
@@ -10301,6 +10402,13 @@
             });
         }
         window.saveExamNote = async function(sub) { try { await setDoc(doc(fdb, 'exam_notes', sub), { text: document.getElementById(`note-${sub}`).value.trim() }); alert(`저장 완료`); } catch(e) {} }
+        // 새 과목을 exam_notes에 빈 문서로 만들어 목록에 추가한다 (2반 정회원이면 누구나 - 기존 시험범위 쓰기 권한과 동일).
+        window.addExamSubject = async function() {
+            const name = (prompt('추가할 과목명을 입력하세요.') || '').trim();
+            if (!name) return;
+            try { await setDoc(doc(fdb, 'exam_notes', name), { text: '' }, { merge: true }); }
+            catch (e) { alert('과목 추가 중 오류가 발생했습니다.'); }
+        }
 
         // 기존 calendar 구조(각 이벤트에 date 필드)를 그대로 유지하면서
         // 날짜/과목별로 그룹핑해 보여준다. 기존 {date, text} 형태의 옛날 게시물도 호환된다.
