@@ -10022,7 +10022,7 @@
                 if (!rec) return alert("곡을 찾을 수 없습니다.");
                 const url = URL.createObjectURL(rec.blob);
                 const playName = name || rec.title || rec.name;
-                window.MixTapeApp.playAdHoc(url, playName);
+                window.MixTapeApp.playAdHoc(url, playName, rec.artwork || null);
                 // 공유 음악 재생과 동일하게 "지금 재생 중" 텍스트도 갱신한다 (이전에는 이 줄이 빠져 있었음)
                 const npEl = document.getElementById('music-home-nowplaying');
                 if (npEl) npEl.textContent = `🎵 ${playName}`;
@@ -12691,6 +12691,7 @@
   // 별개로 관리해서, 재생/일시정지 버튼이 엉뚱하게 재생목록 0번 곡을 시작해버리는 문제를 막는다.
   let isAdHocPlaying = false;
   let adHocName = null;
+  let adHocArtwork = null;
   let isShuffle = false;
   let repeatMode = 0; // 0 off, 1 repeat-all, 2 repeat-one
   let dragSrcIndex = null;
@@ -13776,6 +13777,7 @@
       if (isAdHocPlaying) {
         return {
           name: adHocName || '재생 중',
+          artwork: adHocArtwork || null,
           playing: mixtapeRoot ? mixtapeRoot.classList.contains('playing') : false,
           currentTime: audio.currentTime || 0,
           duration: audio.duration || 0,
@@ -13817,7 +13819,7 @@
     },
     // 1-2 Music: 기존 playlist/currentIndex를 건드리지 않고, 같은 audio 엘리먼트로 곡을 하나 바로 재생한다.
     // (SoundCloud처럼 "클릭하면 바로 재생"을 위한 최소 확장 - 기존 재생 목록 탐색과는 독립적으로 동작한다)
-    playAdHoc: function(url, name){
+    playAdHoc: function(url, name, artwork){
       try {
         audio.pause();
         audio.src = url;
@@ -13825,6 +13827,7 @@
         audio.play();
         isAdHocPlaying = true;
         adHocName = name || null;
+        adHocArtwork = artwork || null;
         if (mixtapeRoot) mixtapeRoot.classList.add('playing');
         notifyMiniWidgetMixtape();
       } catch (e) { console.warn('1-2 Music 임시 재생 실패:', e); }
