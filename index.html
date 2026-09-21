@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="한일고 1-2">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1-2 커뮤니티 4.0</title>
+    <title>이리</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -437,6 +437,13 @@
         .feed-post-footer > span:first-child { display: flex; align-items: center; gap: 16px; }
         .feed-comment-count { color: var(--text-muted); font-weight: 600; cursor: pointer; }
         .feed-divider { display: none; } /* 게시글이 이제 각자 카드 틀을 가지므로 카드 사이 얇은 구분선은 중복되어 숨김 */
+
+        /* 피드 페이지네이션: 누적 높이가 3000px를 넘으면 다음 페이지로 나누고, 하단에 1~5, 6~10처럼
+           5페이지씩 묶어서 보여준다. 양 끝 화살표로 이전/다음 묶음으로 이동한다. */
+        .community-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 18px; padding-top: 4px; }
+        .community-page-btn, .community-page-arrow { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+        .community-page-btn:hover, .community-page-arrow:hover { background: var(--surface-color); }
+        .community-page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
         /* ⋯ 게시글 메뉴 (삭제 등 - 항상 노출된 빨간 텍스트 대신 열어야 보이는 메뉴로) */
         .post-menu-wrap { position: relative; display: inline-block; }
@@ -2001,6 +2008,8 @@
                     <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:8px;">강조색</div>
                     <div id="settings-accent-swatches" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
                 </div>
+
+                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.0</div>
             </div>
         </div>
 
@@ -7862,8 +7871,19 @@
         let communityTab = 'all'; // 'all' | 'latest' | 'popular' (사진은 별도 탭이 아니라 게시글 콘텐츠로만 표현한다)
         window.setCommunityTab = function(tab) {
             communityTab = tab;
+            communityFeedPage = 1;
             document.querySelectorAll('.community-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
             renderPostsList(latestPostsData);
+        };
+
+        // 피드 페이지네이션 상태. 검색어가 바뀌면 renderFeedList 안에서 감지해서 1페이지로 되돌린다.
+        let communityFeedPage = 1;
+        let communityFeedLastQuery = '';
+        window.goToCommunityFeedPage = function(page) {
+            communityFeedPage = page;
+            renderPostsList(latestPostsData);
+            const scrollHost = document.getElementById('community-feed-view');
+            if (scrollHost) scrollHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
         // --- 피드 / 글쓰기 / 상세 화면 전환 ---
@@ -8057,7 +8077,7 @@
                     const bodyText = escapeNoticeText(richContentPreviewText(post, 'contentHTML', 'content', 150));
 
                     html += `
-                        <article class="feed-post" onclick="openPostDetail('${postId}')">
+                        <article class="feed-post" data-post-idx="${idx}" onclick="openPostDetail('${postId}')">
                             <div class="feed-post-meta">
                                 <span class="feed-post-author">${displayAuthor}</span>
                                 <span class="feed-post-date">${formatPostTimeOrDash(post.createdAt)}</span>
@@ -8086,6 +8106,86 @@
                 });
                 html += `</div>`;
                 container.innerHTML = html;
+
+                if (query !== communityFeedLastQuery) {
+                    communityFeedLastQuery = query;
+                    communityFeedPage = 1;
+                }
+                applyFeedPagination(container);
+                bindFeedImageRecalc(container);
+        }
+
+        // 이미지가 로드되기 전엔 높이를 알 수 없어서(특히 그리드 이미지) 페이지 경계 계산이 틀어질 수 있다.
+        // 이미지 로드가 끝날 때마다 페이지네이션을 다시 계산해서 보정한다.
+        let feedPaginationRecalcTimer = null;
+        function scheduleFeedPaginationRecalc(container) {
+            if (feedPaginationRecalcTimer) clearTimeout(feedPaginationRecalcTimer);
+            feedPaginationRecalcTimer = setTimeout(() => {
+                if (document.body.contains(container)) applyFeedPagination(container);
+            }, 150);
+        }
+        function bindFeedImageRecalc(container) {
+            container.querySelectorAll('img:not([data-pgbound])').forEach((img) => {
+                img.dataset.pgbound = '1';
+                if (img.complete) return; // 이미 캐시돼서 로드 완료 상태면 최초 measurement에 이미 반영돼 있다
+                const handler = () => scheduleFeedPaginationRecalc(container);
+                img.addEventListener('load', handler, { once: true });
+                img.addEventListener('error', handler, { once: true });
+            });
+        }
+
+        // 렌더링된 .feed-post들의 실제 높이를 재서 누적 3000px가 넘을 때마다 다음 페이지로 나눈다.
+        // 게시글마다 이미지 유무/본문 길이가 달라서 페이지당 글 개수는 고정이 아니라 매번 다시 계산된다.
+        function applyFeedPagination(container) {
+            const posts = Array.from(container.querySelectorAll('.feed-post'));
+            const oldPagination = container.querySelector('.community-pagination');
+            if (oldPagination) oldPagination.remove();
+            if (posts.length === 0) return;
+
+            const PAGE_HEIGHT_LIMIT = 3000;
+            const pageOfPost = [];
+            let cumulative = 0;
+            let page = 1;
+            posts.forEach((el) => {
+                const marginBottom = parseFloat(getComputedStyle(el).marginBottom) || 0;
+                const elHeight = el.offsetHeight + marginBottom;
+                if (cumulative > 0 && cumulative + elHeight > PAGE_HEIGHT_LIMIT) {
+                    page++;
+                    cumulative = 0;
+                }
+                cumulative += elHeight;
+                pageOfPost.push(page);
+            });
+            const totalPages = page;
+
+            if (communityFeedPage > totalPages) communityFeedPage = totalPages;
+            if (communityFeedPage < 1) communityFeedPage = 1;
+
+            posts.forEach((el, i) => {
+                el.style.display = (pageOfPost[i] === communityFeedPage) ? '' : 'none';
+            });
+
+            if (totalPages > 1) {
+                container.insertAdjacentHTML('beforeend', communityFeedPaginationHTML(communityFeedPage, totalPages));
+            }
+        }
+
+        function communityFeedPaginationHTML(currentPage, totalPages) {
+            const groupSize = 5;
+            const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+            const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
+            let html = '<div class="community-pagination">';
+            if (groupStart > 1) {
+                html += `<button class="community-page-arrow" onclick="goToCommunityFeedPage(${groupStart - 1})">&lt;</button>`;
+            }
+            for (let p = groupStart; p <= groupEnd; p++) {
+                html += `<button class="community-page-btn ${p === currentPage ? 'active' : ''}" onclick="goToCommunityFeedPage(${p})">${p}</button>`;
+            }
+            if (groupEnd < totalPages) {
+                html += `<button class="community-page-arrow" onclick="goToCommunityFeedPage(${groupEnd + 1})">&gt;</button>`;
+            }
+            html += '</div>';
+            return html;
         }
 
         function renderPostDetailView(postsData) {
