@@ -2091,7 +2091,7 @@
                         <div id="daily-missions-widget">불러오는 중...</div>
                     </div>
                     <div class="card" data-widget-id="w-period">
-                        <div class="card-title">🕒 지금 학교는</div>
+                        <div class="card-title">🕒 지금 우리 학교는</div>
                         <div id="current-period-widget">불러오는 중...</div>
                     </div>
                 </div>
@@ -3226,8 +3226,11 @@
 
     <!-- ① Music Home -->
     <div id="music-panel-home" class="music-panel active">
-        <input type="text" id="music-home-search" class="auth-input" placeholder="🔍 노래, 가수 또는 키워드 검색" style="margin-bottom:20px; padding:14px 18px; font-size:15px;" onkeydown="if(event.key==='Enter') runMusicHomeSearch()">
+        <input type="text" id="music-home-search" class="auth-input" placeholder="🔍 노래, 가수 또는 키워드 검색" style="margin-bottom:20px; padding:14px 18px; font-size:15px;" oninput="runMusicHomeSearch()">
 
+        <div id="music-home-search-results" style="display:none;"></div>
+
+        <div id="music-home-default-sections">
         <div class="card music-home-nowplaying-card" style="margin-bottom:18px;">
             <div class="card-title">▶️ 재생 중</div>
             <div id="music-home-nowplaying" class="widget-text">재생 중인 곡이 없습니다.</div>
@@ -3263,6 +3266,7 @@
                 <div class="card-title" style="font-size:13px;">❤️ 좋아요</div>
                 <div id="music-home-likecount" class="widget-text">불러오는 중...</div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -9961,6 +9965,37 @@
             });
         }
 
+        // 내 음악 트랙 카드 하나의 HTML. mymusic-list와 Music Home 검색 결과 둘 다에서 재사용한다.
+        // 앨범아트를 Blob에서 object URL로 새로 만들 때마다 호출부가 나중에 해제할 수 있도록
+        // artworkUrlsSink 배열에 push해둔다 (호출부마다 자기 화면 영역의 URL을 따로 관리).
+        function myMusicTrackCardHTML(t, artworkUrlsSink) {
+            const title = t._title != null ? t._title : (t.title || t.name || '제목 없음');
+            const artist = t._artist != null ? t._artist : (t.artist || '');
+            const safeName = escapeNoticeText(title).replace(/'/g, "\\'");
+            let artHtml = musicTrackIcon();
+            if (t.artwork) {
+                const artUrl = URL.createObjectURL(t.artwork);
+                artworkUrlsSink.push(artUrl);
+                artHtml = `<img src="${artUrl}" onerror="this.parentElement.textContent='${musicTrackIcon()}'">`;
+            }
+            return `
+                <div class="music-track-card" style="margin-bottom:8px;">
+                    <div class="music-track-top">
+                        <div class="music-track-art">${artHtml}</div>
+                        <div style="min-width:0; flex:1;">
+                            <div class="music-track-title">${escapeNoticeText(title)}</div>
+                            <div class="music-track-artist">${artist ? escapeNoticeText(artist) : (t.sourceType === 'community' ? '친구 공유 음악' : '아티스트 미상')}</div>
+                        </div>
+                    </div>
+                    <div class="music-track-actions">
+                        <span onclick="playMyMusicTrack(${t.id}, '${safeName}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>
+                        <span onclick="openAddSingleTrackModal(${t.id})">＋ 플레이리스트</span>
+                        <span onclick="deleteMyMusicTrack(${t.id})" style="color:#ef4444;">삭제</span>
+                    </div>
+                </div>
+            `;
+        }
+
         // 🎵 내 음악 (플레이리스트와 무관한 전체 라이브러리 뷰)
         // 렌더링할 때마다 앨범아트용 object URL을 새로 만드므로, 이전 것들을 여기 모아뒀다가
         // 다음 렌더링 직전에 해제한다 (안 그러면 검색/정렬할 때마다 URL이 계속 쌓여서 샌다).
@@ -9986,31 +10021,7 @@
                 }
                 myMusicArtworkUrls.forEach(url => URL.revokeObjectURL(url));
                 myMusicArtworkUrls = [];
-                listEl.innerHTML = filtered.map(t => {
-                    const safeName = escapeNoticeText(t._title).replace(/'/g, "\\'");
-                    let artHtml = musicTrackIcon();
-                    if (t.artwork) {
-                        const artUrl = URL.createObjectURL(t.artwork);
-                        myMusicArtworkUrls.push(artUrl);
-                        artHtml = `<img src="${artUrl}" onerror="this.parentElement.textContent='${musicTrackIcon()}'">`;
-                    }
-                    return `
-                        <div class="music-track-card" style="margin-bottom:8px;">
-                            <div class="music-track-top">
-                                <div class="music-track-art">${artHtml}</div>
-                                <div style="min-width:0; flex:1;">
-                                    <div class="music-track-title">${escapeNoticeText(t._title)}</div>
-                                    <div class="music-track-artist">${t._artist ? escapeNoticeText(t._artist) : (t.sourceType === 'community' ? '친구 공유 음악' : '아티스트 미상')}</div>
-                                </div>
-                            </div>
-                            <div class="music-track-actions">
-                                <span onclick="playMyMusicTrack(${t.id}, '${safeName}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>
-                                <span onclick="openAddSingleTrackModal(${t.id})">＋ 플레이리스트</span>
-                                <span onclick="deleteMyMusicTrack(${t.id})" style="color:#ef4444;">삭제</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                listEl.innerHTML = filtered.map(t => myMusicTrackCardHTML(t, myMusicArtworkUrls)).join('');
             } catch (e) {
                 console.error('내 음악 로딩 오류:', e);
                 listEl.innerHTML = `<div class="card" style="text-align:center; color:var(--text-muted);">불러오지 못했습니다.<br>잠시 후 다시 시도해주세요.</div>`;
@@ -10407,13 +10418,56 @@
             } catch (e) { return new Set(); }
         }
 
-        window.runMusicHomeSearch = function() {
-            const q = document.getElementById('music-home-search')?.value || '';
-            switchMusicSection('shared');
-            setTimeout(() => {
-                const sharedInput = document.getElementById('music-shared-search');
-                if (sharedInput) { sharedInput.value = q; renderSharedMusicList(); }
-            }, 0);
+        // Music Home 검색: 다른 탭으로 이동시키지 않고, 공유 음악/내 음악 양쪽 결과를 이 화면 안에서
+        // 구분해서 보여준다. sharedMusicCache가 아직 한 번도 안 불러와졌으면(공유 음악 탭에 들어간
+        // 적 없으면) 먼저 채워두고, 그 다음부터는 매 입력마다 캐시를 그대로 필터링만 한다.
+        let musicHomeSearchArtworkUrls = [];
+        window.runMusicHomeSearch = async function() {
+            const q = (document.getElementById('music-home-search')?.value || '').trim().toLowerCase();
+            const resultsEl = document.getElementById('music-home-search-results');
+            const defaultEl = document.getElementById('music-home-default-sections');
+            if (!resultsEl || !defaultEl) return;
+
+            if (!q) {
+                resultsEl.style.display = 'none';
+                resultsEl.innerHTML = '';
+                defaultEl.style.display = 'block';
+                return;
+            }
+            defaultEl.style.display = 'none';
+            resultsEl.style.display = 'block';
+            resultsEl.innerHTML = '<div class="widget-text">검색 중...</div>';
+
+            if (Object.keys(sharedMusicCache).length === 0) {
+                try { await loadSharedMusic(); } catch (e) { /* loadSharedMusic이 자체적으로 에러 UI를 처리 */ }
+            }
+            const sharedMatches = Object.values(sharedMusicCache).filter(t =>
+                (t.title || '').toLowerCase().includes(q) || (t.artist || '').toLowerCase().includes(q)
+            );
+
+            let myMatches = [];
+            try {
+                const myTracks = await musicDbGetAllTracks();
+                myMatches = myTracks
+                    .map(t => ({ ...t, _title: t.title || t.name || '제목 없음', _artist: t.artist || '' }))
+                    .filter(t => t._title.toLowerCase().includes(q) || t._artist.toLowerCase().includes(q));
+            } catch (e) { console.warn('내 음악 검색 오류:', e); }
+
+            // 이번 검색 결과에서 새로 만든 앨범아트 URL이 이전 검색 결과 것을 대체하므로, 교체 직전에 해제한다.
+            musicHomeSearchArtworkUrls.forEach(url => URL.revokeObjectURL(url));
+            musicHomeSearchArtworkUrls = [];
+
+            let html = `<div class="dashboard-section-title">👥 공유 음악 (${sharedMatches.length})</div>`;
+            html += sharedMatches.length
+                ? `<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:22px;">${sharedMatches.map(t => renderMusicTrackCard(t, sharedMusicLikedIds, sharedMusicDownloadedIds)).join('')}</div>`
+                : `<div class="widget-text" style="margin-bottom:22px;">일치하는 공유 음악이 없습니다.</div>`;
+
+            html += `<div class="dashboard-section-title">🎵 내 음악 (${myMatches.length})</div>`;
+            html += myMatches.length
+                ? myMatches.map(t => myMusicTrackCardHTML(t, musicHomeSearchArtworkUrls)).join('')
+                : `<div class="widget-text">일치하는 내 음악이 없습니다.</div>`;
+
+            resultsEl.innerHTML = html;
         };
 
         function fmtMusicHomeTime(sec) {
