@@ -330,7 +330,12 @@
         }
 
         /* 메인 & 탭 컨트롤 */
-        .main { padding: 40px; overflow-y: auto; margin-left: 78px; width: calc(100% - 78px); box-sizing: border-box; min-height: 100vh; }
+        .main { padding: 40px; overflow-y: auto; margin-left: 78px; width: calc(100% - 78px); box-sizing: border-box; min-height: 100vh; transition: margin-left 0.25s cubic-bezier(.4,0,.2,1), width 0.25s cubic-bezier(.4,0,.2,1); }
+        /* "사이드바 항상 펼치기" 설정(pinned-expanded)일 때는 hover 미리보기와 달리 실제로 폭을 차지하도록,
+           예전 4.0처럼 본문 영역이 사이드바 폭만큼 오른쪽으로 밀려나게 한다 (모바일 드로어 방식과는 무관하므로 데스크톱 폭에서만 적용). */
+        @media (min-width: 769px) {
+            .sidebar.pinned-expanded ~ .main { margin-left: 260px; width: calc(100% - 260px); }
+        }
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
