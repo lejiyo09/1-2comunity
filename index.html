@@ -1762,11 +1762,16 @@
 </head>
 <body>
     <div id="auth-container">
+        <span id="auth-container-close" onclick="hideLoginScreen()" style="display:none; position:absolute; top:20px; right:24px; font-size:26px; color:var(--text-muted); cursor:pointer; z-index:2;">&times;</span>
         <div class="auth-card" id="login-form">
             <div class="auth-title">한일고 1-2 대시보드</div>
             <div class="auth-subtitle">학교 이메일 계정으로 로그인하세요.</div>
             <input type="email" id="login-email" class="auth-input" placeholder="학교 이메일 (예: 20261206@hanilgo.cnehs.kr)">
             <input type="password" id="login-password" class="auth-input" placeholder="비밀번호">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted); margin-bottom:12px; cursor:pointer;">
+                <input type="checkbox" id="login-remember-me" checked style="width:auto; margin:0;">
+                로그인 상태 저장 (체크 해제 시 브라우저를 닫으면 로그아웃돼요)
+            </label>
             <button class="auth-btn" id="btn-login">로그인</button>
             <div class="auth-toggle" onclick="toggleAuthForm(false)">계정이 없으신가요? <span>회원가입</span></div>
         </div>
@@ -1792,10 +1797,14 @@
                 </div>
 
                 <div class="sidebar-expand-only">
-                    <div class="user-profile" id="user-profile-card">
+                    <div class="user-profile" id="user-profile-card" style="display:none;">
                         <div id="profile-nick-line" style="margin-bottom:6px;">👤 <strong id="profile-nick-text">불러오는 중...</strong></div>
                         <div id="profile-role-line" style="color:var(--text-secondary); margin-bottom:10px;">소속: <span id="profile-role-text">—</span></div>
                         <button onclick="setNickname()" style="width:100%; padding:6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer;">✏️ 닉네임 설정/변경</button>
+                    </div>
+                    <div class="user-profile" id="guest-login-card" style="display:none;">
+                        <div style="margin-bottom:8px; font-size:12.5px; color:var(--text-secondary);">로그인하지 않은 상태예요. 둘러보는 건 자유롭지만, 글쓰기·좋아요 같은 활동은 로그인이 필요해요.</div>
+                        <button onclick="showLoginScreen()" style="width:100%; padding:8px; font-size:13px; border-radius:6px; border:none; background:var(--primary); color:#fff; font-weight:700; cursor:pointer;">🔑 로그인</button>
                     </div>
                 </div>
 
@@ -3489,7 +3498,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, set, update, push, remove, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         // Firestore SDK 추가 - 정적/영구 커뮤니티 데이터(게시글/아카이브/공지/설문/프로필 등)는 이제 여기로 저장한다.
         // RTDB의 runTransaction과 이름이 겹치므로 Firestore 쪽은 fsRunTransaction으로 별칭을 준다.
         // Firestore 인스턴스는 "(default)" 데이터베이스를 쓰며 getFirestore(app, "community") 같은 지정을 하지 않는다.
@@ -3580,6 +3589,7 @@
         
         let profilesData = {}; // 스쿼드 연동용
         let isListeningToPosts = false;
+        let isListeningToGuestReadable = false; // 로그인 없이도 볼 수 있는 커뮤니티/공지/자료실 구독 여부
         let isListeningToSquad = false;
         let activeStudentNum = null;
 
@@ -3651,7 +3661,13 @@
         });
 
         document.getElementById('btn-login').addEventListener('click', async () => {
-            try { await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value); }
+            try {
+                const rememberMe = document.getElementById('login-remember-me')?.checked !== false;
+                // 체크하면(기본값) 브라우저를 닫아도 로그인이 유지되고, 체크 해제하면 탭/브라우저를
+                // 닫는 순간 로그아웃된다 (같은 계정으로 이후 다시 signIn하면 그때 선택으로 갱신됨).
+                await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+                await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value);
+            }
             catch(e) { alert("로그인 실패"); }
         });
 
@@ -3880,14 +3896,26 @@
 // --- 인증 & 권한 상태 변경 감지 ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                document.getElementById('auth-container').style.display = 'none'; 
+                document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('app-container').classList.add('authenticated');
-                
+
+                if (user.isAnonymous) {
+                    // 게스트(비로그인 열람) 모드: currentUser/currentUserInfo는 절대 채우지 않는다 -
+                    // 이래야 앱 전체에 이미 깔려있는 "!currentUser면 로그인 필요" 가드들이
+                    // 하나도 손대지 않아도 그대로 상호작용을 막아준다. 여기서는 읽기 전용 구독과
+                    // 사이드바 UI만 guest 모드로 맞춘다.
+                    applyGuestUI();
+                    return;
+                }
+
                 onValue(ref(db, `users/${user.uid}`), (snapshot) => {
                     const d = snapshot.val();
                     if(d) {
-                        currentUser = user; 
+                        currentUser = user;
                         currentUserInfo = d;
+                        // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
+                        document.getElementById('guest-login-card').style.display = 'none';
+                        document.getElementById('user-profile-card').style.display = 'block';
                         const is2Ban = d.role === "class2_member";
 
                         isAdmin = (d.grade === "1" && d.ban === "2" && parseInt(d.number) === 30);
@@ -4005,7 +4033,10 @@
                         }
 
                         if (is2Ban && !isListeningToPosts) {
-                            listenToPosts(); listenToArchive(); listenToArchiveStudy(); listenToArchiveEtc(); listenToExamNotes(); listenToCalendar(); listenToSeating(); listenToPokemonPosts(); listenToGames(); listenToGameCategories(); loadSupabaseMaterials();
+                            // listenToPosts/listenToArchiveStudy/listenToArchiveEtc/loadSupabaseMaterials는
+                            // 게스트 모드에서 이미 구독했을 수 있으니(isListeningToGuestReadable) 중복 구독하지 않는다.
+                            if (!isListeningToGuestReadable) { listenToPosts(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials(); isListeningToGuestReadable = true; }
+                            listenToArchive(); listenToExamNotes(); listenToCalendar(); listenToSeating(); listenToPokemonPosts(); listenToGames(); listenToGameCategories();
                             isListeningToPosts = true;
                         } else if (is2Ban) {
                             // 이미 리스닝 중이더라도 로그인 정보가 갱신되며 isAdmin이 바뀔 수 있으므로 버튼 표시 등을 다시 그려준다
@@ -4014,11 +4045,48 @@
                         if (!isListeningToSquad) { listenToSquad(); isListeningToSquad = true; }
                     }
                 });
-            } else { 
-                document.getElementById('auth-container').style.display = 'flex'; 
-                document.getElementById('app-container').classList.remove('authenticated'); 
+            } else {
+                // 진짜 로그아웃 상태(익명 세션도 없음): 익명으로라도 로그인해서 커뮤니티를 읽을 수 있게
+                // 시도한다. 이 콜백이 다시 익명 사용자로 한 번 더 불려서 위 user.isAnonymous 분기를 탄다.
+                // 프로젝트에서 익명 로그인 자체가 꺼져있는 등 실패하면 기존처럼 로그인 화면만 보여준다.
+                signInAnonymously(auth).catch(() => {
+                    document.getElementById('auth-container').style.display = 'flex';
+                    document.getElementById('app-container').classList.remove('authenticated');
+                });
             }
         });
+
+        // ===== 게스트(비로그인) 열람 모드 =====
+        // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/게임/플래너/프로필/자리 등은 그대로 로그인 필요.
+        function applyGuestUI() {
+            document.getElementById('user-profile-card').style.display = 'none';
+            document.getElementById('guest-login-card').style.display = 'block';
+            document.getElementById('welcome-title').innerText = '둘러보는 중이에요 🏠';
+
+            const communitySecure = document.getElementById('community-secure-content');
+            const communityLocked = document.getElementById('community-locked-content');
+            if (communitySecure) communitySecure.style.display = 'block';
+            if (communityLocked) communityLocked.style.display = 'none';
+            const materialsSecure = document.getElementById('materials-secure-content');
+            const materialsLocked = document.getElementById('materials-locked-content');
+            if (materialsSecure) materialsSecure.style.display = 'block';
+            if (materialsLocked) materialsLocked.style.display = 'none';
+
+            if (!isListeningToGuestReadable) {
+                listenToPosts(); listenToNotices(); listenToPolls(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials();
+                isListeningToGuestReadable = true;
+            }
+        }
+
+        window.showLoginScreen = function() {
+            // 실제로 되돌아갈 게스트 세션이 있을 때만(=지금 익명으로만 로그인된 상태) 닫기 버튼을 보여준다.
+            const canDismiss = !currentUser && auth.currentUser && auth.currentUser.isAnonymous;
+            document.getElementById('auth-container-close').style.display = canDismiss ? 'block' : 'none';
+            document.getElementById('auth-container').style.display = 'flex';
+        };
+        window.hideLoginScreen = function() {
+            document.getElementById('auth-container').style.display = 'none';
+        };
 
         // =========================================================================
         // 홈 대시보드 자유 배치: 섹션(카테고리) 이름 변경, 섹션 순서, 위젯을 다른 섹션으로
@@ -7434,7 +7502,7 @@
         }
 
         window.submitScheduleForm = async function() {
-            if (!currentUser) return alert('로그인이 필요합니다.');
+            if (!currentUser) return showLoginScreen();
             const date = document.getElementById('schedule-form-date').value;
             const endDateInput = document.getElementById('schedule-form-enddate').value;
             const subject = document.getElementById('schedule-form-subject').value;
@@ -7856,7 +7924,7 @@
         // 좋아요/좋아요 수: 클릭 즉시 화면부터 바꾸고(낙관적 UI), 그 다음 Firestore 트랜잭션으로 실제 반영한다.
         // 실패하면 원래 상태로 되돌린다. (RTDB 시절과 동일한 원칙 - 실제 추가/취소 결과에 따라서만 likeCount를 ±1 한다.)
         window.toggleLike = async function(postId) {
-            if (!currentUser) return;
+            if (!currentUser) return showLoginScreen();
             const btn = document.getElementById(`like-btn-${postId}`);
             let optimisticLiked = null;
             if (btn) {
@@ -8134,7 +8202,8 @@
 
         // "+ 글쓰기" / 빠른 글쓰기 트리거는 항상 새 글 작성으로 시작한다 (수정 중이던 상태가 있으면 초기화)
         window.startNewPost = function() {
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             communityEditingPostId = null;
             const titleInput = document.getElementById('post-title');
             const contentEditable = document.getElementById('post-content');
@@ -10804,7 +10873,7 @@
             const fileInput = document.getElementById('music-share-file');
             const progressEl = document.getElementById('music-share-progress');
             const submitBtn = document.getElementById('music-share-submit-btn');
-            if (!currentUser) return alert("로그인이 필요합니다.");
+            if (!currentUser) return showLoginScreen();
             if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
             const file = fileInput.files.length > 0 ? fileInput.files[0] : null;
             if (!file) return alert("MP3 파일을 선택해주세요.");
@@ -10911,7 +10980,7 @@
 
         // 좋아요: optimistic UI - 클릭 즉시 반영 후 서버 요청, 실패하면 되돌린다.
         window.toggleMusicLike = async function(trackId) {
-            if (!currentUser) return alert("로그인이 필요합니다.");
+            if (!currentUser) return showLoginScreen();
             const btn = document.getElementById(`music-like-${trackId}`);
             const track = sharedMusicCache[trackId];
             const wasLiked = sharedMusicLikedIds.has(trackId);
