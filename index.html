@@ -343,12 +343,18 @@
         .header { margin-bottom: 30px; }
         .header h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
         .header p { color: var(--text-muted); font-size: 15px; }
-        /* 페이지 타이틀(각 탭의 .header h1/p)은 카드 배경 없이 페이지 배경(커스텀 배경화면 포함) 위에
-           바로 놓이므로, 어떤 배경이든 읽히도록 테두리를 준다. 색상 자체는 그대로 두고 테두리만 추가한다. */
-        .header h1, .header p {
+        /* 페이지 타이틀(각 탭의 .header h1)은 카드 배경 없이 페이지 배경(커스텀 배경화면 포함) 위에 바로
+           놓이므로, 게임 카드 제목처럼 테마와 무관하게 항상 흰 글씨 + 검은 테두리로 고정해 어떤 배경에서도
+           또렷하게 보이게 한다. */
+        .header h1 {
+            color: #fff;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
+        }
+        /* 세부 설명(.header p)은 기존과 동일하게 테마에 따라 테두리 색만 바꾸는 처리를 그대로 유지한다. */
+        .header p {
             text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
         }
-        body.gmw-site-dark .header h1, body.gmw-site-dark .header p {
+        body.gmw-site-dark .header p {
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 4px #000;
         }
 
@@ -482,11 +488,20 @@
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
         .dashboard-section-title { font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; margin: 4px 0 12px 2px; }
-        /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 순서 편집 UI - 개인별 커스텀, localStorage에만 저장 */
-        .home-section-controls { display: none; align-items: center; justify-content: space-between; background: var(--surface-secondary); border: 1px dashed var(--border-color); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
-        #home-sections-container.editing-sections .home-section-controls { display: flex; }
-        .home-section-arrows { display: flex; gap: 4px; }
+        /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 자유 배치 UI - 개인별 커스텀, localStorage에만 저장.
+           섹션 이름 변경(제목 input), 섹션 순서(화살표), 위젯을 다른 섹션으로 이동/순서 변경(카드별 편집 바)까지 지원. */
+        .home-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .dashboard-section-title-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; border: none; background: transparent; padding: 4px 2px; font-family: inherit; }
+        #home-sections-container.editing-sections .dashboard-section-title-input { border: 1px dashed var(--border-color); border-radius: 6px; padding: 4px 8px; background: var(--surface-secondary); cursor: text; }
+        .dashboard-section-title-input[readonly] { cursor: default; }
+        .home-section-arrows { display: none; gap: 4px; flex-shrink: 0; }
+        #home-sections-container.editing-sections .home-section-arrows { display: flex; }
         .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
+        #tab-home .home-section .card[data-widget-id] { position: relative; }
+        .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; gap: 4px; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        #home-sections-container.editing-sections .widget-edit-bar { display: flex; }
+        .widget-edit-bar button.btn-sub { padding: 2px 6px; font-size: 10px; }
+        .widget-edit-bar select { font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); padding: 2px 4px; max-width: 110px; }
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
@@ -1753,7 +1768,7 @@
                         <div class="nav-group-items">
                             <div class="nav-item nav-item-sub" data-tab="meal" onclick="switchTab('meal')"><span class="nav-label">급식표</span></div>
                             <div class="nav-item nav-item-sub" data-tab="timetable" onclick="switchTab('timetable')"><span class="nav-label">시간표 커스텀</span></div>
-                            <div class="nav-item nav-item-sub" data-tab="schedule" onclick="switchTab('schedule')"><span class="nav-label">반 공용 일정</span></div>
+                            <div class="nav-item nav-item-sub" data-tab="schedule" onclick="switchTab('schedule')"><span class="nav-label">캘린더</span></div>
                             <div class="nav-item nav-item-sub" data-tab="exam" onclick="switchTab('exam')"><span class="nav-label">시험/수행평가</span></div>
                             <div class="nav-item nav-item-sub" data-tab="cleaning" onclick="switchTab('cleaning')"><span class="nav-label">청소 1인1역</span></div>
                             <div class="nav-item nav-item-sub" data-tab="squad" id="nav-squad" onclick="switchTab('squad')"><span class="nav-label">스쿼드 메이커</span></div>
@@ -1954,19 +1969,19 @@
                 <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                     <div>
                         <h1 id="welcome-title">반가워요!</h1>
-                        <p>슬기로운 1-2 학교생활 요약 정보 (클릭 시 상세 이동)</p>
+                        <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-top:6px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
                     </div>
                     <button id="btn-write-notice" class="auth-btn" style="display:none; width:auto; margin-top:4px; padding:10px 18px; font-size:13px; white-space:nowrap;" onclick="openNoticeComposer()">📢 공지 작성</button>
                 </div>
 
-                <button id="btn-edit-home-layout" class="btn-sub" style="width:auto; margin-bottom:14px; padding:8px 14px; font-size:12px;" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
-
                 <div id="home-sections-container">
                 <div class="home-section" data-section-id="shortcuts">
-                <div class="home-section-controls"><span class="home-section-label">🔗 바로가기</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">🔗 바로가기</div>
-                <div class="dashboard-grid">
-                    <div class="card" style="grid-column: span 3;">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="🔗 바로가기">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 3;">
                         <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
                             <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null)">+ 바로가기 추가</button>
                         </div>
@@ -1981,18 +1996,21 @@
                 </div>
 
                 <div class="home-section" data-section-id="priority-strip">
-                <div class="home-section-controls"><span class="home-section-label">⏱ 우선순위 (날씨·미션·지금 학교는)</span><span class="home-section-arrows"></span></div>
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="⏱ 우선순위 (날씨·미션·지금 학교는)">
+                    <span class="home-section-arrows"></span>
+                </div>
                 <!-- 우선순위 스트립: 왼쪽 날씨, 가운데 오늘의 미션(절반 크기로 축소), 오른쪽 지금 학교는 -->
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
-                    <div class="card">
+                <div class="dashboard-grid" data-section-grid style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
+                    <div class="card" data-widget-id="w-weather">
                         <div class="card-title">현재 날씨 🪟</div>
                         <div class="weather-info" id="weather-widget">데이터 동기화 중...</div>
                     </div>
-                    <div class="card">
+                    <div class="card" data-widget-id="w-missions">
                         <div class="card-title">🎯 오늘의 미션</div>
                         <div id="daily-missions-widget">불러오는 중...</div>
                     </div>
-                    <div class="card">
+                    <div class="card" data-widget-id="w-period">
                         <div class="card-title">🕒 지금 학교는</div>
                         <div id="current-period-widget">불러오는 중...</div>
                     </div>
@@ -2000,18 +2018,20 @@
                 </div>
 
                 <div class="home-section" data-section-id="today">
-                <div class="home-section-controls"><span class="home-section-label">📅 오늘 하루</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">📅 오늘 하루</div>
-                <div class="dashboard-grid">
-                    <div class="card clickable" onclick="switchTab('meal')">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="📅 오늘 하루">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card clickable" data-widget-id="w-meal" onclick="switchTab('meal')">
                         <div class="card-title" id="home-meal-title">오늘의 급식 🍱</div>
                         <div class="meal-desc" id="home-lunch-summary">로딩 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('timetable')">
+                    <div class="card clickable" data-widget-id="w-timetable" onclick="switchTab('timetable')">
                         <div class="card-title" id="home-timetable-title">오늘의 시간표 🗓️</div>
                         <div id="home-timetable-summary" class="widget-text">시간표를 불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('cleaning')">
+                    <div class="card clickable" data-widget-id="w-cleaning" onclick="switchTab('cleaning')">
                         <div class="card-title">청소 🧹</div>
                         <div id="home-cleaning-summary" style="font-size: 13px; padding: 4px 0;">불러오는 중...</div>
                     </div>
@@ -2019,33 +2039,35 @@
                 </div>
 
                 <div class="home-section" data-section-id="study-exam">
-                <div class="home-section-controls"><span class="home-section-label">📖 공부 & 시험</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">📖 공부 & 시험</div>
-                <div class="dashboard-grid">
-                    <div class="card clickable" onclick="openWeeklyReportModal()">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="📖 공부 & 시험">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card clickable" data-widget-id="w-report" onclick="openWeeklyReportModal()">
                         <div class="card-title">📊 이번 주 학습 리포트</div>
                         <div id="weekly-report-summary">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('exam')">
+                    <div class="card clickable" data-widget-id="w-exam" onclick="switchTab('exam')">
                         <div class="card-title">주요 과목 시험범위 📝</div>
                         <div id="home-exam-summary" class="widget-text">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" onclick="switchTab('schedule')">
+                    <div class="card clickable" data-widget-id="w-calendar" onclick="switchTab('schedule')">
                         <div class="card-title">일정 📅</div>
                         <div id="home-calendar-summary" class="widget-text">불러오는 중...</div>
                     </div>
-                    <div class="card clickable home-mini-card" onclick="switchTab('planner')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-planner-time" onclick="switchTab('planner')">
                         <div class="home-mini-title">📖 오늘의 공부</div>
                         <div class="home-mini-value" id="home-planner-time">공부 기록 없음</div>
                         <div class="home-mini-sub" id="home-planner-target">목표를 설정해보세요</div>
                         <div class="home-mini-progress"><div class="home-mini-progress-bar" id="home-planner-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="card clickable home-mini-card" onclick="switchTab('planner')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-planner-tasks" onclick="switchTab('planner')">
                         <div class="home-mini-title">📋 오늘 할 일</div>
                         <div class="home-mini-value" id="home-planner-tasks">0 / 0</div>
                         <div class="home-mini-sub">완료 / 전체</div>
                     </div>
-                    <div class="card clickable home-mini-card" onclick="switchTab('mixtape')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-mixtape" onclick="switchTab('mixtape')">
                         <div class="home-mini-title">📼 현재 재생</div>
                         <div class="home-mini-value" id="home-mixtape-track">재생 중인 곡 없음</div>
                         <div class="home-mini-sub" id="home-mixtape-status">대기 중</div>
@@ -2054,10 +2076,12 @@
                 </div>
 
                 <div class="home-section" data-section-id="poll-community">
-                <div class="home-section-controls"><span class="home-section-label">🗳️ 설문 & 소통</span><span class="home-section-arrows"></span></div>
-                <div class="dashboard-section-title">🗳️ 설문 & 소통</div>
-                <div class="dashboard-grid">
-                    <div class="card">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="🗳️ 설문 & 소통">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card" data-widget-id="w-poll">
                         <div class="card-title">
                             <span>🗳️ 반 설문</span>
                             <span id="btn-write-poll-wrap" style="display:none;">
@@ -2066,7 +2090,7 @@
                         </div>
                         <div id="poll-widget">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 2;">
+                    <div class="card clickable" data-widget-id="w-community" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 2;">
                         <div class="card-title">입만사니 인기글 (최근 1주) 🔥</div>
                         <div id="home-popular-posts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
                     </div>
@@ -2249,8 +2273,8 @@
             <div id="tab-schedule" class="tab-content">
                 <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                     <div>
-                        <h1>반 공용 일정 📅</h1>
-                        <p>수행평가/지필평가/학교행사 등 우리 반 모든 일정을 한 눈에 확인하세요</p>
+                        <h1>캘린더 📅</h1>
+                        <p>수행평가/지필평가/학교행사 등 반 공용 일정과 나만 보이는 개인 일정을 한 곳에서 확인하세요</p>
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
                         <div id="schedule-tag-filter-anchor" style="position:relative;">
@@ -2294,6 +2318,10 @@
                     <span class="close-btn" onclick="document.getElementById('schedule-composer-modal').style.display='none';">&times;</span>
                     <h3 id="schedule-composer-title" style="font-size:17px; font-weight:800; margin-bottom:16px; color:var(--text-main);">일정 추가</h3>
                     <input type="hidden" id="schedule-editing-id" value="">
+                    <label id="schedule-form-personal-label" style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:14px; cursor:pointer;">
+                        <input type="checkbox" id="schedule-form-personal" style="width:auto; margin:0;">
+                        🔒 개인 일정으로 등록 (나만 보임, 반 공용에는 안 뜸)
+                    </label>
                     <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">날짜</label>
                     <input type="date" id="schedule-form-date" class="auth-input" style="margin-bottom:12px;">
                     <label style="font-size:12px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">종료일 (여러 날에 걸친 일정인 경우에만 입력, 예: 9/28~10/2)</label>
@@ -2679,7 +2707,7 @@
             </div>
 
             <div id="tab-exam" class="tab-content">
-                <div class="header"><h1>📝 시험 / 수행평가 아카이브</h1><p>2반 공용 실시간 연동 노트 · 일정은 <span style="color:var(--primary); font-weight:700; cursor:pointer;" onclick="switchTab('schedule')">📅 반 공용 일정</span>에서 확인하세요</p></div>
+                <div class="header"><h1>📝 시험 / 수행평가 아카이브</h1><p>2반 공용 실시간 연동 노트 · 일정은 <span style="color:var(--primary); font-weight:700; cursor:pointer;" onclick="switchTab('schedule')">📅 캘린더</span>에서 확인하세요</p></div>
                 <div id="exam-secure-content" style="display: none;">
                     <div class="exam-container">
                         <div class="card" style="grid-column: 1 / -1;">
@@ -3852,7 +3880,7 @@
 
                         updatePokemonChampionsButton();
 
-                        listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule(); listenToShortcuts();
+                        listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule(); listenToPersonalSchedule(); listenToShortcuts();
                         // NEIS 학사일정 자동 동기화: 세션당 한 번만 시도하고, 브라우저별로 최근 동기화 후 일정 시간 내면 건너뛴다.
                         if (!neisSyncTriggered) {
                             neisSyncTriggered = true;
@@ -3876,77 +3904,163 @@
         });
 
         // =========================================================================
-        // 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통/우선순위 위젯) 순서 편집
+        // 홈 대시보드 자유 배치: 섹션(카테고리) 이름 변경, 섹션 순서, 위젯을 다른 섹션으로
+        // 이동, 섹션 안에서 위젯 순서까지 전부 자유롭게 편집.
         // - 완전히 개인별 커스텀이라 Firebase에 쓰지 않고 이 브라우저의 localStorage에만 저장한다.
         // - Firebase 규칙과 무관하게 항상 동작하고, 로그인 여부와도 무관하게(로그인 전에도) 적용된다.
         // =========================================================================
-        const HOME_SECTION_ORDER_KEY = 'hanilgo_home_section_order';
-        const HOME_SECTION_LABELS = {
-            'shortcuts': '🔗 바로가기',
-            'priority-strip': '⏱ 우선순위 (날씨·미션·지금 학교는)',
-            'today': '📅 오늘 하루',
-            'study-exam': '📖 공부 & 시험',
-            'poll-community': '🗳️ 설문 & 소통'
-        };
-        const DEFAULT_HOME_SECTION_ORDER = Object.keys(HOME_SECTION_LABELS);
+        const HOME_LAYOUT_KEY = 'hanilgo_home_layout_v2';
+        const DEFAULT_HOME_LAYOUT = [
+            { id: 'shortcuts', label: '🔗 바로가기', widgets: ['w-shortcuts'] },
+            { id: 'priority-strip', label: '⏱ 우선순위 (날씨·미션·지금 학교는)', widgets: ['w-weather', 'w-missions', 'w-period'] },
+            { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
+            { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
+            { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] }
+        ];
+        const DEFAULT_HOME_SECTION_IDS = DEFAULT_HOME_LAYOUT.map(s => s.id);
+        const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
         let homeSectionEditMode = false;
 
-        function loadHomeSectionOrder() {
+        function loadHomeLayout() {
             try {
-                const saved = JSON.parse(localStorage.getItem(HOME_SECTION_ORDER_KEY) || 'null');
-                // 순서 목록에 있는 섹션 id 구성이 지금 앱 버전과 완전히 같을 때만 신뢰한다
-                // (업데이트로 섹션이 추가/삭제됐으면 저장된 값을 버리고 기본 순서로 되돌아간다).
-                if (Array.isArray(saved) && saved.length === DEFAULT_HOME_SECTION_ORDER.length && DEFAULT_HOME_SECTION_ORDER.every(id => saved.includes(id))) return saved;
+                const saved = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
+                if (Array.isArray(saved) && saved.every(s => s && typeof s.id === 'string' && typeof s.label === 'string' && Array.isArray(s.widgets))) {
+                    // 저장된 레이아웃의 섹션 구성과 위젯 구성이 지금 앱 버전과 정확히 같을 때만 신뢰한다
+                    // (업데이트로 섹션/위젯이 추가·삭제됐으면 저장된 값을 버리고 기본 레이아웃으로 되돌아간다).
+                    const sameSections = saved.length === DEFAULT_HOME_SECTION_IDS.length && DEFAULT_HOME_SECTION_IDS.every(id => saved.some(s => s.id === id));
+                    const savedWidgetIds = saved.flatMap(s => s.widgets);
+                    const sameWidgets = savedWidgetIds.length === ALL_HOME_WIDGET_IDS.length
+                        && new Set(savedWidgetIds).size === ALL_HOME_WIDGET_IDS.length
+                        && ALL_HOME_WIDGET_IDS.every(id => savedWidgetIds.includes(id));
+                    if (sameSections && sameWidgets) return saved.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
+                }
             } catch (e) {}
-            return DEFAULT_HOME_SECTION_ORDER.slice();
+            return DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
         }
 
-        function applyHomeSectionOrder() {
+        function saveHomeLayout(layout) {
+            try { localStorage.setItem(HOME_LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {}
+        }
+
+        function applyHomeLayout() {
             const container = document.getElementById('home-sections-container');
             if (!container) return;
-            loadHomeSectionOrder().forEach(id => {
-                const el = container.querySelector(`.home-section[data-section-id="${id}"]`);
-                if (el) container.appendChild(el); // 순서대로 다시 appendChild하면 그 순서로 재배치된다
+            loadHomeLayout().forEach(section => {
+                const sectionEl = container.querySelector(`.home-section[data-section-id="${section.id}"]`);
+                if (!sectionEl) return;
+                container.appendChild(sectionEl); // 순서대로 다시 appendChild하면 섹션 순서가 그대로 재배치된다
+                const titleInput = sectionEl.querySelector('[data-section-title]');
+                if (titleInput && document.activeElement !== titleInput) titleInput.value = section.label;
+                const grid = sectionEl.querySelector('[data-section-grid]');
+                if (!grid) return;
+                section.widgets.forEach(widgetId => {
+                    const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (widgetEl) grid.appendChild(widgetEl); // 다른 섹션에 있던 위젯도 여기로 옮겨오고, 순서대로 재배치
+                });
             });
         }
 
-        function renderHomeSectionEditControls() {
-            const order = loadHomeSectionOrder();
-            order.forEach((id, idx) => {
-                const arrows = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-arrows`);
-                if (!arrows) return;
-                arrows.innerHTML = `
-                    ${idx > 0 ? `<button onclick="moveHomeSection('${id}', -1)" class="btn-sub">▲</button>` : ''}
-                    ${idx < order.length - 1 ? `<button onclick="moveHomeSection('${id}', 1)" class="btn-sub">▼</button>` : ''}
-                `;
+        function renderHomeEditControls() {
+            const layout = loadHomeLayout();
+            layout.forEach((section, sIdx) => {
+                const arrows = document.querySelector(`.home-section[data-section-id="${section.id}"] .home-section-arrows`);
+                if (arrows) {
+                    arrows.innerHTML = `
+                        ${sIdx > 0 ? `<button onclick="moveHomeSection('${section.id}', -1)" class="btn-sub">▲</button>` : ''}
+                        ${sIdx < layout.length - 1 ? `<button onclick="moveHomeSection('${section.id}', 1)" class="btn-sub">▼</button>` : ''}
+                    `;
+                }
+                const sectionOptionsHtml = layout.map(s => `<option value="${s.id}">${escapeHtml(s.label)}</option>`).join('');
+                section.widgets.forEach((widgetId, wIdx) => {
+                    const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (!widgetEl) return;
+                    let bar = widgetEl.querySelector(':scope > .widget-edit-bar');
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.className = 'widget-edit-bar';
+                        bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
+                        widgetEl.prepend(bar);
+                    }
+                    bar.innerHTML = `
+                        ${wIdx > 0 ? `<button class="btn-sub" onclick="moveWidget('${widgetId}', -1)">▲</button>` : ''}
+                        ${wIdx < section.widgets.length - 1 ? `<button class="btn-sub" onclick="moveWidget('${widgetId}', 1)">▼</button>` : ''}
+                        <select onchange="moveWidgetToSection('${widgetId}', this.value)">${sectionOptionsHtml}</select>
+                    `;
+                    bar.querySelector('select').value = section.id;
+                });
             });
         }
 
-        window.moveHomeSection = function(id, dir) {
-            const order = loadHomeSectionOrder();
-            const idx = order.indexOf(id);
+        function removeHomeWidgetEditBars() {
+            document.querySelectorAll('#home-sections-container .widget-edit-bar').forEach(el => el.remove());
+        }
+
+        window.moveHomeSection = function(sectionId, dir) {
+            const layout = loadHomeLayout();
+            const idx = layout.findIndex(s => s.id === sectionId);
             const swapIdx = idx + dir;
-            if (idx === -1 || swapIdx < 0 || swapIdx >= order.length) return;
-            [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
-            try { localStorage.setItem(HOME_SECTION_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
-            applyHomeSectionOrder();
-            renderHomeSectionEditControls();
+            if (idx === -1 || swapIdx < 0 || swapIdx >= layout.length) return;
+            [layout[idx], layout[swapIdx]] = [layout[swapIdx], layout[idx]];
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            renderHomeEditControls();
         }
+
+        window.moveWidget = function(widgetId, dir) {
+            const layout = loadHomeLayout();
+            const section = layout.find(s => s.widgets.includes(widgetId));
+            if (!section) return;
+            const idx = section.widgets.indexOf(widgetId);
+            const swapIdx = idx + dir;
+            if (swapIdx < 0 || swapIdx >= section.widgets.length) return;
+            [section.widgets[idx], section.widgets[swapIdx]] = [section.widgets[swapIdx], section.widgets[idx]];
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            renderHomeEditControls();
+        }
+
+        window.moveWidgetToSection = function(widgetId, targetSectionId) {
+            const layout = loadHomeLayout();
+            const fromSection = layout.find(s => s.widgets.includes(widgetId));
+            const toSection = layout.find(s => s.id === targetSectionId);
+            if (!fromSection || !toSection || fromSection === toSection) return;
+            fromSection.widgets = fromSection.widgets.filter(id => id !== widgetId);
+            toSection.widgets.push(widgetId); // 옮긴 섹션의 맨 끝에 추가 - 이후 ▲로 원하는 위치로 옮기면 됨
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            renderHomeEditControls();
+        }
+
+        window.renameHomeSection = function(sectionId, newLabel) {
+            const layout = loadHomeLayout();
+            const section = layout.find(s => s.id === sectionId);
+            if (!section) return;
+            section.label = newLabel.trim() || section.label;
+            saveHomeLayout(layout);
+            const titleInput = document.querySelector(`.home-section[data-section-id="${sectionId}"] [data-section-title]`);
+            if (titleInput) titleInput.value = section.label;
+            if (homeSectionEditMode) renderHomeEditControls(); // 다른 위젯의 "다른 섹션으로 이동" 목록 라벨도 갱신
+        }
+
+        // 섹션 제목 input에서 값이 바뀌면(엔터/포커스 아웃) 저장한다
+        document.getElementById('home-sections-container').addEventListener('change', (e) => {
+            if (!e.target.matches('[data-section-title]')) return;
+            const sectionEl = e.target.closest('.home-section');
+            if (sectionEl) window.renameHomeSection(sectionEl.dataset.sectionId, e.target.value);
+        });
 
         window.toggleHomeSectionEditMode = function() {
             homeSectionEditMode = !homeSectionEditMode;
             const container = document.getElementById('home-sections-container');
             if (container) container.classList.toggle('editing-sections', homeSectionEditMode);
+            document.querySelectorAll('#home-sections-container [data-section-title]').forEach(inp => { inp.readOnly = !homeSectionEditMode; });
             const btn = document.getElementById('btn-edit-home-layout');
             if (btn) btn.textContent = homeSectionEditMode ? '✅ 편집 완료' : '🧩 위젯 순서 편집';
-            if (homeSectionEditMode) renderHomeSectionEditControls();
+            if (homeSectionEditMode) renderHomeEditControls();
+            else removeHomeWidgetEditBars();
         }
 
-        Object.entries(HOME_SECTION_LABELS).forEach(([id, label]) => {
-            const labelEl = document.querySelector(`.home-section[data-section-id="${id}"] .home-section-label`);
-            if (labelEl) labelEl.textContent = label;
-        });
-        applyHomeSectionOrder(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 순서를 바로 적용
+        applyHomeLayout(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 레이아웃을 바로 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
@@ -6745,7 +6859,9 @@
         function scheduleTagColor(tag) { return SCHEDULE_TAG_COLORS[tag] || '#8b5cf6'; }
 
         let scheduleViewDate = new Date();
-        let scheduleCache = {};
+        let scheduleCache = {}; // 반 공용(dashboard/shared_schedule) + 내 개인 일정(users/{uid}/personal_schedule)을 합친 것. 각 항목에 _source: 'shared'|'personal'을 붙여 구분한다.
+        let sharedScheduleData = {};
+        let personalScheduleData = {};
         let scheduleSelectedDateKey = null;
         let scheduleEditingId = null;
         let scheduleActiveTagFilter = new Set(); // 비어있으면 전체 표시
@@ -6753,16 +6869,34 @@
 
         function updateScheduleComposerVisibility() {
             const btn = document.getElementById('btn-write-schedule');
-            if (btn) btn.style.display = canWriteSchedule ? 'inline-flex' : 'none';
+            // 반 공용 일정 쓰기 권한이 없어도, 로그인만 했으면 "나만 보이는" 개인 일정은 누구나 추가할 수 있다.
+            if (btn) btn.style.display = currentUser ? 'inline-flex' : 'none';
+        }
+
+        function rebuildScheduleCache() {
+            scheduleCache = {};
+            Object.entries(sharedScheduleData).forEach(([id, ev]) => { scheduleCache[id] = { ...ev, _source: 'shared' }; });
+            Object.entries(personalScheduleData).forEach(([id, ev]) => { scheduleCache[id] = { ...ev, _source: 'personal' }; });
+            renderScheduleCalendar();
+            renderCurrentPeriodWidget(); // 지필고사 D-day가 이 안에서 scheduleCache를 쓰므로 즉시 갱신
+            const dayModal = document.getElementById('schedule-day-modal');
+            if (scheduleSelectedDateKey && dayModal && dayModal.style.display === 'flex') renderScheduleDayList();
         }
 
         function listenToSharedSchedule() {
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
-                scheduleCache = snap.val() || {};
-                renderScheduleCalendar();
-                renderCurrentPeriodWidget(); // 지필고사 D-day가 이 안에서 scheduleCache를 쓰므로 즉시 갱신
-                const dayModal = document.getElementById('schedule-day-modal');
-                if (scheduleSelectedDateKey && dayModal && dayModal.style.display === 'flex') renderScheduleDayList();
+                sharedScheduleData = snap.val() || {};
+                rebuildScheduleCache();
+            });
+        }
+
+        // 개인 일정은 완전히 나만 보이므로 Firebase 규칙을 새로 만들 필요 없이, 이미 본인만 읽고 쓸 수 있는
+        // users/{uid} 아래에 저장한다 (users/$uid의 .read/.write가 auth.uid === $uid로 이미 제한돼 있음).
+        function listenToPersonalSchedule() {
+            if (!currentUser) { personalScheduleData = {}; rebuildScheduleCache(); return; }
+            onValue(ref(db, `users/${currentUser.uid}/personal_schedule`), (snap) => {
+                personalScheduleData = snap.val() || {};
+                rebuildScheduleCache();
             });
         }
 
@@ -6808,7 +6942,8 @@
                 let chipsHtml = ''; const maxShow = 2;
                 matched.slice(0, maxShow).forEach(ev => {
                     const c = scheduleTagColor((ev.tags || [])[0]);
-                    chipsHtml += `<div class="exam-cal-event-chip" style="background:${c}22; color:${c};">${ev.subject ? `[${ev.subject}] ` : ''}${escapeNoticeText(ev.title)}</div>`;
+                    const lock = ev._source === 'personal' ? '🔒 ' : '';
+                    chipsHtml += `<div class="exam-cal-event-chip" style="background:${c}22; color:${c};">${lock}${ev.subject ? `[${ev.subject}] ` : ''}${escapeNoticeText(ev.title)}</div>`;
                 });
                 if (matched.length > maxShow) chipsHtml += `<div class="exam-cal-more">+ ${matched.length - maxShow}개 더</div>`;
                 html += `<div class="exam-cal-day ${otherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}" style="${dim ? 'opacity:0.3;' : ''}" onclick="openScheduleDayModal('${dateKey}')">
@@ -6825,7 +6960,7 @@
             const d = new Date(dateKey + 'T00:00:00');
             const weekday = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
             document.getElementById('schedule-day-modal-title').innerText = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${weekday})`;
-            document.getElementById('btn-add-schedule-in-day').style.display = canWriteSchedule ? 'block' : 'none';
+            document.getElementById('btn-add-schedule-in-day').style.display = currentUser ? 'block' : 'none';
             renderScheduleDayList();
             document.getElementById('schedule-day-modal').style.display = 'flex';
         }
@@ -6837,20 +6972,25 @@
             listEl.innerHTML = events.map(ev => {
                 const tagsHtml = (ev.tags || []).map(t => `<span style="font-size:10px; padding:2px 6px; border-radius:5px; background:${scheduleTagColor(t)}22; color:${scheduleTagColor(t)}; margin-right:4px;">${t}</span>`).join('');
                 const rangeHtml = (ev.endDate && ev.endDate !== ev.date) ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${ev.date} ~ ${ev.endDate}</div>` : '';
+                const isPersonal = ev._source === 'personal';
+                const canEditThis = isPersonal || (ev._source === 'shared' && canWriteSchedule); // 개인 일정은 항상 본인 것 - 공용은 canWriteSchedule 필요
+                const personalBadge = isPersonal ? `<span style="font-size:10px; padding:2px 6px; border-radius:5px; background:var(--surface-secondary); color:var(--text-muted); margin-right:4px;">🔒 개인</span>` : '';
                 return `<div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                         <div style="font-size:14px; font-weight:700; color:var(--text-main);">${ev.subject ? `[${escapeNoticeText(ev.subject)}] ` : ''}${escapeNoticeText(ev.title)}</div>
-                        ${canWriteSchedule ? `<div style="display:flex; gap:8px; flex-shrink:0;"><span onclick="openScheduleComposer('${ev.id}')" style="cursor:pointer; font-size:12px; color:var(--primary); font-weight:600;">수정</span><span onclick="deleteScheduleEvent('${ev.id}')" style="cursor:pointer; font-size:12px; color:#ef4444; font-weight:600;">삭제</span></div>` : ''}
+                        ${canEditThis ? `<div style="display:flex; gap:8px; flex-shrink:0;"><span onclick="openScheduleComposer('${ev.id}')" style="cursor:pointer; font-size:12px; color:var(--primary); font-weight:600;">수정</span><span onclick="deleteScheduleEvent('${ev.id}')" style="cursor:pointer; font-size:12px; color:#ef4444; font-weight:600;">삭제</span></div>` : ''}
                     </div>
                     ${rangeHtml}
-                    ${tagsHtml ? `<div style="margin-top:6px;">${tagsHtml}</div>` : ''}
+                    ${(personalBadge || tagsHtml) ? `<div style="margin-top:6px;">${personalBadge}${tagsHtml}</div>` : ''}
                     ${ev.content ? `<div style="font-size:12px; color:var(--text-muted); margin-top:6px; white-space:pre-wrap;">${escapeNoticeText(ev.content)}</div>` : ''}
                 </div>`;
             }).join('');
         }
 
         window.openScheduleComposer = function(id) {
-            if (!canWriteSchedule) return;
+            if (!currentUser) return; // 로그인만 하면 개인 일정은 누구나 추가 가능 - 공용 쓰기 권한은 아래에서 별도 처리
+            const personalCheckbox = document.getElementById('schedule-form-personal');
+            if (id && scheduleCache[id] && scheduleCache[id]._source === 'shared' && !canWriteSchedule) return; // 남의 공용 일정을 권한 없이 열려는 시도 방지
             scheduleEditingId = id;
             document.getElementById('schedule-editing-id').value = id || '';
             const titleEl = document.getElementById('schedule-composer-title');
@@ -6864,6 +7004,9 @@
                 document.getElementById('schedule-form-title').value = ev.title || '';
                 document.getElementById('schedule-form-content').value = ev.content || '';
                 (ev.tags || []).forEach(t => scheduleFormSelectedTags.add(t));
+                // 수정할 때는 개인/공용 구분을 바꿀 수 없다 (원래 저장된 곳에 그대로 저장)
+                personalCheckbox.checked = ev._source === 'personal';
+                personalCheckbox.disabled = true;
             } else {
                 titleEl.textContent = '일정 추가';
                 document.getElementById('schedule-form-date').value = scheduleSelectedDateKey || '';
@@ -6871,6 +7014,9 @@
                 document.getElementById('schedule-form-subject').value = '국어';
                 document.getElementById('schedule-form-title').value = '';
                 document.getElementById('schedule-form-content').value = '';
+                // 반 공용 쓰기 권한이 없으면 개인 일정만 가능하므로 체크박스를 강제로 고정한다
+                personalCheckbox.checked = !canWriteSchedule;
+                personalCheckbox.disabled = !canWriteSchedule;
             }
             renderScheduleFormTags();
             document.getElementById('schedule-day-modal').style.display = 'none';
@@ -6891,19 +7037,29 @@
         }
 
         window.submitScheduleForm = async function() {
-            if (!canWriteSchedule || !currentUser) return alert('작성 권한이 없습니다.');
+            if (!currentUser) return alert('로그인이 필요합니다.');
             const date = document.getElementById('schedule-form-date').value;
             const endDateInput = document.getElementById('schedule-form-enddate').value;
             const subject = document.getElementById('schedule-form-subject').value;
             const title = document.getElementById('schedule-form-title').value.trim();
             const content = document.getElementById('schedule-form-content').value.trim();
+            const isPersonal = document.getElementById('schedule-form-personal').checked;
+            if (!isPersonal && !canWriteSchedule) return alert('반 공용 일정 작성 권한이 없습니다. "개인 일정으로 등록"을 체크해주세요.');
             if (!date || !title) return alert('날짜와 제목을 입력해주세요.');
             if (endDateInput && endDateInput < date) return alert('종료일은 시작 날짜보다 빠를 수 없습니다.');
             const endDate = endDateInput || date;
             const tags = Array.from(scheduleFormSelectedTags);
             try {
                 if (scheduleEditingId) {
-                    await update(ref(db, `dashboard/shared_schedule/${scheduleEditingId}`), { date, endDate, subject, title, content, tags, updatedAt: Date.now() });
+                    const existing = scheduleCache[scheduleEditingId];
+                    const path = existing && existing._source === 'personal'
+                        ? `users/${currentUser.uid}/personal_schedule/${scheduleEditingId}`
+                        : `dashboard/shared_schedule/${scheduleEditingId}`;
+                    await update(ref(db, path), { date, endDate, subject, title, content, tags, updatedAt: Date.now() });
+                } else if (isPersonal) {
+                    await push(ref(db, `users/${currentUser.uid}/personal_schedule`), {
+                        date, endDate, subject, title, content, tags, createdAt: Date.now()
+                    });
                 } else {
                     await push(ref(db, 'dashboard/shared_schedule'), {
                         date, endDate, subject, title, content, tags, source: 'manual',
@@ -6915,9 +7071,13 @@
         }
 
         window.deleteScheduleEvent = async function(id) {
-            if (!canWriteSchedule) return;
+            if (!currentUser) return;
+            const ev = scheduleCache[id];
+            if (!ev) return;
+            if (ev._source === 'shared' && !canWriteSchedule) return;
             if (!confirm('이 일정을 삭제하시겠습니까?')) return;
-            try { await remove(ref(db, `dashboard/shared_schedule/${id}`)); renderScheduleDayList(); } catch (e) {}
+            const path = ev._source === 'personal' ? `users/${currentUser.uid}/personal_schedule/${id}` : `dashboard/shared_schedule/${id}`;
+            try { await remove(ref(db, path)); renderScheduleDayList(); } catch (e) {}
         }
 
         // 팝오버가 열려 있는 동안의 "임시 선택 상태". `완료`를 눌러야 scheduleActiveTagFilter에 확정 반영된다.
