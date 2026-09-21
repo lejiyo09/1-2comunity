@@ -153,7 +153,7 @@
         }
         .sidebar-logo-collapsed { opacity: 1; }
         .sidebar-logo-expanded { opacity: 0; }
-        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { height: 84px; }
+        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { height: 92px; }
         .sidebar:hover .sidebar-logo-collapsed, .sidebar.mobile-open .sidebar-logo-collapsed, .sidebar.touch-expanded .sidebar-logo-collapsed, .sidebar.pinned-expanded .sidebar-logo-collapsed { opacity: 0; }
         .sidebar:hover .sidebar-logo-expanded, .sidebar.mobile-open .sidebar-logo-expanded, .sidebar.touch-expanded .sidebar-logo-expanded, .sidebar.pinned-expanded .sidebar-logo-expanded { opacity: 1; }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
@@ -271,6 +271,13 @@
         }
         .music-home-ctl-btn.primary:hover { filter: brightness(1.06); }
         .music-home-ctl-btn.toggle-on { color: var(--primary); border-color: var(--primary); background: var(--primary-soft, rgba(37,99,235,0.08)); }
+
+        /* Music Home의 "재생 중" 카드는 아래 트랙 카드들에 비해 너무 크게 느껴진다는 피드백 -
+           일반 .card보다 패딩/제목/버튼을 한 단계씩 줄인다 (다른 곳의 .card에는 영향 없음). */
+        .music-home-nowplaying-card { padding: 16px 18px; }
+        .music-home-nowplaying-card .card-title { font-size: 14px; margin-bottom: 8px; }
+        .music-home-nowplaying-card .music-home-ctl-btn { width: 28px; height: 28px; font-size: 11px; }
+        .music-home-nowplaying-card .music-home-ctl-btn.primary { width: 38px; height: 38px; font-size: 14px; }
         .notice-hub-tab { padding: 7px 16px; font-size: 13.5px; font-weight: 700; color: var(--text-muted); border: none; background: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s; }
         .notice-hub-tab.active { background: var(--card-bg); color: var(--primary); }
         .notice-hub-tab:hover:not(.active) { color: var(--text-main); }
@@ -3221,16 +3228,16 @@
     <div id="music-panel-home" class="music-panel active">
         <input type="text" id="music-home-search" class="auth-input" placeholder="🔍 노래, 가수 또는 키워드 검색" style="margin-bottom:20px; padding:14px 18px; font-size:15px;" onkeydown="if(event.key==='Enter') runMusicHomeSearch()">
 
-        <div class="card" style="margin-bottom:18px;">
+        <div class="card music-home-nowplaying-card" style="margin-bottom:18px;">
             <div class="card-title">▶️ 재생 중</div>
             <div id="music-home-nowplaying" class="widget-text">재생 중인 곡이 없습니다.</div>
-            <div id="music-home-player-controls" style="display:none; margin-top:14px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <div id="music-home-player-controls" style="display:none; margin-top:10px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                     <span id="music-home-cur-time" style="font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; width:34px;">0:00</span>
                     <input type="range" id="music-home-seek" min="0" max="100" value="0" step="0.1" style="flex:1; accent-color:var(--primary); cursor:pointer;" oninput="handleMusicHomeSeek(this.value)">
                     <span id="music-home-dur-time" style="font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; width:34px; text-align:right;">0:00</span>
                 </div>
-                <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
                     <button type="button" class="music-home-ctl-btn" id="music-home-shuffle-btn" onclick="window.MixTapeApp && window.MixTapeApp.toggleShuffle(); updateMusicHomePlayerWidget();" title="셔플">⤨</button>
                     <button type="button" class="music-home-ctl-btn" onclick="window.MixTapeApp && window.MixTapeApp.prevTrack(); setTimeout(updateMusicHomePlayerWidget, 50);" title="이전 곡">◀◀</button>
                     <button type="button" class="music-home-ctl-btn primary" id="music-home-playpause-btn" onclick="window.MixTapeApp && window.MixTapeApp.togglePlay(); setTimeout(updateMusicHomePlayerWidget, 50);" title="재생/일시정지">▶</button>
@@ -13248,7 +13255,15 @@
       const id = await dbAddPlaylist(trimmed);
       playlists.push({ id, name: trimmed, order: Date.now(), createdAt: Date.now() });
       dbReady = true;
-      await switchPlaylist(id);
+      // 다른 플레이리스트의 곡이 재생 중이면 방금 만든(비어있는) 플레이리스트로 전환하지 않는다 -
+      // switchPlaylist()는 항상 재생을 멈추기 때문에, 새 플레이리스트를 만들기만 했는데 듣던 음악이
+      // 끊기면 안 된다. 재생 중이 아닐 때는 기존처럼 바로 전환한다.
+      const isPlaying = mixtapeRoot ? mixtapeRoot.classList.contains('playing') : false;
+      if (isPlaying) {
+        renderDrawer();
+      } else {
+        await switchPlaylist(id);
+      }
     }catch(err){
       alert("플레이리스트를 만들지 못했어요.");
       console.warn(err);
