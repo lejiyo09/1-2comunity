@@ -136,17 +136,26 @@
         .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 2px 0; margin-bottom: 4px; flex-shrink: 0; overflow: visible; }
         .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { padding: 2px 14px; }
 
-        /* 접힘/펼침 모두 같은 로고 이미지를 쓴다 (기존 가로형 로고는 폐기) - width만 상태별로 바꿔서
-           자연스럽게 커지고 작아지게 한다. 사이드바 자체의 width transition과 같은 곡선을 써서 서로 안 어긋나게 맞춘다. */
-        .sidebar-logo { display: flex; align-items: center; justify-content: center; width: 100%; overflow: visible; }
+        /* 접힘: 정사각 캐릭터 아이콘 / 펼침: 가로형 워드마크 로고 - 서로 비율이 다른 이미지라
+           src를 바꿔치기하면 전환 중간에 "이미지가 툭 바뀌는" 느낌이 난다. 그래서 두 이미지를 같은
+           자리에 절대위치로 겹쳐두고, 사이드바 폭 transition과 같은 시간 동안 opacity만 크로스페이드한다.
+           object-fit:contain을 써서 두 이미지의 원본 비율이 서로 달라도 잘리지 않는다. */
+        .sidebar-logo { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; overflow: visible; transition: height 0.25s cubic-bezier(.4,0,.2,1); }
         .sidebar-logo img {
             display: block;
-            width: 48px;
-            height: auto;
-            max-width: 100%;
-            transition: width 0.25s cubic-bezier(.4,0,.2,1);
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            transition: opacity 0.2s ease;
         }
-        .sidebar:hover .sidebar-logo img, .sidebar.mobile-open .sidebar-logo img, .sidebar.touch-expanded .sidebar-logo img, .sidebar.pinned-expanded .sidebar-logo img { width: 108px; }
+        .sidebar-logo-collapsed { opacity: 1; }
+        .sidebar-logo-expanded { opacity: 0; }
+        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { height: 84px; }
+        .sidebar:hover .sidebar-logo-collapsed, .sidebar.mobile-open .sidebar-logo-collapsed, .sidebar.touch-expanded .sidebar-logo-collapsed, .sidebar.pinned-expanded .sidebar-logo-collapsed { opacity: 0; }
+        .sidebar:hover .sidebar-logo-expanded, .sidebar.mobile-open .sidebar-logo-expanded, .sidebar.touch-expanded .sidebar-logo-expanded, .sidebar.pinned-expanded .sidebar-logo-expanded { opacity: 1; }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
         .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
 
@@ -1769,7 +1778,8 @@
             <div class="sidebar-menu-container">
                 <div class="sidebar-header">
                     <div class="sidebar-logo">
-                        <img src="./assets/logo-collapsed.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <img class="sidebar-logo-collapsed" src="./assets/logo-collapsed.png" alt="1-2 Community 로고">
+                        <img class="sidebar-logo-expanded" src="./assets/logo-wide.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <span class="sidebar-logo-fallback-text" style="display:none; font-size:16px; font-weight:800; letter-spacing:-0.3px; background:linear-gradient(90deg, var(--brand-navy), var(--brand-blue)); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;">1-2</span>
                     </div>
                 </div>
