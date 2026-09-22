@@ -12450,7 +12450,7 @@
             const formData = new FormData(); formData.append("image", file);
             const btn = document.getElementById('btn-edit-photo'); btn.innerText = "업로드 중...⏳";
             try {
-                const res = await (await fetch(`https://api.imgbb.com/1/upload?key=37afe61736db6525f1a43617852ed660`, { method: "POST", body: formData })).json();
+                const res = await (await fetch(`https://api.imgbb.com/1/upload?key=075c3324867eb29b9d648b286c0ccfaf`, { method: "POST", body: formData })).json();
                 if(res.success) { document.getElementById('modal-img').src = res.data.url; alert("저장 버튼을 눌러야 영구 보관됩니다."); }
             } catch(e) {} finally { btn.innerText = "사진 변경"; }
         }
