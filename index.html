@@ -2645,11 +2645,14 @@
                     <span class="close-btn" onclick="closeMyMusicAddModal()">&times;</span>
                     <div class="card-title" style="margin-bottom: 10px;">🎵 내 음악 추가</div>
                     <div id="mymusic-add-filename" style="font-size:12px; color:var(--text-muted); margin-bottom:12px; word-break:break-all;"></div>
-                    <input type="file" id="mymusic-add-file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac" class="auth-input" style="margin-bottom:12px; padding:10px 14px; background:var(--input-bg); color:var(--text-main);" onchange="handleMyMusicFileSelected(event)">
-                    <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">제목</label>
-                    <input type="text" id="mymusic-add-title" class="auth-input" placeholder="곡 제목" style="margin-bottom: 12px; padding: 10px 14px;">
-                    <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">가수</label>
-                    <input type="text" id="mymusic-add-artist" class="auth-input" placeholder="가수명 (선택)" style="margin-bottom: 4px; padding: 10px 14px;">
+                    <input type="file" id="mymusic-add-file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac" multiple class="auth-input" style="margin-bottom:12px; padding:10px 14px; background:var(--input-bg); color:var(--text-main);" onchange="handleMyMusicFileSelected(event)">
+                    <div id="mymusic-add-single-fields">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">제목</label>
+                        <input type="text" id="mymusic-add-title" class="auth-input" placeholder="비워두면 파일 이름을 그대로 써요" style="margin-bottom: 12px; padding: 10px 14px;">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">가수</label>
+                        <input type="text" id="mymusic-add-artist" class="auth-input" placeholder="비워두면 '미상'으로 표시돼요" style="margin-bottom: 4px; padding: 10px 14px;">
+                    </div>
+                    <div id="mymusic-add-multi-note" style="display:none; font-size:12px; color:var(--text-muted); margin-bottom:4px;">여러 곡을 한 번에 추가해요. 제목/가수는 각 파일의 태그를 자동으로 쓰고, 없으면 제목은 파일 이름, 가수는 '미상'으로 저장돼요.</div>
                     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
                         <button class="btn-sub" onclick="closeMyMusicAddModal()">취소</button>
                         <button class="auth-btn" style="width:auto; margin-top:0; padding:10px 20px;" onclick="submitMyMusicAdd()">내 음악에 추가</button>
@@ -10681,43 +10684,96 @@
             document.getElementById('mymusic-add-title').value = '';
             document.getElementById('mymusic-add-artist').value = '';
             document.getElementById('mymusic-add-filename').textContent = '';
+            document.getElementById('mymusic-add-single-fields').style.display = 'block';
+            document.getElementById('mymusic-add-multi-note').style.display = 'none';
             myMusicAddArtworkBlob = null;
             document.getElementById('mymusic-add-modal').style.display = 'flex';
         };
         window.closeMyMusicAddModal = function() {
             document.getElementById('mymusic-add-modal').style.display = 'none';
         };
-        // 파일 선택 시 ID3 태그가 있으면 제목/가수/앨범아트를 미리 채운다 (없으면 파일명만 안내로 보여줌 - 억지로 채우지 않음)
+        // 파일명에서 확장자를 떼서 제목 기본값으로 쓴다 ("01. 좋은 노래.mp3" -> "01. 좋은 노래")
+        function stripFileExtension(filename) {
+            const idx = filename.lastIndexOf('.');
+            return idx > 0 ? filename.slice(0, idx) : filename;
+        }
+        // 파일 선택 시 ID3 태그가 있으면 제목/가수/앨범아트를 미리 채운다 (없으면 파일명만 안내로 보여줌 - 억지로 채우지 않음).
+        // 여러 개를 고르면 곡마다 따로 제목/가수를 입력할 수 없으므로, 그 자리에 안내 문구만 보여주고
+        // 실제 제목/가수는 submitMyMusicAdd에서 파일마다 태그(또는 파일명/'미상')로 자동 채운다.
         window.handleMyMusicFileSelected = async function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            document.getElementById('mymusic-add-filename').textContent = `📎 ${file.name}`;
+            const files = Array.from(event.target.files || []);
+            const filenameEl = document.getElementById('mymusic-add-filename');
+            const singleFields = document.getElementById('mymusic-add-single-fields');
+            const multiNote = document.getElementById('mymusic-add-multi-note');
+            myMusicAddArtworkBlob = null;
+            if (files.length === 0) return;
+
+            if (files.length > 1) {
+                filenameEl.textContent = `📎 ${files.length}개 파일 선택됨`;
+                singleFields.style.display = 'none';
+                multiNote.style.display = 'block';
+                return;
+            }
+
+            singleFields.style.display = 'block';
+            multiNote.style.display = 'none';
+            const file = files[0];
+            filenameEl.textContent = `📎 ${file.name}`;
             const titleInput = document.getElementById('mymusic-add-title');
             const artistInput = document.getElementById('mymusic-add-artist');
-            myMusicAddArtworkBlob = null;
             try {
                 const tags = await parseId3Tags(file);
                 if (!titleInput.value.trim() && tags.title) titleInput.value = tags.title;
                 if (!artistInput.value.trim() && tags.artist) artistInput.value = tags.artist;
                 myMusicAddArtworkBlob = tags.artworkBlob || null;
-            } catch (e) { /* 태그 없으면 사용자가 직접 입력 */ }
+            } catch (e) { /* 태그 없으면 사용자가 직접 입력하거나 비워둔다(빈 값은 파일명/'미상'으로 채워진다) */ }
         };
         window.submitMyMusicAdd = async function() {
             const fileInput = document.getElementById('mymusic-add-file');
-            const title = document.getElementById('mymusic-add-title').value.trim();
-            const artist = document.getElementById('mymusic-add-artist').value.trim();
-            const file = fileInput.files[0];
-            if (!file) return alert('MP3 파일을 선택해주세요.');
-            if (!title) return alert('제목을 입력해주세요.');
-            try {
-                await musicDbAddTrackOnly(file, title, artist, 'local', myMusicAddArtworkBlob);
-                closeMyMusicAddModal();
-                renderMyMusicList();
-                alert('내 음악에 추가되었습니다.');
-            } catch (e) {
-                console.error('내 음악 추가 오류:', e);
-                alert('추가에 실패했습니다.\n잠시 후 다시 시도해주세요.');
+            const files = Array.from(fileInput.files || []);
+            if (files.length === 0) return alert('MP3 파일을 선택해주세요.');
+
+            if (files.length === 1) {
+                const file = files[0];
+                const title = document.getElementById('mymusic-add-title').value.trim() || stripFileExtension(file.name);
+                const artist = document.getElementById('mymusic-add-artist').value.trim() || '미상';
+                try {
+                    await musicDbAddTrackOnly(file, title, artist, 'local', myMusicAddArtworkBlob);
+                    closeMyMusicAddModal();
+                    renderMyMusicList();
+                    alert('내 음악에 추가되었습니다.');
+                } catch (e) {
+                    console.error('내 음악 추가 오류:', e);
+                    alert('추가에 실패했습니다.\n잠시 후 다시 시도해주세요.');
+                }
+                return;
             }
+
+            // 여러 곡 한꺼번에 추가: 곡마다 ID3 태그를 시도해보고, 없으면 제목은 파일명/가수는 '미상'으로 저장한다.
+            let successCount = 0, failCount = 0;
+            for (const file of files) {
+                try {
+                    let title = stripFileExtension(file.name);
+                    let artist = '미상';
+                    let artworkBlob = null;
+                    try {
+                        const tags = await parseId3Tags(file);
+                        if (tags.title) title = tags.title;
+                        if (tags.artist) artist = tags.artist;
+                        artworkBlob = tags.artworkBlob || null;
+                    } catch (e) { /* 태그 파싱 실패해도 파일명/'미상'으로 계속 진행 */ }
+                    await musicDbAddTrackOnly(file, title, artist, 'local', artworkBlob);
+                    successCount++;
+                } catch (e) {
+                    console.error('내 음악 일괄 추가 오류:', file.name, e);
+                    failCount++;
+                }
+            }
+            closeMyMusicAddModal();
+            renderMyMusicList();
+            alert(failCount === 0
+                ? `${successCount}곡이 내 음악에 추가되었습니다.`
+                : `${successCount}곡 추가 완료, ${failCount}곡은 추가하지 못했습니다.`);
         };
 
         // --- 특정 한 곡을 플레이리스트에 추가 ---
