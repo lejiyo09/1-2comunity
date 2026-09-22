@@ -549,8 +549,8 @@
         /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 자유 배치 UI - 개인별 커스텀, localStorage에만 저장.
            섹션 이름 변경(제목 input), 섹션 순서(화살표), 위젯을 다른 섹션으로 이동/순서 변경(카드별 편집 바)까지 지원. */
         .home-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-        .dashboard-section-title-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; border: none; background: transparent; padding: 4px 2px; font-family: inherit; -webkit-text-stroke: 0.3px #000000; }
-        body.gmw-site-dark .dashboard-section-title-input { -webkit-text-stroke-color: #ffffff; }
+        .dashboard-section-title-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; border: none; background: transparent; padding: 4px 2px; font-family: inherit; }
+        body:not(.gmw-site-dark) .dashboard-section-title-input { color: #374151; }
         #home-sections-container.editing-sections .dashboard-section-title-input { border: 1px dashed var(--border-color); border-radius: 6px; padding: 4px 8px; background: var(--surface-secondary); cursor: text; }
         .dashboard-section-title-input[readonly] { cursor: default; }
         .home-section-arrows { display: none; gap: 4px; flex-shrink: 0; }
@@ -559,9 +559,14 @@
         #tab-home .home-section .card[data-widget-id] { position: relative; }
         /* 위젯을 손으로 잡아서 옮기는 드래그 앤 드롭. 편집 모드에서만 카드 전체가 draggable이 되고,
            왼쪽 위 "⠿" 손잡이는 드래그 가능하다는 시각적 힌트일 뿐 클릭 동작은 없다. */
-        .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; align-items: center; gap: 6px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
         #home-sections-container.editing-sections .widget-edit-bar { display: flex; }
         .widget-drag-handle { font-size: 13px; color: var(--text-muted); line-height: 1; user-select: none; }
+        /* 위젯 가로/세로 크기 조절 버튼 - 드래그 손잡이 옆에 세로 구분선으로 붙는다 */
+        .widget-size-controls { display: flex; align-items: center; gap: 2px; padding-left: 6px; border-left: 1px solid var(--border-color); }
+        .widget-size-btn { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted); font-size: 10px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-family: inherit; }
+        .widget-size-btn:hover:not(:disabled) { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
+        .widget-size-btn:disabled { opacity: 0.35; cursor: default; }
         #home-sections-container.editing-sections .card[data-widget-id] { cursor: grab; }
         #home-sections-container.editing-sections .card[data-widget-id]:active { cursor: grabbing; }
         .card[data-widget-id].dragging-widget { opacity: 0.35; }
@@ -4187,6 +4192,75 @@
         const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
         let homeSectionEditMode = false;
 
+        // =========================================================================
+        // 위젯 가로/세로 크기 편집 (개인별 커스텀, localStorage에만 저장 - 순서/섹션 배치와는 별개 저장소)
+        // - 가로: 3컬럼 그리드 기준 grid-column span (1~3)
+        // - 세로: 내용에 맞춰 자동(0=미지정)이던 높이에 min-height를 강제로 얹는 방식 (40px 단위)
+        // =========================================================================
+        const HOME_WIDGET_SIZE_KEY = 'hanilgo_home_widget_sizes';
+        const WIDGET_COL_SPAN_MIN = 1;
+        const WIDGET_COL_SPAN_MAX = 3; // 홈 대시보드 섹션은 전부 3컬럼 그리드
+        const WIDGET_MIN_HEIGHT_STEP = 40; // px
+
+        // 페이지 로드 시, 아직 아무것도 건드리기 전 각 위젯 카드의 원래 기본 grid-column(HTML에 박혀있던
+        // 인라인 style)을 기억해둔다. JS로 한 번 덮어쓰면 원본 값은 사라지므로, "기본값으로 되돌리기"를
+        // 하려면 이렇게 미리 기억해둔 값이 필요하다.
+        const HOME_WIDGET_DEFAULT_SIZES = {};
+        document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => {
+            const m = /span\s+(\d+)/.exec(el.style.gridColumn || '');
+            HOME_WIDGET_DEFAULT_SIZES[el.dataset.widgetId] = { colSpan: m ? parseInt(m[1], 10) : 1, minHeight: 0 };
+        });
+
+        function loadHomeWidgetSizes() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(HOME_WIDGET_SIZE_KEY) || '{}');
+                return (saved && typeof saved === 'object' && !Array.isArray(saved)) ? saved : {};
+            } catch (e) { return {}; }
+        }
+        function saveHomeWidgetSizes(sizes) {
+            try { localStorage.setItem(HOME_WIDGET_SIZE_KEY, JSON.stringify(sizes)); } catch (e) {}
+        }
+        function getEffectiveWidgetSize(widgetId) {
+            const def = HOME_WIDGET_DEFAULT_SIZES[widgetId] || { colSpan: 1, minHeight: 0 };
+            const saved = loadHomeWidgetSizes()[widgetId] || {};
+            return { colSpan: saved.colSpan || def.colSpan, minHeight: saved.minHeight || def.minHeight };
+        }
+        // 저장된 크기(없으면 기본값)를 모든 위젯 카드에 실제로 반영한다 - 페이지 로드 시, 그리고
+        // "기본값으로 되돌리기" 이후에 호출된다.
+        function applyHomeWidgetSizes() {
+            document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => {
+                const size = getEffectiveWidgetSize(el.dataset.widgetId);
+                el.style.gridColumn = `span ${size.colSpan}`;
+                el.style.minHeight = size.minHeight ? `${size.minHeight}px` : '';
+            });
+        }
+
+        window.adjustWidgetWidth = function(widgetId, delta) {
+            const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+            if (!widgetEl) return;
+            const eff = getEffectiveWidgetSize(widgetId);
+            const next = Math.max(WIDGET_COL_SPAN_MIN, Math.min(WIDGET_COL_SPAN_MAX, eff.colSpan + delta));
+            if (next === eff.colSpan) return;
+            const sizes = loadHomeWidgetSizes();
+            sizes[widgetId] = { ...(sizes[widgetId] || {}), colSpan: next };
+            saveHomeWidgetSizes(sizes);
+            widgetEl.style.gridColumn = `span ${next}`;
+            if (homeSectionEditMode) renderHomeEditControls(); // 버튼 비활성화 상태(최소/최대 도달) 갱신
+        };
+
+        window.adjustWidgetHeight = function(widgetId, delta) {
+            const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+            if (!widgetEl) return;
+            const eff = getEffectiveWidgetSize(widgetId);
+            const next = Math.max(0, eff.minHeight + delta * WIDGET_MIN_HEIGHT_STEP);
+            if (next === eff.minHeight) return;
+            const sizes = loadHomeWidgetSizes();
+            sizes[widgetId] = { ...(sizes[widgetId] || {}), minHeight: next };
+            saveHomeWidgetSizes(sizes);
+            widgetEl.style.minHeight = next ? `${next}px` : '';
+            if (homeSectionEditMode) renderHomeEditControls();
+        };
+
         function loadHomeLayout() {
             try {
                 const saved = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
@@ -4244,10 +4318,20 @@
                     if (!bar) {
                         bar = document.createElement('div');
                         bar.className = 'widget-edit-bar';
-                        bar.innerHTML = '<span class="widget-drag-handle" title="드래그해서 옮기기">⠿</span>';
                         bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
                         widgetEl.prepend(bar);
                     }
+                    // 크기 버튼은 최소/최대 도달 시 비활성화 상태가 바뀌므로 매번 다시 그린다
+                    const eff = getEffectiveWidgetSize(widgetId);
+                    bar.innerHTML = `
+                        <span class="widget-drag-handle" title="드래그해서 옮기기">⠿</span>
+                        <span class="widget-size-controls">
+                            <button type="button" class="widget-size-btn" onclick="adjustWidgetWidth('${widgetId}', -1)" title="좁게" ${eff.colSpan <= WIDGET_COL_SPAN_MIN ? 'disabled' : ''}>↔−</button>
+                            <button type="button" class="widget-size-btn" onclick="adjustWidgetWidth('${widgetId}', 1)" title="넓게" ${eff.colSpan >= WIDGET_COL_SPAN_MAX ? 'disabled' : ''}>↔+</button>
+                            <button type="button" class="widget-size-btn" onclick="adjustWidgetHeight('${widgetId}', -1)" title="낮게" ${eff.minHeight <= 0 ? 'disabled' : ''}>↕−</button>
+                            <button type="button" class="widget-size-btn" onclick="adjustWidgetHeight('${widgetId}', 1)" title="높게">↕+</button>
+                        </span>
+                    `;
                 });
             });
         }
@@ -4287,7 +4371,9 @@
         window.resetHomeLayout = function() {
             if (!confirm('위젯 배치를 기본값으로 되돌릴까요? (이 브라우저에 저장된 개인 설정만 초기화됩니다)')) return;
             saveHomeLayout(DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() })));
+            try { localStorage.removeItem(HOME_WIDGET_SIZE_KEY); } catch (e) {}
             applyHomeLayout();
+            applyHomeWidgetSizes();
             if (homeSectionEditMode) renderHomeEditControls();
         }
 
@@ -4392,6 +4478,7 @@
         }
 
         applyHomeLayout(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 레이아웃을 바로 적용
+        applyHomeWidgetSizes(); // 저장된 위젯별 가로/세로 크기도 함께 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
