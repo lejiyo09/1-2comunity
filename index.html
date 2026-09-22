@@ -8219,6 +8219,30 @@
             }
         }
 
+        // 커뮤니티/공지/설문/포켓몬 게시글의 본문 이미지는 imgbb 대신 freeimage.host로 업로드한다
+        // (프로필 사진은 기존 imgbb API를 그대로 유지 - uploadProfileImage 참고).
+        async function uploadImageToFreeImageHost(file) {
+            const FREEIMAGE_API_KEY = '6d207e02198a847aa98d0a2a901485a5';
+            const formData = new FormData();
+            formData.append('key', FREEIMAGE_API_KEY);
+            formData.append('action', 'upload');
+            formData.append('source', file);
+            formData.append('format', 'json');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            try {
+                const res = await (await fetch('https://freeimage.host/api/1/upload', { method: 'POST', body: formData, signal: controller.signal })).json();
+                const url = res && res.image && (res.image.url || res.image.display_url);
+                if (!url) throw new Error('업로드 실패');
+                return url;
+            } catch (e) {
+                if (e && e.name === 'AbortError') throw new Error('업로드 시간이 초과되었습니다 (네트워크 확인 필요)');
+                throw e;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
         // 리치 본문(contentHTML) 안에 인라인으로 삽입된 <img>들의 src만 순서대로 뽑아낸다.
         // 리치 본문 속 <img> 엘리먼트 자체를 뽑아낸다 (src뿐 아니라 작성 시 조절한 width 스타일도 함께 보존하기 위해)
         function extractImageElsFromHTML(html) {
@@ -9074,7 +9098,7 @@
                 const placeholderId = `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 document.execCommand('insertHTML', false, `<span id="${placeholderId}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중...</span>`);
                 try {
-                    const url = await uploadImageToImgbb(file);
+                    const url = await uploadImageToFreeImageHost(file);
                     const img = document.createElement('img');
                     img.src = url;
                     img.alt = '첨부 이미지';
