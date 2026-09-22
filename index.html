@@ -2119,9 +2119,14 @@
 
                 <div id="settings-admin-section" style="padding:14px 0; border-top:1px solid var(--border-color); display:none;">
                     <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">관리자</div>
-                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">예전 imgbb 계정에 올라간 프로필 사진을 새 계정으로 옮겨요. 곧 사라질 예정인 예전 계정이 없어지기 전에 한 번만 실행하면 됩니다.</div>
-                    <button class="btn-sub" id="settings-migrate-photos-btn" onclick="migrateProfilePhotosToNewImgbb()">🔁 프로필 사진 마이그레이션</button>
-                    <div id="settings-migrate-photos-status" style="font-size:11.5px; color:var(--text-muted); margin-top:8px;"></div>
+
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">곧 사라질 예전 imgbb 계정에 올라간 프로필 사진을, 커뮤니티/공지 이미지와 같은 곳(freeimage.host)으로 옮겨요. 예전 계정이 없어지기 전에 한 번만 실행하면 됩니다.</div>
+                    <button class="btn-sub" id="settings-migrate-photos-btn" onclick="migrateProfilePhotosToFreeImageHost()">🔁 프로필 사진 마이그레이션</button>
+                    <div id="settings-migrate-photos-status" style="font-size:11.5px; color:var(--text-muted); margin-top:6px; margin-bottom:14px;"></div>
+
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">예전 4.0 버전에서 RTDB에 저장돼 있던 프로필 정보(이름/자기소개/사진)와 프로필 댓글을, 지금 쓰는 Firestore로 옮겨요. 이미 Firestore에 있는 내용은 건드리지 않아요.</div>
+                    <button class="btn-sub" id="settings-migrate-rtdb-btn" onclick="migrateLegacyProfileDataFromRTDB()">🔁 4.0 프로필/댓글 마이그레이션 (RTDB→Firestore)</button>
+                    <div id="settings-migrate-rtdb-status" style="font-size:11.5px; color:var(--text-muted); margin-top:6px;"></div>
                 </div>
 
                 <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.0</div>
@@ -3584,7 +3589,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, set, update, push, remove, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, get, set, update, push, remove, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         // Firestore SDK 추가 - 정적/영구 커뮤니티 데이터(게시글/아카이브/공지/설문/프로필 등)는 이제 여기로 저장한다.
         // RTDB의 runTransaction과 이름이 겹치므로 Firestore 쪽은 fsRunTransaction으로 별칭을 준다.
@@ -12451,28 +12456,30 @@
 
         window.closeProfileModal = function() { document.getElementById('profile-modal').style.display = 'none'; activeStudentNum = null; }
 
+        // 프로필 사진도 커뮤니티/공지 이미지와 같은 곳(freeimage.host)으로 통합했다 - 별도 imgbb 키를
+        // 더 이상 쓰지 않는다.
         window.uploadProfileImage = async function() {
             if (isRestrictedViewer) return;
             const file = document.getElementById('modal-file-input').files[0]; if(!file) return;
-            const formData = new FormData(); formData.append("image", file);
             const btn = document.getElementById('btn-edit-photo'); btn.innerText = "업로드 중...⏳";
             try {
-                const res = await (await fetch(`https://api.imgbb.com/1/upload?key=075c3324867eb29b9d648b286c0ccfaf`, { method: "POST", body: formData })).json();
-                if(res.success) { document.getElementById('modal-img').src = res.data.url; alert("저장 버튼을 눌러야 영구 보관됩니다."); }
-            } catch(e) {} finally { btn.innerText = "사진 변경"; }
+                const url = await uploadImageToFreeImageHost(file);
+                document.getElementById('modal-img').src = url;
+                alert("저장 버튼을 눌러야 영구 보관됩니다.");
+            } catch(e) { alert("업로드에 실패했습니다."); } finally { btn.innerText = "사진 변경"; }
         }
 
-        // 관리자 전용 1회성 마이그레이션: 곧 사라질 예전 imgbb 계정에 올라간 프로필 사진들을 새 계정으로
-        // 다시 업로드하고, profiles/{studentKey}.photo를 새 URL로 갱신한다.
+        // 관리자 전용 1회성 마이그레이션: 곧 사라질 예전 imgbb 계정에 올라간 프로필 사진들을
+        // freeimage.host로 다시 업로드하고(커뮤니티/공지 이미지와 같은 곳으로 통합), profiles/{studentKey}.photo를
+        // 새 URL로 갱신한다.
         // ⚠️ imgbb CDN에서 기존 이미지를 fetch()로 내려받아야 하므로, imgbb가 CORS를 막아두면 그 사진은
         // 실패로 집계된다(개별 실패는 전체를 막지 않고 계속 진행) - 완료 후 성공/건너뜀/실패 건수를 보여준다.
-        // 이미 한 번 옮긴 학생은 profiles 문서에 migratedToNewImgbb:true가 남아 다음 실행 때 건너뛴다
+        // 이미 한 번 옮긴 학생은 profiles 문서에 migratedToFreeImageHost:true가 남아 다음 실행 때 건너뛴다
         // (재실행해도 안전 - 중간에 끊겨도 이어서 실행 가능).
-        window.migrateProfilePhotosToNewImgbb = async function() {
+        window.migrateProfilePhotosToFreeImageHost = async function() {
             if (!isAdmin) return alert('관리자만 실행할 수 있습니다.');
-            if (!confirm('반 전체 학생의 프로필 사진을 예전 imgbb 계정에서 새 계정으로 옮깁니다.\n사진 수만큼 시간이 걸릴 수 있어요. 계속할까요?')) return;
+            if (!confirm('반 전체 학생의 프로필 사진을 예전 imgbb 계정에서 freeimage.host로 옮깁니다.\n사진 수만큼 시간이 걸릴 수 있어요. 계속할까요?')) return;
 
-            const NEW_IMGBB_KEY = '075c3324867eb29b9d648b286c0ccfaf';
             const statusEl = document.getElementById('settings-migrate-photos-status');
             const btn = document.getElementById('settings-migrate-photos-btn');
             if (btn) btn.disabled = true;
@@ -12484,14 +12491,11 @@
                 const key = `student_${num}`;
                 const rec = profilesData[key];
                 const photoUrl = rec && rec.photo;
-                if (!photoUrl || !/ibb\.co/i.test(photoUrl) || rec.migratedToNewImgbb) { skipped++; continue; }
+                if (!photoUrl || !/ibb\.co/i.test(photoUrl) || rec.migratedToFreeImageHost) { skipped++; continue; }
                 try {
                     const blob = await (await fetch(photoUrl)).blob();
-                    const formData = new FormData();
-                    formData.append('image', blob);
-                    const res = await (await fetch(`https://api.imgbb.com/1/upload?key=${NEW_IMGBB_KEY}`, { method: 'POST', body: formData })).json();
-                    if (!res.success) throw new Error('업로드 실패');
-                    await setDoc(doc(fdb, 'profiles', key), { photo: res.data.url, migratedToNewImgbb: true }, { merge: true });
+                    const newUrl = await uploadImageToFreeImageHost(blob);
+                    await setDoc(doc(fdb, 'profiles', key), { photo: newUrl, migratedToFreeImageHost: true }, { merge: true });
                     migrated++;
                 } catch (e) {
                     console.error('프로필 사진 마이그레이션 실패:', key, e);
@@ -12502,6 +12506,85 @@
 
             if (btn) btn.disabled = false;
             const summary = `완료 - 성공 ${migrated}건, 건너뜀(사진 없음/이미 완료) ${skipped}건, 실패 ${failed}건${failedNums.length ? ` (실패 번호: ${failedNums.join(', ')})` : ''}`;
+            if (statusEl) statusEl.textContent = summary;
+            alert(summary);
+        };
+
+        // 관리자 전용 1회성 마이그레이션: 예전 4.0 버전이 RTDB(dashboard/profiles, dashboard/profile_comments)에
+        // 저장해뒀던 프로필 정보/댓글을, 지금 쓰는 Firestore(profiles, profile_comments)로 옮긴다.
+        // - 프로필 정보: 이미 Firestore에 값이 있는 필드는 덮어쓰지 않고, 비어있는 필드만 채운다.
+        // - 댓글: RTDB의 push id를 그대로 Firestore 문서 id(studentKey__pushId)로 써서, 다시 실행해도
+        //   같은 댓글이 중복 생성되지 않는다.
+        window.migrateLegacyProfileDataFromRTDB = async function() {
+            if (!isAdmin) return alert('관리자만 실행할 수 있습니다.');
+            if (!confirm('예전 4.0 버전에서 RTDB에 있던 프로필 정보/댓글을 지금 쓰는 Firestore로 옮깁니다.\n이미 Firestore에 있는 내용은 건드리지 않습니다. 계속할까요?')) return;
+
+            const statusEl = document.getElementById('settings-migrate-rtdb-status');
+            const btn = document.getElementById('settings-migrate-rtdb-btn');
+            if (btn) btn.disabled = true;
+
+            let profilesMigrated = 0, profilesSkipped = 0, profilesFailed = 0;
+            let commentsMigrated = 0, commentsSkipped = 0, commentsFailed = 0;
+
+            try {
+                if (statusEl) statusEl.textContent = '프로필 정보 확인 중...';
+                const profilesSnap = await get(ref(db, 'dashboard/profiles'));
+                const legacyProfiles = profilesSnap.val() || {};
+                for (const studentKey of Object.keys(legacyProfiles)) {
+                    const legacy = legacyProfiles[studentKey];
+                    if (!legacy || typeof legacy !== 'object') { profilesSkipped++; continue; }
+                    try {
+                        const existingSnap = await getDoc(doc(fdb, 'profiles', studentKey));
+                        const existing = existingSnap.exists() ? existingSnap.data() : {};
+                        const patch = {};
+                        if (legacy.name != null && !existing.name) patch.name = legacy.name;
+                        if (legacy.desc != null && !existing.desc) patch.desc = legacy.desc;
+                        if (legacy.photo != null && !existing.photo) patch.photo = legacy.photo;
+                        if (Object.keys(patch).length === 0) { profilesSkipped++; continue; }
+                        await setDoc(doc(fdb, 'profiles', studentKey), patch, { merge: true });
+                        profilesMigrated++;
+                    } catch (e) {
+                        console.error('프로필 정보 마이그레이션 실패:', studentKey, e);
+                        profilesFailed++;
+                    }
+                }
+
+                if (statusEl) statusEl.textContent = '프로필 댓글 확인 중...';
+                const commentsSnap = await get(ref(db, 'dashboard/profile_comments'));
+                const legacyCommentsByStudent = commentsSnap.val() || {};
+                for (const studentKey of Object.keys(legacyCommentsByStudent)) {
+                    const comments = legacyCommentsByStudent[studentKey] || {};
+                    for (const pushId of Object.keys(comments)) {
+                        const c = comments[pushId];
+                        if (!c) continue;
+                        const docId = `${studentKey}__${pushId}`;
+                        try {
+                            const existingSnap = await getDoc(doc(fdb, 'profile_comments', docId));
+                            if (existingSnap.exists()) { commentsSkipped++; continue; }
+                            await setDoc(doc(fdb, 'profile_comments', docId), {
+                                studentKey, commentId: pushId,
+                                authorId: c.authorId || '',
+                                author: c.author || '',
+                                authorOriginal: c.authorOriginal || '',
+                                text: c.text || '',
+                                timestamp: c.timestamp || Date.now()
+                            });
+                            commentsMigrated++;
+                        } catch (e) {
+                            console.error('프로필 댓글 마이그레이션 실패:', docId, e);
+                            commentsFailed++;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('RTDB 프로필 데이터 마이그레이션 오류:', e);
+                if (statusEl) statusEl.textContent = '오류가 발생했습니다. (RTDB 읽기 권한 등을 확인해주세요)';
+                if (btn) btn.disabled = false;
+                return;
+            }
+
+            if (btn) btn.disabled = false;
+            const summary = `완료\n프로필: 이전 ${profilesMigrated}건 / 건너뜀 ${profilesSkipped}건 / 실패 ${profilesFailed}건\n댓글: 이전 ${commentsMigrated}건 / 건너뜀 ${commentsSkipped}건 / 실패 ${commentsFailed}건`;
             if (statusEl) statusEl.textContent = summary;
             alert(summary);
         };
