@@ -7250,11 +7250,12 @@
             if (status === 'away' || status === 'busy') return status;
             return status === 'invisible' ? 'offline' : 'online';
         }
-        // 온라인(자리비움/다른 용무 중 포함, 보이지 않음 제외)으로 집계되는 "학생 번호" 집합.
+        // "온라인"(정상 접속) 한 가지 상태로만 집계되는 "학생 번호" 집합.
+        // 자리비움/다른 용무 중은 접속은 돼 있지만 온라인 인원수에는 포함하지 않는다(모달에서 별도 그룹으로 보여준다).
         function getOnlineNumbersSet() {
             const s = new Set();
             for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) {
-                if (getPresenceStatusForNumber(i) !== 'offline') s.add(String(i));
+                if (getPresenceStatusForNumber(i) === 'online') s.add(String(i));
             }
             return s;
         }
