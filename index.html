@@ -1818,7 +1818,7 @@
                                 <span id="sidebar-presence-label" style="flex:1; text-align:left;">정상 접속 상태입니다</span>
                                 <span style="font-size:10px; color:var(--text-muted);">▾</span>
                             </button>
-                            <div id="sidebar-presence-popover" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); padding:6px; z-index:50;">
+                            <div id="sidebar-presence-popover" style="display:none; position:fixed; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); padding:6px; z-index:9000;">
                                 <button class="settings-presence-option" data-status="online" onclick="setMyPresenceStatus('online')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
                                     <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
                                     <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">정상 접속 상태입니다</span>
@@ -3576,6 +3576,9 @@
         }
 
         let currentUser = null; let currentUserInfo = null;
+        // 비로그인 상태에서 쓰기 동작(글쓰기/좋아요/댓글 등)을 시도하면 requireLogin()이 여기에
+        // "로그인 성공하면 이어서 할 일"을 담아두고, 로그인 완료 시점에 자동으로 실행한다.
+        let pendingAction = null;
         let unsubscribeXpCloudSync = null; // Firebase → 로컬 XP 실시간 동기화 해제 함수 (계정 전환/로그아웃 시 해제)
         let unsubscribeDailyMissions = null; // 일일 미션(users/{uid}/dailyMissions 전체) 실시간 구독 해제 함수
         let dailyMissionsAllCache = {}; // 날짜별 미션 완료 상태 전체 캐시 { 'YYYY-MM-DD': {attendance:true, ...}, ... } (연속 출석 계산에도 재사용)
@@ -3695,7 +3698,7 @@
         });
 
         window.setNickname = async function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => setNickname());
             if (!currentUserInfo) return;
             const newNick = prompt("사용할 닉네임을 입력하세요.\n(공백으로 두시면 원래 학번으로 표시됩니다):", currentUserInfo.nickname || "");
             if(newNick !== null) {
@@ -3930,6 +3933,16 @@
                         // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
                         document.getElementById('guest-login-card').style.display = 'none';
                         document.getElementById('user-profile-card').style.display = 'block';
+                        // 글쓰기/좋아요 등 쓰기 동작을 하려다 로그인 위젯이 뜬 경우, 로그인이 끝난 지금
+                        // 원래 하려던 동작을 자동으로 이어서 실행한다 (requireLogin/showLoginScreen 참고).
+                        // 이 리스너는 유저 문서가 바뀔 때마다 다시 불릴 수 있으므로, 한 번 실행한 뒤에는
+                        // 곧바로 null로 비워서 다음 재실행 때 중복 실행되지 않게 한다.
+                        if (pendingAction) {
+                            const action = pendingAction;
+                            pendingAction = null;
+                            hideLoginScreen();
+                            try { action(); } catch (err) { console.error('로그인 후 이어하기 실패:', err); }
+                        }
                         const is2Ban = d.role === "class2_member";
 
                         isAdmin = (d.grade === "1" && d.ban === "2" && parseInt(d.number) === 30);
@@ -4093,14 +4106,28 @@
             }
         }
 
-        window.showLoginScreen = function() {
+        // resumeAction을 넘기면, 로그인에 성공했을 때 그 함수를 자동으로 이어서 실행한다
+        // (예: "글쓰기" 클릭 -> 로그인 -> 곧바로 글쓰기 화면). 그냥 사이드바 "로그인" 버튼처럼
+        // 특정 작업 없이 로그인만 하려는 경우엔 인자 없이 호출하면 된다.
+        window.showLoginScreen = function(resumeAction) {
+            pendingAction = typeof resumeAction === 'function' ? resumeAction : null;
             // 실제로 되돌아갈 게스트 세션이 있을 때만(=지금 익명으로만 로그인된 상태) 닫기 버튼을 보여준다.
             const canDismiss = !currentUser && auth.currentUser && auth.currentUser.isAnonymous;
             document.getElementById('auth-container-close').style.display = canDismiss ? 'block' : 'none';
             document.getElementById('auth-container').style.display = 'flex';
         };
         window.hideLoginScreen = function() {
+            // 사용자가 로그인 위젯을 스스로 닫으면(X 버튼 등), 하려던 작업도 취소된 것으로 본다 -
+            // 나중에 엉뚱한 타이밍에 로그인했을 때 이 작업이 갑자기 실행되면 안 되기 때문.
+            pendingAction = null;
             document.getElementById('auth-container').style.display = 'none';
+        };
+
+        // 비로그인 사용자가 쓰기 동작을 시도할 때 공통으로 거치는 게이트.
+        // 로그인돼 있으면 즉시 실행하고, 아니면 로그인 위젯을 띄우고 로그인 성공 시 이어서 실행한다.
+        window.requireLogin = function(action) {
+            if (currentUser) { action(); return; }
+            showLoginScreen(action);
         };
 
         // =========================================================================
@@ -5362,7 +5389,7 @@
         };
 
         window.setAccentColor = async function(color) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => setAccentColor(color));
             try {
                 await update(ref(db, `users/${currentUser.uid}`), { accentColor: color });
                 currentUserInfo = { ...currentUserInfo, accentColor: color };
@@ -5784,7 +5811,7 @@
         }
 
         window.submitPollVote = async function(pollId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => submitPollVote(pollId));
             const poll = pollsCache[pollId];
             if (!poll || !isPollOpen(poll)) return;
             const selected = Array.from(document.querySelectorAll('#poll-vote-options .poll-vote-opt.selected')).map(el => el.getAttribute('data-opt'));
@@ -5901,7 +5928,7 @@
             if (el) el.classList.toggle('selected');
         }
         window.submitPollVoteIn = async function(containerId, pollId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => submitPollVoteIn(containerId, pollId));
             const poll = pollsCache[pollId];
             if (!poll || !isPollOpen(poll)) return;
             const selected = Array.from(document.querySelectorAll(`#${containerId} .poll-vote-opt.selected`)).map(el => el.getAttribute('data-opt'));
@@ -7324,26 +7351,50 @@
             const label = document.getElementById('sidebar-presence-label');
             if (dot) dot.style.background = PRESENCE_STATUS_COLORS[current] || PRESENCE_STATUS_COLORS.online;
             if (label) label.textContent = PRESENCE_STATUS_LABELS[current] || PRESENCE_STATUS_LABELS.online;
-            widget.querySelectorAll('.settings-presence-option').forEach(btn => {
+            // 팝오버는 열릴 때 document.body로 옮겨지므로(아래 togglePresencePicker 참고) widget이 아니라
+            // 팝오버 자신에서 옵션을 찾아야 한다.
+            const popEl = document.getElementById('sidebar-presence-popover');
+            if (popEl) popEl.querySelectorAll('.settings-presence-option').forEach(btn => {
                 const on = btn.getAttribute('data-status') === current;
                 btn.style.borderColor = on ? 'var(--primary)' : 'transparent';
                 btn.style.background = on ? 'var(--primary-soft, rgba(37,99,235,0.08))' : 'transparent';
             });
         };
 
+        // 사이드바(.sidebar-expand-only)는 overflow:hidden + transform으로 접혔다 펼쳐지므로,
+        // 팝오버를 그 안에 그대로 두면 잘려서 반쯤만 보이는 버그가 생긴다. 열 때 document.body로
+        // 옮겨서 뷰포트 기준 진짜 position:fixed로 띄우고, 버튼 위치를 기준으로 좌표를 계산한다.
         window.togglePresencePicker = function(e) {
             if (e) e.stopPropagation();
             const pop = document.getElementById('sidebar-presence-popover');
-            if (!pop) return;
-            pop.style.display = pop.style.display === 'block' ? 'none' : 'block';
+            const btn = document.getElementById('sidebar-presence-btn');
+            if (!pop || !btn) return;
+            if (pop.style.display === 'block') { pop.style.display = 'none'; return; }
+            if (pop.parentElement !== document.body) document.body.appendChild(pop);
+            const rect = btn.getBoundingClientRect();
+            pop.style.top = (rect.bottom + 6) + 'px';
+            pop.style.left = rect.left + 'px';
+            pop.style.width = rect.width + 'px';
+            pop.style.display = 'block';
         };
 
         document.addEventListener('click', (e) => {
             const widget = document.getElementById('sidebar-presence-widget');
             const pop = document.getElementById('sidebar-presence-popover');
-            if (pop && pop.style.display === 'block' && widget && !widget.contains(e.target)) {
-                pop.style.display = 'none';
-            }
+            if (!pop || pop.style.display !== 'block') return;
+            const inWidget = widget && widget.contains(e.target);
+            const inPopover = pop.contains(e.target);
+            if (!inWidget && !inPopover) pop.style.display = 'none';
+        });
+
+        // 마우스가 사이드바를 벗어나 다시 접히면(hover 펼침 모드) 팝오버도 같이 닫는다 -
+        // 그렇지 않으면 사이드바는 접혔는데 팝오버만 허공에 떠 있는 상태가 된다.
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebarEl = document.querySelector('.sidebar');
+            if (sidebarEl) sidebarEl.addEventListener('mouseleave', () => {
+                const pop = document.getElementById('sidebar-presence-popover');
+                if (pop) pop.style.display = 'none';
+            });
         });
 
         window.setMyPresenceStatus = function(status) {
@@ -7492,7 +7543,7 @@
         }
 
         window.openScheduleComposer = function(id) {
-            if (!currentUser) return showLoginScreen(); // 로그인만 하면 개인 일정은 누구나 추가 가능 - 공용 쓰기 권한은 아래에서 별도 처리
+            if (!currentUser) return showLoginScreen(() => openScheduleComposer(id)); // 로그인만 하면 개인 일정은 누구나 추가 가능 - 공용 쓰기 권한은 아래에서 별도 처리
             const personalCheckbox = document.getElementById('schedule-form-personal');
             if (id && scheduleCache[id] && scheduleCache[id]._source === 'shared' && !canWriteSchedule) return; // 남의 공용 일정을 권한 없이 열려는 시도 방지
             scheduleEditingId = id;
@@ -7541,7 +7592,7 @@
         }
 
         window.submitScheduleForm = async function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => submitScheduleForm());
             const date = document.getElementById('schedule-form-date').value;
             const endDateInput = document.getElementById('schedule-form-enddate').value;
             const subject = document.getElementById('schedule-form-subject').value;
@@ -7881,7 +7932,7 @@
             const rawHTML = contentInput.innerHTML.trim();
             const plainText = (contentInput.textContent || '').trim();
             if(!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => handlePostSubmit());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             const submitBtn = document.querySelector("button[onclick='handlePostSubmit()']");
@@ -7964,7 +8015,7 @@
         // 좋아요/좋아요 수: 클릭 즉시 화면부터 바꾸고(낙관적 UI), 그 다음 Firestore 트랜잭션으로 실제 반영한다.
         // 실패하면 원래 상태로 되돌린다. (RTDB 시절과 동일한 원칙 - 실제 추가/취소 결과에 따라서만 likeCount를 ±1 한다.)
         window.toggleLike = async function(postId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => toggleLike(postId));
             const btn = document.getElementById(`like-btn-${postId}`);
             let optimisticLiked = null;
             if (btn) {
@@ -8005,7 +8056,7 @@
         }
 
         window.addComment = async function(postId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => addComment(postId));
             const commentInput = document.getElementById(`reply-${postId}`);
             if (!commentInput || !commentInput.value.trim()) return;
             await addDoc(collection(fdb, 'posts', postId, 'comments'), {
@@ -8243,7 +8294,7 @@
 
         // "+ 글쓰기" / 빠른 글쓰기 트리거는 항상 새 글 작성으로 시작한다 (수정 중이던 상태가 있으면 초기화)
         window.startNewPost = function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => startNewPost());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             communityEditingPostId = null;
             const titleInput = document.getElementById('post-title');
@@ -8258,7 +8309,7 @@
         };
 
         window.openCommunityCompose = function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => openCommunityCompose());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             communityView = 'compose';
             document.getElementById('community-feed-view').style.display = 'none';
@@ -9031,7 +9082,7 @@
         let pokemonSortTab = 'all'; // 'all' | 'popular'
 
         window.startNewPokemonPost = function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => startNewPokemonPost());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             pokemonEditingPostId = null;
             document.getElementById('pokemon-post-title').value = '';
@@ -9058,7 +9109,7 @@
             const rawHTML = contentInput.innerHTML.trim();
             const plainText = (contentInput.textContent || '').trim();
             if (!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => handlePokemonPostSubmit());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             try {
@@ -9136,7 +9187,7 @@
 
         // toggleLike()와 동일한 낙관적 UI 패턴 적용 (Firestore 트랜잭션으로 likes map + likeCount를 함께 갱신)
         window.togglePokemonLike = async function(postId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => togglePokemonLike(postId));
             const btn = document.getElementById(`pokemon-like-btn-${postId}`);
             let optimisticLiked = null;
             if (btn) {
@@ -9170,7 +9221,7 @@
         }
 
         window.addPokemonComment = async function(postId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => addPokemonComment(postId));
             const commentInput = document.getElementById(`pokemon-reply-${postId}`);
             if (!commentInput || !commentInput.value.trim()) return;
             await addDoc(collection(fdb, 'pokemon_posts', postId, 'comments'), {
@@ -9381,7 +9432,7 @@
             const contentInput = document.getElementById('archive-content'); 
             const fileInput = document.getElementById('archive-img-file'); 
             if(!titleInput.value.trim() || !contentInput.value.trim()) return alert("제목과 내용을 모두 입력해주세요.");
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => handleArchiveSubmit());
             if(currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             let imageUrl = ""; 
@@ -9580,7 +9631,7 @@
         // Storage 업로드 + materials INSERT를 대신 수행한다. (익명 사용자가 API를 직접 호출해서
         // 무단으로 자료를 올리는 걸 막기 위해, anon 키에는 write 권한을 아예 주지 않는다 - SQL 참고)
         window.openMaterialUploadModal = function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => openMaterialUploadModal());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             document.getElementById('material-upload-modal').style.display = 'flex';
         };
@@ -9596,7 +9647,7 @@
             const progressEl = document.getElementById('materials-upload-progress');
             const submitBtn = document.getElementById('materials-submit-btn');
             if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => handleArchiveStudySubmit());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             const file = fileInput.files.length > 0 ? fileInput.files[0] : null;
@@ -10861,7 +10912,7 @@
         };
 
         window.openMusicShareModal = async function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => openMusicShareModal());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             document.getElementById('music-share-title').value = '';
             document.getElementById('music-share-artist').value = '';
@@ -10922,7 +10973,7 @@
             const fileInput = document.getElementById('music-share-file');
             const progressEl = document.getElementById('music-share-progress');
             const submitBtn = document.getElementById('music-share-submit-btn');
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => handleMusicShareSubmit());
             if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
             const file = fileInput.files.length > 0 ? fileInput.files[0] : null;
             if (!file) return alert("MP3 파일을 선택해주세요.");
@@ -11029,7 +11080,7 @@
 
         // 좋아요: optimistic UI - 클릭 즉시 반영 후 서버 요청, 실패하면 되돌린다.
         window.toggleMusicLike = async function(trackId) {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => toggleMusicLike(trackId));
             const btn = document.getElementById(`music-like-${trackId}`);
             const track = sharedMusicCache[trackId];
             const wasLiked = sharedMusicLikedIds.has(trackId);
@@ -11783,7 +11834,7 @@
         // users/{uid}/xp의 진짜 원본 값을 직접 1 증가시킨다 (profiles/student_N.xp는 그 학생
         // 본인 로그인 시 자동으로 다시 미러링되는 값이라 여기서 건드려도 곧 원래대로 덮어써진다).
         window.easterEggBumpProfileXP = async function() {
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => easterEggBumpProfileXP());
             const num = activeStudentNum;
             if (num == null) return;
             const uid = Object.keys(presenceData).find(id => presenceData[id] && String(presenceData[id].number) === String(num));
@@ -11870,7 +11921,7 @@
 
         window.addProfileComment = async function() {
             if(!activeStudentNum) return;
-            if (!currentUser) return showLoginScreen();
+            if (!currentUser) return showLoginScreen(() => addProfileComment());
             const input = document.getElementById('profile-comment-input');
             if(!input.value.trim()) return;
             try {
