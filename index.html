@@ -2117,6 +2117,13 @@
                     <div id="settings-accent-swatches" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
                 </div>
 
+                <div id="settings-admin-section" style="padding:14px 0; border-top:1px solid var(--border-color); display:none;">
+                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">관리자</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">예전 imgbb 계정에 올라간 프로필 사진을 새 계정으로 옮겨요. 곧 사라질 예정인 예전 계정이 없어지기 전에 한 번만 실행하면 됩니다.</div>
+                    <button class="btn-sub" id="settings-migrate-photos-btn" onclick="migrateProfilePhotosToNewImgbb()">🔁 프로필 사진 마이그레이션</button>
+                    <div id="settings-migrate-photos-status" style="font-size:11.5px; color:var(--text-muted); margin-top:8px;"></div>
+                </div>
+
                 <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.0</div>
             </div>
         </div>
@@ -12455,6 +12462,50 @@
             } catch(e) {} finally { btn.innerText = "사진 변경"; }
         }
 
+        // 관리자 전용 1회성 마이그레이션: 곧 사라질 예전 imgbb 계정에 올라간 프로필 사진들을 새 계정으로
+        // 다시 업로드하고, profiles/{studentKey}.photo를 새 URL로 갱신한다.
+        // ⚠️ imgbb CDN에서 기존 이미지를 fetch()로 내려받아야 하므로, imgbb가 CORS를 막아두면 그 사진은
+        // 실패로 집계된다(개별 실패는 전체를 막지 않고 계속 진행) - 완료 후 성공/건너뜀/실패 건수를 보여준다.
+        // 이미 한 번 옮긴 학생은 profiles 문서에 migratedToNewImgbb:true가 남아 다음 실행 때 건너뛴다
+        // (재실행해도 안전 - 중간에 끊겨도 이어서 실행 가능).
+        window.migrateProfilePhotosToNewImgbb = async function() {
+            if (!isAdmin) return alert('관리자만 실행할 수 있습니다.');
+            if (!confirm('반 전체 학생의 프로필 사진을 예전 imgbb 계정에서 새 계정으로 옮깁니다.\n사진 수만큼 시간이 걸릴 수 있어요. 계속할까요?')) return;
+
+            const NEW_IMGBB_KEY = '075c3324867eb29b9d648b286c0ccfaf';
+            const statusEl = document.getElementById('settings-migrate-photos-status');
+            const btn = document.getElementById('settings-migrate-photos-btn');
+            if (btn) btn.disabled = true;
+
+            let migrated = 0, skipped = 0, failed = 0;
+            const failedNums = [];
+            for (let num = 1; num <= 26; num++) {
+                if (statusEl) statusEl.textContent = `진행 중... (${num}/26번 확인 중)`;
+                const key = `student_${num}`;
+                const rec = profilesData[key];
+                const photoUrl = rec && rec.photo;
+                if (!photoUrl || !/ibb\.co/i.test(photoUrl) || rec.migratedToNewImgbb) { skipped++; continue; }
+                try {
+                    const blob = await (await fetch(photoUrl)).blob();
+                    const formData = new FormData();
+                    formData.append('image', blob);
+                    const res = await (await fetch(`https://api.imgbb.com/1/upload?key=${NEW_IMGBB_KEY}`, { method: 'POST', body: formData })).json();
+                    if (!res.success) throw new Error('업로드 실패');
+                    await setDoc(doc(fdb, 'profiles', key), { photo: res.data.url, migratedToNewImgbb: true }, { merge: true });
+                    migrated++;
+                } catch (e) {
+                    console.error('프로필 사진 마이그레이션 실패:', key, e);
+                    failed++;
+                    failedNums.push(num);
+                }
+            }
+
+            if (btn) btn.disabled = false;
+            const summary = `완료 - 성공 ${migrated}건, 건너뜀(사진 없음/이미 완료) ${skipped}건, 실패 ${failed}건${failedNums.length ? ` (실패 번호: ${failedNums.join(', ')})` : ''}`;
+            if (statusEl) statusEl.textContent = summary;
+            alert(summary);
+        };
+
         window.saveProfileData = async function() {
             if(!activeStudentNum) return;
             if (isRestrictedViewer) return; // 담임선생님 & 타반 학생은 열람만 가능
@@ -15924,6 +15975,8 @@
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
             if (window.updateBgSettingsUI) window.updateBgSettingsUI(); // 배경화면 선택 UI도 최신 상태로
+            const adminSection = document.getElementById('settings-admin-section');
+            if (adminSection) adminSection.style.display = isAdmin ? 'block' : 'none';
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
