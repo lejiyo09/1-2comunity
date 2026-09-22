@@ -193,6 +193,7 @@
 
         /* --- 사이드바 그룹형 메뉴 (👥 커뮤니티 / 📚 학습 / 🗂 자료실 / 🏫 학교생활) --- */
         .nav-group-header { padding: 12px 14px; border-radius: 12px; color: var(--text-muted); font-weight: 600; font-size: 15px; display: flex; align-items: center; cursor: pointer; transition: background 0.2s; margin-bottom: 2px; white-space: nowrap; overflow: hidden; }
+        body:not(.gmw-site-dark) .nav-group-header { color: var(--text-secondary); }
         .nav-group-header:hover { background-color: rgba(255,255,255,0.55); }
         body.gmw-site-dark .nav-group-header:hover { background-color: rgba(255,255,255,0.07); }
         .nav-group-caret { font-size: 11px; margin-left: auto; opacity: 0; transition: opacity 0.12s ease, transform 0.2s ease; }
@@ -548,7 +549,8 @@
         /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 자유 배치 UI - 개인별 커스텀, localStorage에만 저장.
            섹션 이름 변경(제목 input), 섹션 순서(화살표), 위젯을 다른 섹션으로 이동/순서 변경(카드별 편집 바)까지 지원. */
         .home-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-        .dashboard-section-title-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; border: none; background: transparent; padding: 4px 2px; font-family: inherit; }
+        .dashboard-section-title-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; border: none; background: transparent; padding: 4px 2px; font-family: inherit; -webkit-text-stroke: 0.3px #000000; }
+        body.gmw-site-dark .dashboard-section-title-input { -webkit-text-stroke-color: #ffffff; }
         #home-sections-container.editing-sections .dashboard-section-title-input { border: 1px dashed var(--border-color); border-radius: 6px; padding: 4px 8px; background: var(--surface-secondary); cursor: text; }
         .dashboard-section-title-input[readonly] { cursor: default; }
         .home-section-arrows { display: none; gap: 4px; flex-shrink: 0; }
@@ -2058,13 +2060,50 @@
                 <div style="padding:14px 0; border-bottom:1px solid var(--border-color);">
                     <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:8px;">배경화면</div>
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">나만 보이는 개인 배경화면이에요. 다른 학생 화면에는 영향이 없어요.</div>
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <label class="btn-sub" style="cursor:pointer; margin:0;">
-                            사진 선택
-                            <input type="file" id="bg-upload-input" accept="image/*" style="display:none;" onchange="handleCustomBackgroundUpload(event)">
-                        </label>
-                        <button class="btn-sub" onclick="resetCustomBackground()">기본으로</button>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                        <button class="bg-preset-option" data-preset="default1" onclick="setActiveBackgroundPreset('default1')" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:84px; padding:6px; border-radius:12px; border:2px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; font-family:inherit;">
+                            <span style="width:100%; height:48px; border-radius:8px; background:var(--bg-color); border:1px solid var(--border-color);"></span>
+                            <span style="font-size:11.5px; color:var(--text-main); font-weight:600;">기본1</span>
+                        </button>
+                        <button class="bg-preset-option" data-preset="default2" onclick="setActiveBackgroundPreset('default2')" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:84px; padding:6px; border-radius:12px; border:2px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; font-family:inherit;">
+                            <span style="width:100%; height:48px; border-radius:8px; overflow:hidden; background:#dbeafe;"><img src="./assets/bg-preset2-light.webp" style="width:100%; height:100%; object-fit:cover; display:block;"></span>
+                            <span style="font-size:11.5px; color:var(--text-main); font-weight:600;">기본2</span>
+                        </button>
+                        <button class="bg-preset-option" data-preset="custom" onclick="setActiveBackgroundPreset('custom')" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:84px; padding:6px; border-radius:12px; border:2px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; font-family:inherit;">
+                            <span style="width:100%; height:48px; border-radius:8px; background:var(--bg-color); border:1px dashed var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:18px;">🖼️</span>
+                            <span style="font-size:11.5px; color:var(--text-main); font-weight:600;">직접 올리기</span>
+                        </button>
                     </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">기본2는 라이트 모드일 때 밝은 사진, 다크 모드일 때 어두운(밤) 사진이 자동으로 바뀌어 적용돼요.</div>
+
+                    <div id="bg-custom-upload-panel" style="display:none; padding-top:4px; border-top:1px dashed var(--border-color);">
+                        <div style="display:flex; gap:16px; flex-wrap:wrap; margin:10px 0 6px;">
+                            <div>
+                                <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:4px;">🌞 라이트 모드용</div>
+                                <label class="btn-sub" style="cursor:pointer; margin:0;">
+                                    사진 선택
+                                    <input type="file" id="bg-upload-input-light" accept="image/*" style="display:none;" onchange="handleCustomBackgroundUpload(event, 'light')">
+                                </label>
+                            </div>
+                            <div>
+                                <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:4px;">🌙 다크 모드용 (선택)</div>
+                                <label class="btn-sub" style="cursor:pointer; margin:0;">
+                                    사진 선택
+                                    <input type="file" id="bg-upload-input-dark" accept="image/*" style="display:none;" onchange="handleCustomBackgroundUpload(event, 'dark')">
+                                </label>
+                            </div>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">다크 모드용 사진을 따로 넣지 않으면, 라이트 모드 사진을 다크 모드에도 그대로 사용해요.</div>
+
+                        <div id="bg-dark-dim-row" style="display:none; margin-bottom:12px;">
+                            <div style="font-size:12px; color:var(--text-main); margin-bottom:4px;">다크 모드일 때 이 사진을 얼마나 어둡게 할지</div>
+                            <input type="range" id="bg-dark-dim-slider" min="0" max="100" value="35" oninput="setBackgroundDarkDim(this.value)" style="width:100%;">
+                        </div>
+
+                        <button class="btn-sub" onclick="resetCustomBackground()">직접 올린 사진 지우기</button>
+                    </div>
+
                     <div id="settings-bg-status" style="font-size:11.5px; color:var(--text-muted); margin-top:6px;"></div>
                 </div>
 
@@ -5174,6 +5213,14 @@
         // =========================================================================
         const BG_DB_NAME = 'userBackgroundDB';
         const BG_DB_VERSION = 1;
+        // 어떤 배경을 쓸지: 'default1'(사이트 기본 단색) | 'default2'(제공된 낮/밤 사진 세트) | 'custom'(직접 업로드)
+        const BG_PRESET_KEY = 'hanilgo_bg_preset';
+        // 'custom' 프리셋에서, 다크 모드용 사진을 따로 안 넣고 라이트 사진을 그대로 쓸 때만 적용되는 어둡게 정도(0~100)
+        const BG_DARK_DIM_KEY = 'hanilgo_bg_dark_dim';
+        const BG_DARK_DIM_DEFAULT = 35;
+        const BACKGROUND_PRESETS = {
+            default2: { light: './assets/bg-preset2-light.webp', dark: './assets/bg-preset2-dark.webp' }
+        };
         function openBgDB() {
             return new Promise((resolve, reject) => {
                 const req = indexedDB.open(BG_DB_NAME, BG_DB_VERSION);
@@ -5186,56 +5233,100 @@
                 req.onerror = () => reject(req.error);
             });
         }
-        async function saveBgBlobToIndexedDB(blob) {
+        // slot: 'light' | 'dark' (지난 버전엔 슬롯 구분 없이 'current' 하나뿐이었다 - migrateLegacyCustomBackground 참고)
+        async function saveBgBlobToIndexedDB(blob, slot) {
             const db2 = await openBgDB();
             return new Promise((resolve, reject) => {
                 const tx = db2.transaction('background', 'readwrite');
-                tx.objectStore('background').put(blob, 'current');
+                tx.objectStore('background').put(blob, slot);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             });
         }
-        async function getBgBlobFromIndexedDB() {
+        async function getBgBlobFromIndexedDB(slot) {
             const db2 = await openBgDB();
             return new Promise((resolve, reject) => {
                 const tx = db2.transaction('background', 'readonly');
-                const req = tx.objectStore('background').get('current');
+                const req = tx.objectStore('background').get(slot);
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = () => reject(req.error);
             });
         }
-        async function deleteBgBlobFromIndexedDB() {
+        async function deleteBgBlobFromIndexedDB(slot) {
             const db2 = await openBgDB();
             return new Promise((resolve, reject) => {
                 const tx = db2.transaction('background', 'readwrite');
-                tx.objectStore('background').delete('current');
+                tx.objectStore('background').delete(slot);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             });
         }
+        // 지난 버전엔 'current' 키 하나에만 저장했다. 'light'/'dark' 슬롯이 아직 하나도 없고 'current'만
+        // 있으면, 그 사진을 라이트 슬롯으로 옮겨서 계속 "공용(라이트 사진을 다크에도 그대로)"으로 동작하게 한다.
+        async function migrateLegacyCustomBackground() {
+            try {
+                const [light, dark, legacy] = await Promise.all([
+                    getBgBlobFromIndexedDB('light'), getBgBlobFromIndexedDB('dark'), getBgBlobFromIndexedDB('current')
+                ]);
+                if (!light && !dark && legacy) {
+                    await saveBgBlobToIndexedDB(legacy, 'light');
+                    await deleteBgBlobFromIndexedDB('current');
+                }
+            } catch (e) {}
+        }
         let currentBgObjectUrl = null;
+        function isSiteDarkModeNow() { return document.body.classList.contains('gmw-site-dark'); }
+        function getActiveBackgroundPreset() {
+            try { return localStorage.getItem(BG_PRESET_KEY) || 'default1'; } catch (e) { return 'default1'; }
+        }
+        function getBackgroundDarkDim() {
+            try {
+                const v = parseInt(localStorage.getItem(BG_DARK_DIM_KEY), 10);
+                return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : BG_DARK_DIM_DEFAULT;
+            } catch (e) { return BG_DARK_DIM_DEFAULT; }
+        }
         // ⚠️ 지난 버전의 실제 버그: body에 .gmw-custom-bg 클래스만 붙이고 정작 그 클래스의
         // CSS(background-size/position/repeat)를 하나도 안 만들어놔서, 사진이 원본 크기로
         // 반복(tile)되어 이상하게 보였다. 이번에 .gmw-custom-bg 스타일을 실제로 추가했다.
-        function applyBgBlobToPage(blob) {
+        // dimAlpha(0~1)를 주면 사진 위에 반투명 검은 레이어를 겹쳐 그만큼 어둡게 만든다
+        // (공용 사진을 다크 모드에서 쓸 때만 사용 - 별도의 다크용 사진이 있으면 0).
+        function setPageBackgroundImageUrl(url, dimAlpha) {
+            document.body.classList.add('gmw-custom-bg');
+            document.body.style.backgroundImage = (dimAlpha && dimAlpha > 0)
+                ? `linear-gradient(rgba(0,0,0,${dimAlpha}), rgba(0,0,0,${dimAlpha})), url("${url}")`
+                : `url("${url}")`;
+        }
+        function clearPageBackgroundImage() {
+            document.body.classList.remove('gmw-custom-bg');
+            document.body.style.backgroundImage = '';
+        }
+        // 현재 선택된 프리셋 + 현재 라이트/다크 테마에 맞는 배경을 실제로 화면에 적용한다.
+        // 로그인 여부와 무관하게 동작하고(이 브라우저에만 저장되는 개인 설정), 테마가 바뀔 때도
+        // applySiteTheme()에서 다시 호출해서 그 즉시 알맞은 사진로 바뀌게 한다.
+        async function applyActiveBackground() {
             if (currentBgObjectUrl) { URL.revokeObjectURL(currentBgObjectUrl); currentBgObjectUrl = null; }
-            if (blob) {
-                currentBgObjectUrl = URL.createObjectURL(blob);
-                document.body.classList.add('gmw-custom-bg');
-                document.body.style.backgroundImage = `url("${currentBgObjectUrl}")`;
-            } else {
-                document.body.classList.remove('gmw-custom-bg');
-                document.body.style.backgroundImage = '';
+            const preset = getActiveBackgroundPreset();
+            const dark = isSiteDarkModeNow();
+
+            if (preset === 'default2') {
+                setPageBackgroundImageUrl(dark ? BACKGROUND_PRESETS.default2.dark : BACKGROUND_PRESETS.default2.light, 0);
+                return;
             }
+            if (preset === 'custom') {
+                try {
+                    const [lightBlob, darkBlob] = await Promise.all([getBgBlobFromIndexedDB('light'), getBgBlobFromIndexedDB('dark')]);
+                    const blob = dark ? (darkBlob || lightBlob) : (lightBlob || darkBlob);
+                    if (!blob) { clearPageBackgroundImage(); return; }
+                    currentBgObjectUrl = URL.createObjectURL(blob);
+                    const usingSharedLightInDark = dark && !darkBlob && !!lightBlob; // 다크용 없이 라이트 사진을 다크에도 그대로 쓰는 상황
+                    setPageBackgroundImageUrl(currentBgObjectUrl, usingSharedLightInDark ? (getBackgroundDarkDim() / 100) : 0);
+                } catch (e) { clearPageBackgroundImage(); }
+                return;
+            }
+            clearPageBackgroundImage(); // default1: 사이트 기본 단색
         }
-        // 로그인 여부와 무관하게, 페이지가 열릴 때 이 브라우저에 저장된 배경화면이 있으면 바로 적용한다
-        async function applyCustomBackgroundFromIndexedDB() {
-            try {
-                const blob = await getBgBlobFromIndexedDB();
-                applyBgBlobToPage(blob);
-            } catch (e) { /* IndexedDB 미지원 등 - 조용히 기본 배경 유지 */ }
-        }
-        applyCustomBackgroundFromIndexedDB();
+        window.applyActiveBackground = applyActiveBackground;
+        migrateLegacyCustomBackground().then(applyActiveBackground);
 
         // =========================================================================
         // 배경화면 부분 잘라 쓰기(크롭): 사진을 통째로 쓰는 대신, 16:9 프레임 안에서 드래그로
@@ -5252,6 +5343,7 @@
         let bgCropFrameH = 0;
         let bgCropDragging = false;
         let bgCropDragStart = null; // { x, y, offsetX, offsetY }
+        let bgCropTarget = 'light'; // 크롭한 결과를 어느 슬롯('light'|'dark')에 저장할지
 
         function clampBgCropOffset() {
             const destW = bgCropImg.width * bgCropScale;
@@ -5268,7 +5360,8 @@
             ctx.drawImage(bgCropImg, bgCropOffsetX, bgCropOffsetY, bgCropImg.width * bgCropScale, bgCropImg.height * bgCropScale);
         }
 
-        window.openBgCropModal = function(file) {
+        window.openBgCropModal = function(file, target) {
+            bgCropTarget = target || 'light';
             if (bgCropObjectUrl) { URL.revokeObjectURL(bgCropObjectUrl); bgCropObjectUrl = null; }
             bgCropObjectUrl = URL.createObjectURL(file);
             const img = new Image();
@@ -5302,8 +5395,11 @@
             document.getElementById('bg-crop-modal').style.display = 'none';
             if (bgCropObjectUrl) { URL.revokeObjectURL(bgCropObjectUrl); bgCropObjectUrl = null; }
             bgCropImg = null;
-            const fileInput = document.getElementById('bg-upload-input');
-            if (fileInput) fileInput.value = ''; // 같은 파일을 다시 선택해도 change 이벤트가 뜨도록 초기화
+            // 같은 파일을 다시 선택해도 change 이벤트가 뜨도록 두 슬롯 입력 모두 초기화
+            const lightInput = document.getElementById('bg-upload-input-light');
+            const darkInput = document.getElementById('bg-upload-input-dark');
+            if (lightInput) lightInput.value = '';
+            if (darkInput) darkInput.value = '';
         };
 
         window.applyCroppedBackground = async function() {
@@ -5325,8 +5421,10 @@
                 const outCtx = outCanvas.getContext('2d');
                 outCtx.drawImage(bgCropImg, srcX, srcY, srcW, srcH, 0, 0, OUTPUT_W, OUTPUT_H);
                 const blob = await new Promise(resolve => outCanvas.toBlob(resolve, 'image/jpeg', 0.9));
-                await saveBgBlobToIndexedDB(blob);
-                applyBgBlobToPage(blob);
+                await saveBgBlobToIndexedDB(blob, bgCropTarget);
+                try { localStorage.setItem(BG_PRESET_KEY, 'custom'); } catch (e) {}
+                await applyActiveBackground();
+                if (window.updateBgSettingsUI) window.updateBgSettingsUI();
                 if (statusEl) statusEl.textContent = '배경화면이 적용되었습니다. (이 브라우저에만 저장돼요)';
                 window.closeBgCropModal();
             } catch (e) {
@@ -5373,19 +5471,52 @@
             });
         })();
 
-        window.handleCustomBackgroundUpload = function(event) {
+        window.handleCustomBackgroundUpload = function(event, target) {
             const file = event.target.files[0];
             if (!file) return;
-            window.openBgCropModal(file);
+            window.openBgCropModal(file, target);
         };
 
         window.resetCustomBackground = async function() {
             try {
-                await deleteBgBlobFromIndexedDB();
-                applyBgBlobToPage(null);
+                await Promise.all([deleteBgBlobFromIndexedDB('light'), deleteBgBlobFromIndexedDB('dark'), deleteBgBlobFromIndexedDB('current')]);
+                try { localStorage.setItem(BG_PRESET_KEY, 'default1'); } catch (e) {}
+                await applyActiveBackground();
+                if (window.updateBgSettingsUI) window.updateBgSettingsUI();
                 const statusEl = document.getElementById('settings-bg-status');
                 if (statusEl) statusEl.textContent = '기본 배경으로 되돌렸습니다.';
             } catch (e) { console.error('배경화면 초기화 오류:', e); }
+        };
+
+        // 배경화면 프리셋(기본1/기본2/직접 올리기) 선택
+        window.setActiveBackgroundPreset = async function(preset) {
+            try { localStorage.setItem(BG_PRESET_KEY, preset); } catch (e) {}
+            await applyActiveBackground();
+            if (window.updateBgSettingsUI) window.updateBgSettingsUI();
+        };
+
+        // "직접 올리기" + 다크용 사진을 따로 안 넣었을 때만 쓰이는, 공용 사진의 다크 모드 어둡게 정도
+        window.setBackgroundDarkDim = async function(value) {
+            try { localStorage.setItem(BG_DARK_DIM_KEY, String(value)); } catch (e) {}
+            await applyActiveBackground();
+        };
+
+        // 설정 모달의 배경화면 섹션을 현재 저장된 상태(프리셋 선택/다크 어둡게 슬라이더)에 맞게 다시 그린다.
+        window.updateBgSettingsUI = async function() {
+            const preset = getActiveBackgroundPreset();
+            document.querySelectorAll('.bg-preset-option').forEach(btn => {
+                btn.style.borderColor = (btn.getAttribute('data-preset') === preset) ? 'var(--primary)' : 'var(--border-color)';
+            });
+            const panel = document.getElementById('bg-custom-upload-panel');
+            if (panel) panel.style.display = (preset === 'custom') ? 'block' : 'none';
+            if (preset !== 'custom') return;
+            try {
+                const [lightBlob, darkBlob] = await Promise.all([getBgBlobFromIndexedDB('light'), getBgBlobFromIndexedDB('dark')]);
+                const dimRow = document.getElementById('bg-dark-dim-row');
+                if (dimRow) dimRow.style.display = (lightBlob && !darkBlob) ? 'block' : 'none';
+                const slider = document.getElementById('bg-dark-dim-slider');
+                if (slider) slider.value = getBackgroundDarkDim();
+            } catch (e) {}
         };
 
         window.setAccentColor = async function(color) {
@@ -15308,6 +15439,9 @@
             const dark = computeIsDark();
             document.body.classList.toggle('gmw-site-dark', dark);
             setKnob(themeKnob, dark);
+            // 배경 프리셋(기본2)이나 "다크 모드에서 라이트 사진 그대로 쓰기"는 테마에 따라 다른
+            // 결과를 내야 하므로, 라이트/다크가 바뀔 때마다 배경도 다시 계산해서 적용한다.
+            if (window.applyActiveBackground) window.applyActiveBackground();
         }
 
         function isPiPEnabledNow(){
@@ -15334,6 +15468,7 @@
         if (openBtn) openBtn.addEventListener('click', () => {
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
+            if (window.updateBgSettingsUI) window.updateBgSettingsUI(); // 배경화면 선택 UI도 최신 상태로
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
