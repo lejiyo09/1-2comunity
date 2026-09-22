@@ -1811,7 +1811,32 @@
                     <div class="user-profile" id="user-profile-card" style="display:none;">
                         <div id="profile-nick-line" style="margin-bottom:6px;">👤 <strong id="profile-nick-text">불러오는 중...</strong></div>
                         <div id="profile-role-line" style="color:var(--text-secondary); margin-bottom:10px;">소속: <span id="profile-role-text">—</span></div>
-                        <button onclick="setNickname()" style="width:100%; padding:6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer;">✏️ 닉네임 설정/변경</button>
+                        <button onclick="setNickname()" style="width:100%; padding:6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer; margin-bottom:6px;">✏️ 닉네임 설정/변경</button>
+                        <div id="sidebar-presence-widget" style="position:relative; display:none;">
+                            <button id="sidebar-presence-btn" onclick="togglePresencePicker(event)" style="width:100%; display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer; font-family:inherit;">
+                                <span id="sidebar-presence-dot" style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
+                                <span id="sidebar-presence-label" style="flex:1; text-align:left;">정상 접속 상태입니다</span>
+                                <span style="font-size:10px; color:var(--text-muted);">▾</span>
+                            </button>
+                            <div id="sidebar-presence-popover" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); padding:6px; z-index:50;">
+                                <button class="settings-presence-option" data-status="online" onclick="setMyPresenceStatus('online')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
+                                    <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
+                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">정상 접속 상태입니다</span>
+                                </button>
+                                <button class="settings-presence-option" data-status="away" onclick="setMyPresenceStatus('away')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
+                                    <span style="width:9px; height:9px; border-radius:50%; background:#eab308; flex-shrink:0;"></span>
+                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">자리 비움</span>
+                                </button>
+                                <button class="settings-presence-option" data-status="busy" onclick="setMyPresenceStatus('busy')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
+                                    <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; flex-shrink:0;"></span>
+                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">다른 용무 중</span>
+                                </button>
+                                <button class="settings-presence-option" data-status="invisible" onclick="setMyPresenceStatus('invisible')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
+                                    <span style="width:9px; height:9px; border-radius:50%; background:#9ca3af; flex-shrink:0;"></span>
+                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">보이지 않음 (오프라인으로 표시)</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="user-profile" id="guest-login-card" style="display:none;">
                         <div style="margin-bottom:8px; font-size:12.5px; color:var(--text-secondary);">로그인하지 않은 상태예요. 둘러보는 건 자유롭지만, 글쓰기·좋아요 같은 활동은 로그인이 필요해요.</div>
@@ -1994,29 +2019,6 @@
                     <button id="settings-theme-toggle" style="width:52px; height:30px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-color); position:relative; cursor:pointer; flex-shrink:0;">
                         <span id="settings-theme-knob" style="position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:var(--primary); transition: transform .18s ease;"></span>
                     </button>
-                </div>
-
-                <div id="settings-presence-section" style="padding:14px 0; border-bottom:1px solid var(--border-color); display:none;">
-                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:2px;">온라인 상태</div>
-                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">친구들에게 내 상태가 어떻게 보일지 선택해요</div>
-                    <div style="display:flex; flex-direction:column; gap:6px;">
-                        <button class="settings-presence-option" data-status="online" onclick="setMyPresenceStatus('online')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
-                            <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
-                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">정상 접속 상태입니다</span>
-                        </button>
-                        <button class="settings-presence-option" data-status="away" onclick="setMyPresenceStatus('away')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
-                            <span style="width:9px; height:9px; border-radius:50%; background:#eab308; flex-shrink:0;"></span>
-                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">자리 비움</span>
-                        </button>
-                        <button class="settings-presence-option" data-status="busy" onclick="setMyPresenceStatus('busy')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
-                            <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; flex-shrink:0;"></span>
-                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">다른 용무 중</span>
-                        </button>
-                        <button class="settings-presence-option" data-status="invisible" onclick="setMyPresenceStatus('invisible')" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; text-align:left; font-family:inherit;">
-                            <span style="width:9px; height:9px; border-radius:50%; background:#9ca3af; flex-shrink:0;"></span>
-                            <span style="font-size:13px; color:var(--text-main); font-weight:600;">보이지 않음 (오프라인으로 표시)</span>
-                        </button>
-                    </div>
                 </div>
 
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0;">
@@ -4001,6 +4003,7 @@
                                     : displayNick;
                             }
                             if (roleTextEl) roleTextEl.textContent = roleText;
+                            if (window.updatePresenceWidgetUI) window.updatePresenceWidgetUI();
                         });
 
                         // 커뮤니티 엔지니어/창시자 전용: 공용 시간표 수정 버튼 노출
@@ -7304,27 +7307,50 @@
             `;
         }
 
-        // 설정 모달의 "온라인 상태" 선택 UI. 반 명단(1~26번) 학생이 아니면 애초에 presence 자체가
-        // 없으므로 섹션 자체를 숨긴다.
-        window.updatePresenceSettingsUI = function() {
-            const section = document.getElementById('settings-presence-section');
-            if (!section) return;
-            if (!isRosterStudentInfo(currentUserInfo)) { section.style.display = 'none'; return; }
-            section.style.display = 'block';
+        // 사이드바 프로필 카드의 "온라인 상태" 선택 위젯. 반 명단(1~26번) 학생이 아니면 애초에
+        // presence 자체가 없으므로 위젯 자체를 숨긴다.
+        const PRESENCE_STATUS_LABELS = { online: '정상 접속 상태입니다', away: '자리 비움', busy: '다른 용무 중', invisible: '보이지 않음 (오프라인으로 표시)' };
+
+        window.updatePresenceWidgetUI = function() {
+            const widget = document.getElementById('sidebar-presence-widget');
+            if (!widget) return;
+            if (!isRosterStudentInfo(currentUserInfo)) { widget.style.display = 'none'; return; }
+            widget.style.display = 'block';
             let current = 'online';
             try { current = localStorage.getItem(PRESENCE_STATUS_KEY) || 'online'; } catch (e) {}
-            section.querySelectorAll('.settings-presence-option').forEach(btn => {
+            const dot = document.getElementById('sidebar-presence-dot');
+            const label = document.getElementById('sidebar-presence-label');
+            if (dot) dot.style.background = PRESENCE_STATUS_COLORS[current] || PRESENCE_STATUS_COLORS.online;
+            if (label) label.textContent = PRESENCE_STATUS_LABELS[current] || PRESENCE_STATUS_LABELS.online;
+            widget.querySelectorAll('.settings-presence-option').forEach(btn => {
                 const on = btn.getAttribute('data-status') === current;
-                btn.style.borderColor = on ? 'var(--primary)' : 'var(--border-color)';
-                btn.style.background = on ? 'var(--primary-soft, rgba(37,99,235,0.08))' : 'var(--surface-secondary)';
+                btn.style.borderColor = on ? 'var(--primary)' : 'transparent';
+                btn.style.background = on ? 'var(--primary-soft, rgba(37,99,235,0.08))' : 'transparent';
             });
         };
+
+        window.togglePresencePicker = function(e) {
+            if (e) e.stopPropagation();
+            const pop = document.getElementById('sidebar-presence-popover');
+            if (!pop) return;
+            pop.style.display = pop.style.display === 'block' ? 'none' : 'block';
+        };
+
+        document.addEventListener('click', (e) => {
+            const widget = document.getElementById('sidebar-presence-widget');
+            const pop = document.getElementById('sidebar-presence-popover');
+            if (pop && pop.style.display === 'block' && widget && !widget.contains(e.target)) {
+                pop.style.display = 'none';
+            }
+        });
 
         window.setMyPresenceStatus = function(status) {
             if (!currentUser || !isRosterStudentInfo(currentUserInfo)) return alert('온라인 상태를 설정할 수 있는 계정이 아닙니다.');
             try { localStorage.setItem(PRESENCE_STATUS_KEY, status); } catch (e) {}
             set(ref(db, `presence/${currentUser.uid}/status`), status).catch(() => {});
-            window.updatePresenceSettingsUI();
+            window.updatePresenceWidgetUI();
+            const pop = document.getElementById('sidebar-presence-popover');
+            if (pop) pop.style.display = 'none';
         };
 
         // =========================================================================
@@ -15243,7 +15269,6 @@
         if (openBtn) openBtn.addEventListener('click', () => {
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
-            if (window.updatePresenceSettingsUI) window.updatePresenceSettingsUI(); // 온라인 상태 선택 UI도 최신 상태로
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
