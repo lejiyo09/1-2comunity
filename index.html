@@ -1822,13 +1822,13 @@
                         <div id="sidebar-presence-widget" style="position:relative; display:none;">
                             <button id="sidebar-presence-btn" onclick="togglePresencePicker(event)" style="width:100%; display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer; font-family:inherit;">
                                 <span id="sidebar-presence-dot" style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
-                                <span id="sidebar-presence-label" style="flex:1; text-align:left;">정상 접속 상태입니다</span>
+                                <span id="sidebar-presence-label" style="flex:1; text-align:left;">온라인</span>
                                 <span style="font-size:10px; color:var(--text-muted);">▾</span>
                             </button>
                             <div id="sidebar-presence-popover" style="display:none; position:fixed; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); padding:6px; z-index:9000;">
                                 <button class="settings-presence-option" data-status="online" onclick="setMyPresenceStatus('online')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
                                     <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
-                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">정상 접속 상태입니다</span>
+                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">온라인</span>
                                 </button>
                                 <button class="settings-presence-option" data-status="away" onclick="setMyPresenceStatus('away')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
                                     <span style="width:9px; height:9px; border-radius:50%; background:#eab308; flex-shrink:0;"></span>
@@ -1840,7 +1840,7 @@
                                 </button>
                                 <button class="settings-presence-option" data-status="invisible" onclick="setMyPresenceStatus('invisible')" style="display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer; text-align:left; font-family:inherit;">
                                     <span style="width:9px; height:9px; border-radius:50%; background:#9ca3af; flex-shrink:0;"></span>
-                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">보이지 않음 (오프라인으로 표시)</span>
+                                    <span style="font-size:12.5px; color:var(--text-main); font-weight:600;">오프라인</span>
                                 </button>
                             </div>
                         </div>
@@ -7556,7 +7556,7 @@
 
         // 사이드바 프로필 카드의 "온라인 상태" 선택 위젯. 반 명단(1~26번) 학생이 아니면 애초에
         // presence 자체가 없으므로 위젯 자체를 숨긴다.
-        const PRESENCE_STATUS_LABELS = { online: '정상 접속 상태입니다', away: '자리 비움', busy: '다른 용무 중', invisible: '보이지 않음 (오프라인으로 표시)' };
+        const PRESENCE_STATUS_LABELS = { online: '온라인', away: '자리 비움', busy: '다른 용무 중', invisible: '오프라인' };
 
         window.updatePresenceWidgetUI = function() {
             const widget = document.getElementById('sidebar-presence-widget');
