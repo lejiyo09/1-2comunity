@@ -137,7 +137,7 @@
             z-index: 300; overflow: hidden;
             transition: width 0.25s cubic-bezier(.4,0,.2,1);
         }
-        .sidebar:hover, .sidebar.mobile-open, .sidebar.touch-expanded, .sidebar.pinned-expanded { width: 260px; }
+        .sidebar:hover, .sidebar.mobile-open, .sidebar.touch-expanded, .sidebar.pinned-expanded, .sidebar.presence-popover-open { width: 260px; }
         body.gmw-site-dark .sidebar { background: rgba(16,24,42,0.62); border-right-color: rgba(255,255,255,0.07); }
 
         .sidebar-menu-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 6px; }
@@ -145,7 +145,7 @@
         .sidebar-menu-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
         .sidebar-header { display: flex; align-items: center; justify-content: center; padding: 2px 0; margin-bottom: 4px; flex-shrink: 0; overflow: visible; }
-        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header { padding: 2px 14px; }
+        .sidebar:hover .sidebar-header, .sidebar.mobile-open .sidebar-header, .sidebar.touch-expanded .sidebar-header, .sidebar.pinned-expanded .sidebar-header, .sidebar.presence-popover-open .sidebar-header { padding: 2px 14px; }
 
         /* 접힘: 정사각 캐릭터 아이콘 / 펼침: 가로형 워드마크 로고 - 서로 비율이 다른 이미지라
            src를 바꿔치기하면 전환 중간에 "이미지가 툭 바뀌는" 느낌이 난다. 그래서 두 이미지를 같은
@@ -164,11 +164,11 @@
         }
         .sidebar-logo-collapsed { opacity: 1; }
         .sidebar-logo-expanded { opacity: 0; }
-        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo { height: 92px; }
-        .sidebar:hover .sidebar-logo-collapsed, .sidebar.mobile-open .sidebar-logo-collapsed, .sidebar.touch-expanded .sidebar-logo-collapsed, .sidebar.pinned-expanded .sidebar-logo-collapsed { opacity: 0; }
-        .sidebar:hover .sidebar-logo-expanded, .sidebar.mobile-open .sidebar-logo-expanded, .sidebar.touch-expanded .sidebar-logo-expanded, .sidebar.pinned-expanded .sidebar-logo-expanded { opacity: 1; }
+        .sidebar:hover .sidebar-logo, .sidebar.mobile-open .sidebar-logo, .sidebar.touch-expanded .sidebar-logo, .sidebar.pinned-expanded .sidebar-logo, .sidebar.presence-popover-open .sidebar-logo { height: 92px; }
+        .sidebar:hover .sidebar-logo-collapsed, .sidebar.mobile-open .sidebar-logo-collapsed, .sidebar.touch-expanded .sidebar-logo-collapsed, .sidebar.pinned-expanded .sidebar-logo-collapsed, .sidebar.presence-popover-open .sidebar-logo-collapsed { opacity: 0; }
+        .sidebar:hover .sidebar-logo-expanded, .sidebar.mobile-open .sidebar-logo-expanded, .sidebar.touch-expanded .sidebar-logo-expanded, .sidebar.pinned-expanded .sidebar-logo-expanded, .sidebar.presence-popover-open .sidebar-logo-expanded { opacity: 1; }
         .sidebar-logo-fallback-text { transition: font-size 0.2s; }
-        .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
+        .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text, .sidebar.presence-popover-open .sidebar-logo-fallback-text { font-size: 19px; }
 
         .sidebar-expand-only { flex-shrink: 0; max-height: 0; opacity: 0; overflow: hidden; transform: translateX(-6px); transition: opacity 0.12s ease, transform 0.12s ease, max-height 0.18s ease; }
         .sidebar:hover .sidebar-expand-only, .sidebar.mobile-open .sidebar-expand-only, .sidebar.touch-expanded .sidebar-expand-only, .sidebar.pinned-expanded .sidebar-expand-only, .sidebar.presence-popover-open .sidebar-expand-only {
@@ -186,7 +186,7 @@
         .nav-item.active { background-color: var(--primary-soft); color: var(--primary); }
         .nav-icon { font-size: 19px; flex-shrink: 0; width: 22px; text-align: center; }
         .nav-label { display: inline-block; white-space: nowrap; opacity: 0; margin-left: 0; transform: translateX(-6px); transition: opacity 0.12s ease, transform 0.12s ease; }
-        .sidebar:hover .nav-label, .sidebar.mobile-open .nav-label, .sidebar.touch-expanded .nav-label, .sidebar.pinned-expanded .nav-label {
+        .sidebar:hover .nav-label, .sidebar.mobile-open .nav-label, .sidebar.touch-expanded .nav-label, .sidebar.pinned-expanded .nav-label, .sidebar.presence-popover-open .nav-label {
             opacity: 1; margin-left: 12px; transform: translateX(0);
             transition: opacity 0.18s ease 0.08s, transform 0.18s ease 0.08s;
         }
@@ -196,14 +196,14 @@
         .nav-group-header:hover { background-color: rgba(255,255,255,0.55); }
         body.gmw-site-dark .nav-group-header:hover { background-color: rgba(255,255,255,0.07); }
         .nav-group-caret { font-size: 11px; margin-left: auto; opacity: 0; transition: opacity 0.12s ease, transform 0.2s ease; }
-        .sidebar:hover .nav-group-caret, .sidebar.mobile-open .nav-group-caret, .sidebar.touch-expanded .nav-group-caret, .sidebar.pinned-expanded .nav-group-caret { opacity: 1; transition: opacity 0.18s ease 0.08s, transform 0.2s ease; }
+        .sidebar:hover .nav-group-caret, .sidebar.mobile-open .nav-group-caret, .sidebar.touch-expanded .nav-group-caret, .sidebar.pinned-expanded .nav-group-caret, .sidebar.presence-popover-open .nav-group-caret { opacity: 1; transition: opacity 0.18s ease 0.08s, transform 0.2s ease; }
         .nav-group.expanded .nav-group-caret { transform: rotate(180deg); }
         .nav-group-items {
             display: flex; flex-direction: column; gap: 2px; padding-left: 6px; margin-bottom: 0;
             max-height: 0; opacity: 0; overflow: hidden; transform: translateY(-4px);
             transition: max-height 0.18s ease, opacity 0.12s ease, transform 0.12s ease, margin-bottom 0.18s ease;
         }
-        .sidebar:hover .nav-group.expanded .nav-group-items, .sidebar.mobile-open .nav-group.expanded .nav-group-items, .sidebar.touch-expanded .nav-group.expanded .nav-group-items, .sidebar.pinned-expanded .nav-group.expanded .nav-group-items {
+        .sidebar:hover .nav-group.expanded .nav-group-items, .sidebar.mobile-open .nav-group.expanded .nav-group-items, .sidebar.touch-expanded .nav-group.expanded .nav-group-items, .sidebar.pinned-expanded .nav-group.expanded .nav-group-items, .sidebar.presence-popover-open .nav-group.expanded .nav-group-items {
             max-height: 400px; opacity: 1; margin-bottom: 4px; transform: translateY(0);
             transition: max-height 0.2s ease, opacity 0.16s ease 0.04s, transform 0.16s ease 0.04s, margin-bottom 0.18s ease;
         }
