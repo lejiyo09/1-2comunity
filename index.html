@@ -171,7 +171,7 @@
         .sidebar:hover .sidebar-logo-fallback-text, .sidebar.mobile-open .sidebar-logo-fallback-text, .sidebar.touch-expanded .sidebar-logo-fallback-text, .sidebar.pinned-expanded .sidebar-logo-fallback-text { font-size: 19px; }
 
         .sidebar-expand-only { flex-shrink: 0; max-height: 0; opacity: 0; overflow: hidden; transform: translateX(-6px); transition: opacity 0.12s ease, transform 0.12s ease, max-height 0.18s ease; }
-        .sidebar:hover .sidebar-expand-only, .sidebar.mobile-open .sidebar-expand-only, .sidebar.touch-expanded .sidebar-expand-only, .sidebar.pinned-expanded .sidebar-expand-only {
+        .sidebar:hover .sidebar-expand-only, .sidebar.mobile-open .sidebar-expand-only, .sidebar.touch-expanded .sidebar-expand-only, .sidebar.pinned-expanded .sidebar-expand-only, .sidebar.presence-popover-open .sidebar-expand-only {
             max-height: 320px; opacity: 1; transform: translateX(0);
             transition: opacity 0.18s ease 0.1s, transform 0.18s ease 0.1s, max-height 0.22s ease;
         }
@@ -7364,18 +7364,30 @@
         // 사이드바(.sidebar-expand-only)는 overflow:hidden + transform으로 접혔다 펼쳐지므로,
         // 팝오버를 그 안에 그대로 두면 잘려서 반쯤만 보이는 버그가 생긴다. 열 때 document.body로
         // 옮겨서 뷰포트 기준 진짜 position:fixed로 띄우고, 버튼 위치를 기준으로 좌표를 계산한다.
+        // 팝오버가 body로 옮겨지면 더 이상 .sidebar 안에 있지 않으므로, 옵션을 고르려고 마우스를
+        // 버튼에서 팝오버 쪽으로 움직이는 순간 .sidebar:hover가 풀려 사이드바 자체가 접혀버린다.
+        // 그래서 팝오버가 열려 있는 동안은 .sidebar에 강제 펼침 클래스를 붙여 그 문제를 막는다.
+        function closePresencePopover() {
+            const pop = document.getElementById('sidebar-presence-popover');
+            if (pop) pop.style.display = 'none';
+            const sidebarEl = document.querySelector('.sidebar');
+            if (sidebarEl) sidebarEl.classList.remove('presence-popover-open');
+        }
+
         window.togglePresencePicker = function(e) {
             if (e) e.stopPropagation();
             const pop = document.getElementById('sidebar-presence-popover');
             const btn = document.getElementById('sidebar-presence-btn');
             if (!pop || !btn) return;
-            if (pop.style.display === 'block') { pop.style.display = 'none'; return; }
+            if (pop.style.display === 'block') { closePresencePopover(); return; }
             if (pop.parentElement !== document.body) document.body.appendChild(pop);
             const rect = btn.getBoundingClientRect();
             pop.style.top = (rect.bottom + 6) + 'px';
             pop.style.left = rect.left + 'px';
             pop.style.width = rect.width + 'px';
             pop.style.display = 'block';
+            const sidebarEl = document.querySelector('.sidebar');
+            if (sidebarEl) sidebarEl.classList.add('presence-popover-open');
         };
 
         document.addEventListener('click', (e) => {
@@ -7384,17 +7396,7 @@
             if (!pop || pop.style.display !== 'block') return;
             const inWidget = widget && widget.contains(e.target);
             const inPopover = pop.contains(e.target);
-            if (!inWidget && !inPopover) pop.style.display = 'none';
-        });
-
-        // 마우스가 사이드바를 벗어나 다시 접히면(hover 펼침 모드) 팝오버도 같이 닫는다 -
-        // 그렇지 않으면 사이드바는 접혔는데 팝오버만 허공에 떠 있는 상태가 된다.
-        document.addEventListener('DOMContentLoaded', () => {
-            const sidebarEl = document.querySelector('.sidebar');
-            if (sidebarEl) sidebarEl.addEventListener('mouseleave', () => {
-                const pop = document.getElementById('sidebar-presence-popover');
-                if (pop) pop.style.display = 'none';
-            });
+            if (!inWidget && !inPopover) closePresencePopover();
         });
 
         window.setMyPresenceStatus = function(status) {
@@ -7402,8 +7404,7 @@
             try { localStorage.setItem(PRESENCE_STATUS_KEY, status); } catch (e) {}
             set(ref(db, `presence/${currentUser.uid}/status`), status).catch(() => {});
             window.updatePresenceWidgetUI();
-            const pop = document.getElementById('sidebar-presence-popover');
-            if (pop) pop.style.display = 'none';
+            closePresencePopover();
         };
 
         // =========================================================================
