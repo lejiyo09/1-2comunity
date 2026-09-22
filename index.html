@@ -4942,6 +4942,83 @@
         let noticesCache = {};
         let noticeReadsCache = {}; // { noticeId: { uid: timestamp, ... }, ... }
 
+        // =========================================================================
+        // 🔗 게시글/공지 공유 링크
+        // - 서버 라우팅이 없는 단일 페이지 앱이라, "공유 링크"는 그냥 루트 URL에
+        //   ?share=post|notice&id=... 를 붙인 것뿐이다. 페이지가 열리면 해당 게시글/공지 데이터가
+        //   (실시간 리스너로) 도착하는 즉시 알맞은 탭으로 이동해서 상세보기를 자동으로 연다.
+        // - 게스트(비로그인)도 커뮤니티/공지는 읽기 전용으로 볼 수 있으므로, 공유 링크는 로그인
+        //   여부와 무관하게 항상 동작한다.
+        // =========================================================================
+        function buildShareUrl(type, id) {
+            const url = new URL(location.href);
+            url.search = `?share=${type}&id=${encodeURIComponent(id)}`;
+            url.hash = '';
+            return url.toString();
+        }
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+            }
+            // HTTPS가 아니거나 clipboard API를 못 쓰는 환경을 위한 대체 수단
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch (e) { return false; }
+        }
+        window.sharePost = async function(postId) {
+            const ok = await copyTextToClipboard(buildShareUrl('post', postId));
+            alert(ok ? '게시글 링크가 복사되었어요! 붙여넣기로 공유해보세요.' : '링크 복사에 실패했어요. 브라우저 권한을 확인해주세요.');
+        };
+        window.shareNotice = async function(noticeId) {
+            const ok = await copyTextToClipboard(buildShareUrl('notice', noticeId));
+            alert(ok ? '공지 링크가 복사되었어요! 붙여넣기로 공유해보세요.' : '링크 복사에 실패했어요. 브라우저 권한을 확인해주세요.');
+        };
+
+        // 페이지가 공유 링크로 열렸으면 여기 기억해뒀다가, 해당 게시글/공지 데이터가 도착하는 즉시 연다.
+        let pendingShareTarget = (function parseShareTargetFromURL() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const type = params.get('share');
+                const id = params.get('id');
+                if ((type === 'post' || type === 'notice') && id) return { type, id };
+            } catch (e) {}
+            return null;
+        })();
+        function tryConsumePendingShareTarget() {
+            if (!pendingShareTarget) return;
+            const { type, id } = pendingShareTarget;
+            if (type === 'post' && latestPostsData && latestPostsData[id]) {
+                pendingShareTarget = null;
+                window.switchTab('community');
+                window.openPostDetail(id);
+                try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+            } else if (type === 'notice' && noticesCache && noticesCache[id]) {
+                pendingShareTarget = null;
+                window.switchTab('notice');
+                showNoticeDetail(id);
+                try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+            }
+        }
+        if (pendingShareTarget) {
+            // 데이터가 끝까지 안 오거나(네트워크 문제), 삭제됐거나 접근 권한이 없는 글이면
+            // 8초 뒤에도 못 열었을 것 - 그때 한 번만 안내하고 포기한다(무한 대기 방지).
+            setTimeout(() => {
+                if (pendingShareTarget) {
+                    alert('공유된 글을 찾을 수 없어요. 삭제되었거나 더 이상 접근할 수 없는 글일 수 있어요.');
+                    pendingShareTarget = null;
+                }
+            }, 8000);
+        }
+
         function escapeNoticeText(str) {
             return String(str == null ? '' : str)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -5222,6 +5299,7 @@
                     <div class="community-back-link" onclick="closeNoticeDetailView()">← 공지사항 / 설문</div>
                     <div class="detail-meta">
                         <span>${noticeCategoryLabel(n.category)}${n.important ? ' · ⭐ 중요' : ''} · ${escapeNoticeText(resolveDisplayName(n.authorName, n.authorOriginal) || '관리자')} · ${formatPostTime(n.createdAt)}</span>
+                        <span onclick="shareNotice('${id}')" style="cursor:pointer; color:var(--primary); font-weight:600; font-size:12.5px; white-space:nowrap; margin-left:auto; margin-right:${canPostNotice ? '10px' : '0'};">🔗 공유</span>
                         ${canPostNotice ? `
                             <span class="post-menu-wrap">
                                 <span class="post-menu-trigger" onclick="togglePostMenu('notice-${id}')">⋯</span>
@@ -5745,6 +5823,7 @@
                 renderNoticeHub();
                 renderNoticePopup();
                 renderNotificationBell();
+                tryConsumePendingShareTarget();
             });
             // notice_reads는 flat 컬렉션(문서ID "{noticeId}_{uid}")이라, 기존 코드가 기대하는
             // { noticeId: { uid: timestamp } } 모양으로 다시 묶어준다.
@@ -8565,6 +8644,7 @@
                 const postsData = fsSnapshotToMap(snapshot);
                 latestPostsData = postsData; // 활동 업적(게시글 합계) 계산용 캐시
                 evaluateAndSyncAchievements();
+                tryConsumePendingShareTarget();
 
                 // 새로 생긴 게시글은 댓글 구독을 새로 걸고, 삭제된 게시글의 댓글 구독은 정리한다.
                 Object.keys(postsData).forEach(postId => {
@@ -8753,6 +8833,7 @@
                     <div class="community-back-link" onclick="closePostDetail()">← 커뮤니티</div>
                     <div class="detail-meta">
                         <span>${displayAuthor} · ${formatPostTimeOrDash(post.createdAt)}</span>
+                        <span onclick="sharePost('${postId}')" style="cursor:pointer; color:var(--primary); font-weight:600; font-size:12.5px; white-space:nowrap; margin-left:auto; margin-right:${canDelete ? '10px' : '0'};">🔗 공유</span>
                         ${canDelete ? `
                             <span class="post-menu-wrap">
                                 <span class="post-menu-trigger" onclick="togglePostMenu('${postId}')">⋯</span>
