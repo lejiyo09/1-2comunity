@@ -2120,7 +2120,7 @@
                 <div id="settings-admin-section" style="padding:14px 0; border-top:1px solid var(--border-color); display:none;">
                     <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">관리자</div>
 
-                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">곧 사라질 예전 imgbb 계정에 올라간 프로필 사진을, 커뮤니티/공지 이미지와 같은 곳(freeimage.host)으로 옮겨요. 예전 계정이 없어지기 전에 한 번만 실행하면 됩니다.</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">곧 사라질 예전 imgbb 계정에 올라간 프로필 사진을, 새 imgbb 계정(커뮤니티/공지 이미지와 같은 곳)으로 옮겨요. 예전 계정이 없어지기 전에 한 번만 실행하면 됩니다.</div>
                     <button class="btn-sub" id="settings-migrate-photos-btn" onclick="migrateProfilePhotosToNewImgbb()">🔁 프로필 사진 마이그레이션</button>
                     <div id="settings-migrate-photos-status" style="font-size:11.5px; color:var(--text-muted); margin-top:6px; margin-bottom:14px;"></div>
 
@@ -8235,45 +8235,10 @@
             }
         }
 
-        // 커뮤니티/공지/설문/포켓몬 게시글 본문 + 프로필 사진 업로드는 freeimage.host를 쓴다.
-        // ⚠️ 이전에 한 번 시도했을 때 매번 실패했다 - 요청 형식은 공식 문서(POST, key/action/source/format,
-        // 응답의 image.url·image.display_url)와 정확히 일치하므로, 요청 자체보다는 브라우저 fetch에 대한
-        // CORS 제한일 가능성이 높다고 보고 imgbb로 되돌렸었다. 이번엔 실패 시 실제 원인(HTTP 상태/응답
-        // 본문/네트워크 에러)이 콘솔에 그대로 찍히도록 진단 로그를 추가했다 - 또 실패하면 콘솔에 찍힌
-        // 에러 메시지를 그대로 확인해야 정확한 원인(CORS vs 다른 문제)을 알 수 있다.
-        async function uploadImageToFreeImageHost(file) {
-            const FREEIMAGE_API_KEY = '6d207e02198a847aa98d0a2a901485a5';
-            const formData = new FormData();
-            formData.append('key', FREEIMAGE_API_KEY);
-            formData.append('action', 'upload');
-            formData.append('source', file);
-            formData.append('format', 'json');
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000);
-            try {
-                const resp = await fetch('https://freeimage.host/api/1/upload', { method: 'POST', body: formData, signal: controller.signal });
-                const text = await resp.text();
-                let json;
-                try {
-                    json = JSON.parse(text);
-                } catch (parseErr) {
-                    console.error(`freeimage.host 응답이 JSON이 아닙니다 (HTTP ${resp.status}):`, text.slice(0, 500));
-                    throw new Error('업로드 실패 (서버 응답 형식 오류)');
-                }
-                const url = json && json.image && (json.image.url || json.image.display_url);
-                if (!url) {
-                    console.error('freeimage.host 업로드 실패 응답:', json);
-                    throw new Error((json && json.status_txt) || '업로드 실패');
-                }
-                return url;
-            } catch (e) {
-                if (e && e.name === 'AbortError') throw new Error('업로드 시간이 초과되었습니다 (네트워크 확인 필요)');
-                console.error('freeimage.host 업로드 오류(네트워크/CORS 등):', e);
-                throw e;
-            } finally {
-                clearTimeout(timeoutId);
-            }
-        }
+        // ⚠️ freeimage.host는 브라우저 콘솔에서 확정 확인됨: "No 'Access-Control-Allow-Origin' header
+        // is present" - 서버가 CORS 응답 헤더를 아예 안 보내서, 클라이언트(브라우저) fetch로는 요청 형식을
+        // 어떻게 바꿔도 원천적으로 불가능하다 (서버를 거치는 프록시 없이는 해결 불가). 그래서 모든 이미지
+        // 업로드(커뮤니티/공지/설문/포켓몬 게시글, 프로필 사진)는 imgbb로 통일했다.
 
         // 리치 본문(contentHTML) 안에 인라인으로 삽입된 <img>들의 src만 순서대로 뽑아낸다.
         // 리치 본문 속 <img> 엘리먼트 자체를 뽑아낸다 (src뿐 아니라 작성 시 조절한 width 스타일도 함께 보존하기 위해)
@@ -9046,7 +9011,7 @@
         }
 
         // --- 공용 리치 텍스트 에디터 (contenteditable + 툴바). 커뮤니티/공지/설문이 전부 이 함수로 만든다. ---
-        // targetId: contenteditable div의 id. 이미지 업로드는 uploadImageToFreeImageHost()를 쓴다.
+        // targetId: contenteditable div의 id. 이미지 업로드는 기존 uploadImageToImgbb()를 그대로 재사용한다.
         function richEditorToolbarHTML(targetId) {
             return `
                 <div class="rich-toolbar" data-target="${targetId}">
@@ -9130,7 +9095,7 @@
                 const placeholderId = `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 document.execCommand('insertHTML', false, `<span id="${placeholderId}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중...</span>`);
                 try {
-                    const url = await uploadImageToFreeImageHost(file);
+                    const url = await uploadImageToImgbb(file);
                     const img = document.createElement('img');
                     img.src = url;
                     img.alt = '첨부 이미지';
@@ -12477,28 +12442,28 @@
 
         window.closeProfileModal = function() { document.getElementById('profile-modal').style.display = 'none'; activeStudentNum = null; }
 
-        // 프로필 사진도 커뮤니티/공지 이미지와 같은 곳(freeimage.host)으로 통합했다.
+        // 프로필 사진도 커뮤니티/공지 이미지와 같은 곳(imgbb, 새 계정)으로 통합했다.
         window.uploadProfileImage = async function() {
             if (isRestrictedViewer) return;
             const file = document.getElementById('modal-file-input').files[0]; if(!file) return;
             const btn = document.getElementById('btn-edit-photo'); btn.innerText = "업로드 중...⏳";
             try {
-                const url = await uploadImageToFreeImageHost(file);
+                const url = await uploadImageToImgbb(file);
                 document.getElementById('modal-img').src = url;
                 alert("저장 버튼을 눌러야 영구 보관됩니다.");
             } catch(e) { console.error('프로필 사진 업로드 오류:', e); alert("업로드에 실패했습니다."); } finally { btn.innerText = "사진 변경"; }
         }
 
         // 관리자 전용 1회성 마이그레이션: 곧 사라질 예전 imgbb 계정에 올라간 프로필 사진들을
-        // freeimage.host로 다시 업로드하고(커뮤니티/공지 이미지와 같은 곳으로 통합), profiles/{studentKey}.photo를
-        // 새 URL로 갱신한다.
+        // 새 imgbb 계정으로 다시 업로드하고, profiles/{studentKey}.photo를 새 URL로 갱신한다.
+        // (freeimage.host로 해보려 했지만 브라우저 CORS로 확정 차단됨 - uploadImageToImgbb 주석 참고)
         // ⚠️ 기존 이미지를 fetch()로 내려받아야 하므로, imgbb CDN이 CORS를 막아두면 그 사진은 실패로
         // 집계된다(개별 실패는 전체를 막지 않고 계속 진행) - 완료 후 성공/건너뜀/실패 건수를 보여준다.
-        // 이미 한 번 옮긴 학생은 profiles 문서에 migratedToFreeImageHost:true가 남아 다음 실행 때 건너뛴다
+        // 이미 한 번 옮긴 학생은 profiles 문서에 migratedToNewImgbb:true가 남아 다음 실행 때 건너뛴다
         // (재실행해도 안전 - 중간에 끊겨도 이어서 실행 가능).
         window.migrateProfilePhotosToNewImgbb = async function() {
             if (!isAdmin) return alert('관리자만 실행할 수 있습니다.');
-            if (!confirm('반 전체 학생의 프로필 사진을 예전 imgbb 계정에서 freeimage.host로 옮깁니다.\n사진 수만큼 시간이 걸릴 수 있어요. 계속할까요?')) return;
+            if (!confirm('반 전체 학생의 프로필 사진을 예전 imgbb 계정에서 새 imgbb 계정으로 옮깁니다.\n사진 수만큼 시간이 걸릴 수 있어요. 계속할까요?')) return;
 
             const statusEl = document.getElementById('settings-migrate-photos-status');
             const btn = document.getElementById('settings-migrate-photos-btn');
@@ -12511,11 +12476,11 @@
                 const key = `student_${num}`;
                 const rec = profilesData[key];
                 const photoUrl = rec && rec.photo;
-                if (!photoUrl || !/ibb\.co/i.test(photoUrl) || rec.migratedToFreeImageHost) { skipped++; continue; }
+                if (!photoUrl || !/ibb\.co/i.test(photoUrl) || rec.migratedToNewImgbb) { skipped++; continue; }
                 try {
                     const blob = await (await fetch(photoUrl)).blob();
-                    const newUrl = await uploadImageToFreeImageHost(blob);
-                    await setDoc(doc(fdb, 'profiles', key), { photo: newUrl, migratedToFreeImageHost: true }, { merge: true });
+                    const newUrl = await uploadImageToImgbb(blob);
+                    await setDoc(doc(fdb, 'profiles', key), { photo: newUrl, migratedToNewImgbb: true }, { merge: true });
                     migrated++;
                 } catch (e) {
                     console.error('프로필 사진 마이그레이션 실패:', key, e);
