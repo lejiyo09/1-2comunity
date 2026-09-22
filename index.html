@@ -3695,7 +3695,8 @@
         });
 
         window.setNickname = async function() {
-            if(!currentUser || !currentUserInfo) return;
+            if (!currentUser) return showLoginScreen();
+            if (!currentUserInfo) return;
             const newNick = prompt("사용할 닉네임을 입력하세요.\n(공백으로 두시면 원래 학번으로 표시됩니다):", currentUserInfo.nickname || "");
             if(newNick !== null) {
                 const trimmed = newNick.trim();
@@ -5361,7 +5362,7 @@
         };
 
         window.setAccentColor = async function(color) {
-            if (!currentUser) return;
+            if (!currentUser) return showLoginScreen();
             try {
                 await update(ref(db, `users/${currentUser.uid}`), { accentColor: color });
                 currentUserInfo = { ...currentUserInfo, accentColor: color };
@@ -5783,7 +5784,7 @@
         }
 
         window.submitPollVote = async function(pollId) {
-            if (!currentUser) return;
+            if (!currentUser) return showLoginScreen();
             const poll = pollsCache[pollId];
             if (!poll || !isPollOpen(poll)) return;
             const selected = Array.from(document.querySelectorAll('#poll-vote-options .poll-vote-opt.selected')).map(el => el.getAttribute('data-opt'));
@@ -5900,7 +5901,7 @@
             if (el) el.classList.toggle('selected');
         }
         window.submitPollVoteIn = async function(containerId, pollId) {
-            if (!currentUser) return;
+            if (!currentUser) return showLoginScreen();
             const poll = pollsCache[pollId];
             if (!poll || !isPollOpen(poll)) return;
             const selected = Array.from(document.querySelectorAll(`#${containerId} .poll-vote-opt.selected`)).map(el => el.getAttribute('data-opt'));
@@ -7491,7 +7492,7 @@
         }
 
         window.openScheduleComposer = function(id) {
-            if (!currentUser) return; // 로그인만 하면 개인 일정은 누구나 추가 가능 - 공용 쓰기 권한은 아래에서 별도 처리
+            if (!currentUser) return showLoginScreen(); // 로그인만 하면 개인 일정은 누구나 추가 가능 - 공용 쓰기 권한은 아래에서 별도 처리
             const personalCheckbox = document.getElementById('schedule-form-personal');
             if (id && scheduleCache[id] && scheduleCache[id]._source === 'shared' && !canWriteSchedule) return; // 남의 공용 일정을 권한 없이 열려는 시도 방지
             scheduleEditingId = id;
@@ -7880,7 +7881,8 @@
             const rawHTML = contentInput.innerHTML.trim();
             const plainText = (contentInput.textContent || '').trim();
             if(!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             const submitBtn = document.querySelector("button[onclick='handlePostSubmit()']");
             try {
@@ -8003,6 +8005,7 @@
         }
 
         window.addComment = async function(postId) {
+            if (!currentUser) return showLoginScreen();
             const commentInput = document.getElementById(`reply-${postId}`);
             if (!commentInput || !commentInput.value.trim()) return;
             await addDoc(collection(fdb, 'posts', postId, 'comments'), {
@@ -8255,7 +8258,8 @@
         };
 
         window.openCommunityCompose = function() {
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             communityView = 'compose';
             document.getElementById('community-feed-view').style.display = 'none';
             document.getElementById('community-detail-view').style.display = 'none';
@@ -9027,7 +9031,8 @@
         let pokemonSortTab = 'all'; // 'all' | 'popular'
 
         window.startNewPokemonPost = function() {
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             pokemonEditingPostId = null;
             document.getElementById('pokemon-post-title').value = '';
             document.getElementById('pokemon-post-content').innerHTML = '';
@@ -9053,7 +9058,8 @@
             const rawHTML = contentInput.innerHTML.trim();
             const plainText = (contentInput.textContent || '').trim();
             if (!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             try {
                 if (pokemonEditingPostId) {
@@ -9130,7 +9136,7 @@
 
         // toggleLike()와 동일한 낙관적 UI 패턴 적용 (Firestore 트랜잭션으로 likes map + likeCount를 함께 갱신)
         window.togglePokemonLike = async function(postId) {
-            if (!currentUser) return;
+            if (!currentUser) return showLoginScreen();
             const btn = document.getElementById(`pokemon-like-btn-${postId}`);
             let optimisticLiked = null;
             if (btn) {
@@ -9164,6 +9170,7 @@
         }
 
         window.addPokemonComment = async function(postId) {
+            if (!currentUser) return showLoginScreen();
             const commentInput = document.getElementById(`pokemon-reply-${postId}`);
             if (!commentInput || !commentInput.value.trim()) return;
             await addDoc(collection(fdb, 'pokemon_posts', postId, 'comments'), {
@@ -9374,7 +9381,8 @@
             const contentInput = document.getElementById('archive-content'); 
             const fileInput = document.getElementById('archive-img-file'); 
             if(!titleInput.value.trim() || !contentInput.value.trim()) return alert("제목과 내용을 모두 입력해주세요.");
-            if(!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if(currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             let imageUrl = ""; 
             if (fileInput.files.length > 0) {
@@ -9572,7 +9580,8 @@
         // Storage 업로드 + materials INSERT를 대신 수행한다. (익명 사용자가 API를 직접 호출해서
         // 무단으로 자료를 올리는 걸 막기 위해, anon 키에는 write 권한을 아예 주지 않는다 - SQL 참고)
         window.openMaterialUploadModal = function() {
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             document.getElementById('material-upload-modal').style.display = 'flex';
         };
         window.closeMaterialUploadModal = function() {
@@ -9587,7 +9596,8 @@
             const progressEl = document.getElementById('materials-upload-progress');
             const submitBtn = document.getElementById('materials-submit-btn');
             if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
 
             const file = fileInput.files.length > 0 ? fileInput.files[0] : null;
 
@@ -10851,7 +10861,8 @@
         };
 
         window.openMusicShareModal = async function() {
-            if (!currentUser || currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
+            if (!currentUser) return showLoginScreen();
+            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             document.getElementById('music-share-title').value = '';
             document.getElementById('music-share-artist').value = '';
             document.getElementById('music-share-file').value = '';
@@ -11858,7 +11869,8 @@
         }
 
         window.addProfileComment = async function() {
-            if(!activeStudentNum) return; 
+            if(!activeStudentNum) return;
+            if (!currentUser) return showLoginScreen();
             const input = document.getElementById('profile-comment-input');
             if(!input.value.trim()) return;
             try {
