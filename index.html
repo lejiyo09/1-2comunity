@@ -5079,6 +5079,7 @@
 
         window.submitNoticeForm = async function() {
             if (!canPostNotice || !currentUser) return alert('공지 작성 권한이 없습니다.');
+            if (isRichEditorUploadingImage('notice-form-content')) return alert('이미지를 업로드하는 중이에요. 잠시 후 다시 눌러주세요.');
             const editingId = document.getElementById('notice-editing-id').value;
             const title = document.getElementById('notice-form-title').value.trim();
             const contentEditable = document.getElementById('notice-form-content');
@@ -6046,6 +6047,7 @@
 
         window.submitPollForm = async function() {
             if (!canPostNotice || !currentUser) return alert('설문 작성 권한이 없습니다.');
+            if (isRichEditorUploadingImage('poll-form-desc')) return alert('이미지를 업로드하는 중이에요. 잠시 후 다시 눌러주세요.');
             const title = document.getElementById('poll-form-title').value.trim();
             const descEditable = document.getElementById('poll-form-desc');
             const descriptionHTML = sanitizeRichHTML(descEditable.innerHTML.trim());
@@ -8241,6 +8243,7 @@
 
         window.handlePostSubmit = async function() {
             const titleInput = document.getElementById('post-title'); const contentInput = document.getElementById('post-content');
+            if (isRichEditorUploadingImage('post-content')) return alert('이미지를 업로드하는 중이에요. 잠시 후 다시 눌러주세요.');
             const rawHTML = contentInput.innerHTML.trim();
             const plainText = (contentInput.textContent || '').trim();
             if(!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
@@ -9030,6 +9033,15 @@
         };
         // 에디터 안에서 마지막으로 클릭한 이미지를 기억해뒀다가, 크기 슬라이더가 그 이미지에 적용되게 한다.
         let richLastClickedImage = null;
+        // targetId별로 지금 이미지 업로드가 진행 중인지 추적한다. 업로드는 비동기(imgbb 요청)라서,
+        // 업로드가 끝나기 전에 "게시하기"를 눌러버리면 방금 고른 이미지가 본문에 삽입되기도 전에
+        // 글이 저장되고(이미지 없이), 그 직후 업로드가 뒤늦게 끝나면서 이미 닫히거나 초기화된
+        // 에디터에 이미지를 끼워넣어봐야 아무 데도 저장되지 않는다 - "imgbb에는 쌓이는데 게시글에는
+        // 안 보인다"는 문제의 원인이 바로 이 경쟁 상태였다. 그래서 (1) 업로드 중에는 자리표시자를
+        // 눈에 보이게 넣어두고, (2) 각 글쓰기 제출 함수는 이 Set을 확인해서 업로드가 끝날 때까지
+        // 제출 자체를 막는다.
+        const richImageUploadsInFlight = new Set();
+        function isRichEditorUploadingImage(targetId) { return richImageUploadsInFlight.has(targetId); }
         window.richInsertImage = function(targetId) {
             const input = document.createElement('input');
             input.type = 'file'; input.accept = 'image/*';
@@ -9038,10 +9050,26 @@
                 if (!file) return;
                 const el = document.getElementById(targetId);
                 el.focus();
+                richImageUploadsInFlight.add(targetId);
+                const placeholderId = `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                document.execCommand('insertHTML', false, `<span id="${placeholderId}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중...</span>`);
                 try {
                     const url = await uploadImageToImgbb(file);
-                    document.execCommand('insertHTML', false, `<img src="${url}" style="width:100%; max-width:100%;" alt="첨부 이미지" onerror="handleRichImgLoadError(this)">`);
-                } catch (e) { alert('이미지 업로드 중 오류가 발생했습니다.'); }
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = '첨부 이미지';
+                    img.style.width = '100%';
+                    img.style.maxWidth = '100%';
+                    img.setAttribute('onerror', 'handleRichImgLoadError(this)');
+                    const placeholder = document.getElementById(placeholderId);
+                    if (placeholder) placeholder.replaceWith(img); else el.appendChild(img);
+                } catch (e) {
+                    const placeholder = document.getElementById(placeholderId);
+                    if (placeholder) placeholder.remove();
+                    alert('이미지 업로드 중 오류가 발생했습니다.');
+                } finally {
+                    richImageUploadsInFlight.delete(targetId);
+                }
             };
             input.click();
         };
@@ -9432,6 +9460,7 @@
             const titleInput = document.getElementById('pokemon-post-title');
             const contentInput = document.getElementById('pokemon-post-content');
             const categorySelect = document.getElementById('pokemon-post-category');
+            if (isRichEditorUploadingImage('pokemon-post-content')) return alert('이미지를 업로드하는 중이에요. 잠시 후 다시 눌러주세요.');
             const rawHTML = contentInput.innerHTML.trim();
             const plainText = (contentInput.textContent || '').trim();
             if (!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
