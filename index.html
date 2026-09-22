@@ -2117,18 +2117,6 @@
                     <div id="settings-accent-swatches" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
                 </div>
 
-                <div id="settings-admin-section" style="padding:14px 0; border-top:1px solid var(--border-color); display:none;">
-                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">관리자</div>
-
-                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">곧 사라질 예전 imgbb 계정에 올라간 프로필 사진을, 새 imgbb 계정(커뮤니티/공지 이미지와 같은 곳)으로 옮겨요. 예전 계정이 없어지기 전에 한 번만 실행하면 됩니다.</div>
-                    <button class="btn-sub" id="settings-migrate-photos-btn" onclick="migrateProfilePhotosToNewImgbb()">🔁 프로필 사진 마이그레이션</button>
-                    <div id="settings-migrate-photos-status" style="font-size:11.5px; color:var(--text-muted); margin-top:6px; margin-bottom:14px;"></div>
-
-                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">예전 4.0 버전에서 RTDB에 저장돼 있던 프로필 정보(이름/자기소개/사진)와 프로필 댓글을, 지금 쓰는 Firestore로 옮겨요. 이미 Firestore에 있는 내용은 건드리지 않아요.</div>
-                    <button class="btn-sub" id="settings-migrate-rtdb-btn" onclick="migrateLegacyProfileDataFromRTDB()">🔁 4.0 프로필/댓글 마이그레이션 (RTDB→Firestore)</button>
-                    <div id="settings-migrate-rtdb-status" style="font-size:11.5px; color:var(--text-muted); margin-top:6px;"></div>
-                </div>
-
                 <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.0</div>
             </div>
         </div>
@@ -3627,6 +3615,9 @@
         // service_role로 처리)을 통해서만 이루어진다. anon 키에는 write 권한을 아예 주지 않는다.
         const MATERIALS_UPLOAD_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/upload-material`;
         const MATERIALS_DELETE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-delete-material`;
+        // freeimage.host는 브라우저에서 직접 fetch하면 CORS로 100% 차단된다(콘솔에서 확인됨) - 이 Edge
+        // Function이 서버에서 대신 업로드해준다(서버끼리는 CORS 제약이 없음). 반드시 별도로 배포해야 동작한다.
+        const FREEIMAGE_UPLOAD_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/upload-freeimage`;
 
         // ===============================
         // SUPABASE CONFIG — 1-2 Music 전용 (자료실용 Supabase 프로젝트와는 완전히 다른 별도 프로젝트)
@@ -8235,10 +8226,40 @@
             }
         }
 
-        // ⚠️ freeimage.host는 브라우저 콘솔에서 확정 확인됨: "No 'Access-Control-Allow-Origin' header
-        // is present" - 서버가 CORS 응답 헤더를 아예 안 보내서, 클라이언트(브라우저) fetch로는 요청 형식을
-        // 어떻게 바꿔도 원천적으로 불가능하다 (서버를 거치는 프록시 없이는 해결 불가). 그래서 모든 이미지
-        // 업로드(커뮤니티/공지/설문/포켓몬 게시글, 프로필 사진)는 imgbb로 통일했다.
+        // freeimage.host는 브라우저에서 직접 fetch하면 CORS로 100% 차단된다(콘솔에서 "No
+        // 'Access-Control-Allow-Origin' header" 확인됨) - 요청 형식이 아니라 서버가 CORS 헤더를 아예
+        // 안 보내는 문제라 클라이언트 코드로는 절대 우회 불가능하다. 그래서 자료실 업로드와 같은 방식으로,
+        // Supabase Edge Function(upload-freeimage)이 서버에서 대신 업로드해준다(서버-서버 요청은 CORS
+        // 제약이 없음). ⚠️ 이 Edge Function은 반드시 Supabase 프로젝트에 별도로 배포해야 동작한다 -
+        // 배포 전까지는 이 함수가 항상 실패한다.
+        async function uploadImageToFreeImageHost(file) {
+            if (!currentUser) throw new Error('로그인이 필요합니다.');
+            const idToken = await currentUser.getIdToken();
+            const formData = new FormData();
+            formData.append('firebaseIdToken', idToken);
+            formData.append('source', file);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            try {
+                const resp = await fetch(FREEIMAGE_UPLOAD_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }, // 파일 전송이라 Content-Type은 브라우저가 자동 설정하게 둔다
+                    body: formData,
+                    signal: controller.signal
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (!resp.ok || !json.url) {
+                    console.error('freeimage.host 프록시 업로드 실패:', resp.status, json);
+                    throw new Error(json.error || '업로드 실패');
+                }
+                return json.url;
+            } catch (e) {
+                if (e && e.name === 'AbortError') throw new Error('업로드 시간이 초과되었습니다 (네트워크 확인 필요)');
+                throw e;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
 
         // 리치 본문(contentHTML) 안에 인라인으로 삽입된 <img>들의 src만 순서대로 뽑아낸다.
         // 리치 본문 속 <img> 엘리먼트 자체를 뽑아낸다 (src뿐 아니라 작성 시 조절한 width 스타일도 함께 보존하기 위해)
@@ -9011,7 +9032,7 @@
         }
 
         // --- 공용 리치 텍스트 에디터 (contenteditable + 툴바). 커뮤니티/공지/설문이 전부 이 함수로 만든다. ---
-        // targetId: contenteditable div의 id. 이미지 업로드는 기존 uploadImageToImgbb()를 그대로 재사용한다.
+        // targetId: contenteditable div의 id. 이미지 업로드는 uploadImageToFreeImageHost()(Edge Function 경유)를 쓴다.
         function richEditorToolbarHTML(targetId) {
             return `
                 <div class="rich-toolbar" data-target="${targetId}">
@@ -9095,7 +9116,7 @@
                 const placeholderId = `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 document.execCommand('insertHTML', false, `<span id="${placeholderId}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중...</span>`);
                 try {
-                    const url = await uploadImageToImgbb(file);
+                    const url = await uploadImageToFreeImageHost(file);
                     const img = document.createElement('img');
                     img.src = url;
                     img.alt = '첨부 이미지';
@@ -12442,137 +12463,18 @@
 
         window.closeProfileModal = function() { document.getElementById('profile-modal').style.display = 'none'; activeStudentNum = null; }
 
-        // 프로필 사진도 커뮤니티/공지 이미지와 같은 곳(imgbb, 새 계정)으로 통합했다.
+        // 프로필 사진도 커뮤니티/공지 이미지와 같은 곳(freeimage.host, Edge Function 경유)으로 통합했다.
         window.uploadProfileImage = async function() {
             if (isRestrictedViewer) return;
+            if (!currentUser) return showLoginScreen();
             const file = document.getElementById('modal-file-input').files[0]; if(!file) return;
             const btn = document.getElementById('btn-edit-photo'); btn.innerText = "업로드 중...⏳";
             try {
-                const url = await uploadImageToImgbb(file);
+                const url = await uploadImageToFreeImageHost(file);
                 document.getElementById('modal-img').src = url;
                 alert("저장 버튼을 눌러야 영구 보관됩니다.");
             } catch(e) { console.error('프로필 사진 업로드 오류:', e); alert("업로드에 실패했습니다."); } finally { btn.innerText = "사진 변경"; }
         }
-
-        // 관리자 전용 1회성 마이그레이션: 곧 사라질 예전 imgbb 계정에 올라간 프로필 사진들을
-        // 새 imgbb 계정으로 다시 업로드하고, profiles/{studentKey}.photo를 새 URL로 갱신한다.
-        // (freeimage.host로 해보려 했지만 브라우저 CORS로 확정 차단됨 - uploadImageToImgbb 주석 참고)
-        // ⚠️ 기존 이미지를 fetch()로 내려받아야 하므로, imgbb CDN이 CORS를 막아두면 그 사진은 실패로
-        // 집계된다(개별 실패는 전체를 막지 않고 계속 진행) - 완료 후 성공/건너뜀/실패 건수를 보여준다.
-        // 이미 한 번 옮긴 학생은 profiles 문서에 migratedToNewImgbb:true가 남아 다음 실행 때 건너뛴다
-        // (재실행해도 안전 - 중간에 끊겨도 이어서 실행 가능).
-        window.migrateProfilePhotosToNewImgbb = async function() {
-            if (!isAdmin) return alert('관리자만 실행할 수 있습니다.');
-            if (!confirm('반 전체 학생의 프로필 사진을 예전 imgbb 계정에서 새 imgbb 계정으로 옮깁니다.\n사진 수만큼 시간이 걸릴 수 있어요. 계속할까요?')) return;
-
-            const statusEl = document.getElementById('settings-migrate-photos-status');
-            const btn = document.getElementById('settings-migrate-photos-btn');
-            if (btn) btn.disabled = true;
-
-            let migrated = 0, skipped = 0, failed = 0;
-            const failedNums = [];
-            for (let num = 1; num <= 26; num++) {
-                if (statusEl) statusEl.textContent = `진행 중... (${num}/26번 확인 중)`;
-                const key = `student_${num}`;
-                const rec = profilesData[key];
-                const photoUrl = rec && rec.photo;
-                if (!photoUrl || !/ibb\.co/i.test(photoUrl) || rec.migratedToNewImgbb) { skipped++; continue; }
-                try {
-                    const blob = await (await fetch(photoUrl)).blob();
-                    const newUrl = await uploadImageToImgbb(blob);
-                    await setDoc(doc(fdb, 'profiles', key), { photo: newUrl, migratedToNewImgbb: true }, { merge: true });
-                    migrated++;
-                } catch (e) {
-                    console.error('프로필 사진 마이그레이션 실패:', key, e);
-                    failed++;
-                    failedNums.push(num);
-                }
-            }
-
-            if (btn) btn.disabled = false;
-            const summary = `완료 - 성공 ${migrated}건, 건너뜀(사진 없음/이미 완료) ${skipped}건, 실패 ${failed}건${failedNums.length ? ` (실패 번호: ${failedNums.join(', ')})` : ''}`;
-            if (statusEl) statusEl.textContent = summary;
-            alert(summary);
-        };
-
-        // 관리자 전용 1회성 마이그레이션: 예전 4.0 버전이 RTDB(dashboard/profiles, dashboard/profile_comments)에
-        // 저장해뒀던 프로필 정보/댓글을, 지금 쓰는 Firestore(profiles, profile_comments)로 옮긴다.
-        // - 프로필 정보: 이미 Firestore에 값이 있는 필드는 덮어쓰지 않고, 비어있는 필드만 채운다.
-        // - 댓글: RTDB의 push id를 그대로 Firestore 문서 id(studentKey__pushId)로 써서, 다시 실행해도
-        //   같은 댓글이 중복 생성되지 않는다.
-        window.migrateLegacyProfileDataFromRTDB = async function() {
-            if (!isAdmin) return alert('관리자만 실행할 수 있습니다.');
-            if (!confirm('예전 4.0 버전에서 RTDB에 있던 프로필 정보/댓글을 지금 쓰는 Firestore로 옮깁니다.\n이미 Firestore에 있는 내용은 건드리지 않습니다. 계속할까요?')) return;
-
-            const statusEl = document.getElementById('settings-migrate-rtdb-status');
-            const btn = document.getElementById('settings-migrate-rtdb-btn');
-            if (btn) btn.disabled = true;
-
-            let profilesMigrated = 0, profilesSkipped = 0, profilesFailed = 0;
-            let commentsMigrated = 0, commentsSkipped = 0, commentsFailed = 0;
-
-            try {
-                if (statusEl) statusEl.textContent = '프로필 정보 확인 중...';
-                const profilesSnap = await get(ref(db, 'dashboard/profiles'));
-                const legacyProfiles = profilesSnap.val() || {};
-                for (const studentKey of Object.keys(legacyProfiles)) {
-                    const legacy = legacyProfiles[studentKey];
-                    if (!legacy || typeof legacy !== 'object') { profilesSkipped++; continue; }
-                    try {
-                        const existingSnap = await getDoc(doc(fdb, 'profiles', studentKey));
-                        const existing = existingSnap.exists() ? existingSnap.data() : {};
-                        const patch = {};
-                        if (legacy.name != null && !existing.name) patch.name = legacy.name;
-                        if (legacy.desc != null && !existing.desc) patch.desc = legacy.desc;
-                        if (legacy.photo != null && !existing.photo) patch.photo = legacy.photo;
-                        if (Object.keys(patch).length === 0) { profilesSkipped++; continue; }
-                        await setDoc(doc(fdb, 'profiles', studentKey), patch, { merge: true });
-                        profilesMigrated++;
-                    } catch (e) {
-                        console.error('프로필 정보 마이그레이션 실패:', studentKey, e);
-                        profilesFailed++;
-                    }
-                }
-
-                if (statusEl) statusEl.textContent = '프로필 댓글 확인 중...';
-                const commentsSnap = await get(ref(db, 'dashboard/profile_comments'));
-                const legacyCommentsByStudent = commentsSnap.val() || {};
-                for (const studentKey of Object.keys(legacyCommentsByStudent)) {
-                    const comments = legacyCommentsByStudent[studentKey] || {};
-                    for (const pushId of Object.keys(comments)) {
-                        const c = comments[pushId];
-                        if (!c) continue;
-                        const docId = `${studentKey}__${pushId}`;
-                        try {
-                            const existingSnap = await getDoc(doc(fdb, 'profile_comments', docId));
-                            if (existingSnap.exists()) { commentsSkipped++; continue; }
-                            await setDoc(doc(fdb, 'profile_comments', docId), {
-                                studentKey, commentId: pushId,
-                                authorId: c.authorId || '',
-                                author: c.author || '',
-                                authorOriginal: c.authorOriginal || '',
-                                text: c.text || '',
-                                timestamp: c.timestamp || Date.now()
-                            });
-                            commentsMigrated++;
-                        } catch (e) {
-                            console.error('프로필 댓글 마이그레이션 실패:', docId, e);
-                            commentsFailed++;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('RTDB 프로필 데이터 마이그레이션 오류:', e);
-                if (statusEl) statusEl.textContent = '오류가 발생했습니다. (RTDB 읽기 권한 등을 확인해주세요)';
-                if (btn) btn.disabled = false;
-                return;
-            }
-
-            if (btn) btn.disabled = false;
-            const summary = `완료\n프로필: 이전 ${profilesMigrated}건 / 건너뜀 ${profilesSkipped}건 / 실패 ${profilesFailed}건\n댓글: 이전 ${commentsMigrated}건 / 건너뜀 ${commentsSkipped}건 / 실패 ${commentsFailed}건`;
-            if (statusEl) statusEl.textContent = summary;
-            alert(summary);
-        };
 
         window.saveProfileData = async function() {
             if(!activeStudentNum) return;
@@ -16043,8 +15945,6 @@
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
             if (window.updateBgSettingsUI) window.updateBgSettingsUI(); // 배경화면 선택 UI도 최신 상태로
-            const adminSection = document.getElementById('settings-admin-section');
-            if (adminSection) adminSection.style.display = (window.isAdminNow && window.isAdminNow()) ? 'block' : 'none';
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
