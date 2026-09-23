@@ -3446,9 +3446,9 @@
          건드리지 않고 IndexedDB에서 트랙만 직접 읽어와 보여줘서, 재생 중이던 곡이 끊기지 않고
          전역 PiP에도 계속 그 곡이 보인다. 곡을 누르면 그제서야 실제로 이 플레이리스트로 재생이 전환된다. -->
     <div id="playlist-browse-wrapper" style="display:none;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-            <span onclick="closePlaylistBrowse()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--text-main); padding:8px 12px; border-radius:10px; background:var(--surface-secondary);">← 플레이리스트</span>
-            <span id="playlist-browse-title" style="font-size:14.5px; font-weight:700; color:var(--text-main);"></span>
+        <div style="display:flex; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+            <span onclick="closePlaylistBrowse()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--text-main); padding:8px 12px; border-radius:10px; background:var(--surface-secondary); flex-shrink:0;">← 플레이리스트</span>
+            <span id="playlist-browse-title" style="font-size:14.5px; font-weight:700; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
         </div>
         <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">🎧 다른 곡이 재생 중이에요. 아래 곡을 누르면 이 플레이리스트로 재생이 바뀌어요.</div>
         <div id="playlist-browse-list"><div class="widget-text">불러오는 중...</div></div>
@@ -15666,13 +15666,23 @@
         }
 
         // 인라인 위젯(.gmw-inline-card)과 같은 288px 너비를 기준으로 잡는다 - 전역 PiP가
-        // 인라인보다 커 보인다는 피드백 반영. 세로는 실제 행 하나의 자연스러운 높이(패딩+링 46px)에 맞춘 값.
-        // ⚠️ 예전엔 80/160이라 실제 콘텐츠 높이(약 78px)와 여백이 거의 없어서, 브라우저/폰트 렌더링
-        // 차이로 아래쪽이 살짝씩 잘리는 문제가 있었다 - 위아래로 여유를 더 두었다.
+        // 인라인보다 커 보인다는 피드백 반영.
+        // ⚠️ 세로 높이는 고정값을 추측해서 쓰지 않는다 - 80/160으로 하면 아래가 잘리고, 96/180으로
+        // 늘리면 이번엔 아래 여백이 너무 많이 남는 등 환경(폰트/브라우저)마다 실제 콘텐츠 높이가
+        // 조금씩 달라 고정값으로는 계속 어긋났다. 여기 height는 창을 "처음 열 때"만 쓰는 대략적인
+        // 값이고, 연 직후 measurePiPContentHeight()로 실제 렌더된 높이를 재서 바로 정확히 맞춘다.
         function sizeForPiP(showFocus, showMix){
-            if (showFocus && showMix) return { width: 288, height: 180 };
-            if (showMix) return { width: 288, height: 96 };
-            return { width: 288, height: 96 };
+            if (showFocus && showMix) return { width: 288, height: 160 };
+            return { width: 288, height: 80 };
+        }
+
+        // pipCard의 실제 렌더링된 콘텐츠 높이(scrollHeight)를 재서, 셸 패딩(위아래 6px씩)을 더한
+        // "이 내용에 정확히 맞는" 창 높이를 구한다. 고정값 추측 대신 매번 실측해서 여백이 남거나
+        // 잘리는 문제를 근본적으로 없앤다.
+        function measurePiPContentHeight(){
+            if (!pipCard) return null;
+            const h = pipCard.scrollHeight;
+            return h > 0 ? h + 12 : null; // .gmw-pip-shell padding: 6px 이므로 위+아래 12px
         }
 
         // ----- Window 상태 관리: "숨김"이 아니라 완전히 닫는다(Option A) -----
@@ -15716,6 +15726,13 @@
                 pipRoot.style.height = '100%';
                 pipWindow.document.body.appendChild(pipRoot);
 
+                // 대략적인 크기로 창을 만들었으니, 실제로 내용이 이 창 안에 배치된 직후 진짜
+                // 필요한 높이로 다시 맞춘다 (레이아웃이 끝난 뒤 재야 정확하므로 한 프레임 기다린다).
+                requestAnimationFrame(() => {
+                    const measured = measurePiPContentHeight();
+                    if (measured && pipWindow) { try { pipWindow.resizeTo(width, measured); } catch (e) {} }
+                });
+
                 // 사용자가 PiP 창을 직접 닫거나(destroyPiPWindow 포함) 브라우저가 종료할 때 실행된다.
                 pipWindow.addEventListener('pagehide', () => {
                     // PiP 창이 닫혀도 Focus 타이머/음악 재생 자체는 절대 건드리지 않는다.
@@ -15735,7 +15752,12 @@
             if (!pipWindow) return;
             try {
                 const { width, height } = sizeForPiP(showFocus, showMix);
-                if (typeof pipWindow.resizeTo === 'function') pipWindow.resizeTo(width, height);
+                if (typeof pipWindow.resizeTo !== 'function') return;
+                pipWindow.resizeTo(width, height); // Focus/MixTape 행이 늘거나 줄어드는 순간 우선 대략 맞춰둔다
+                requestAnimationFrame(() => {
+                    const measured = measurePiPContentHeight();
+                    if (measured && pipWindow) { try { pipWindow.resizeTo(width, measured); } catch (e) {} } // 실측치로 정확히 보정
+                });
             } catch (e) { /* 일부 환경에서 제한될 수 있음 - 무시 */ }
         }
 
