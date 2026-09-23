@@ -3390,14 +3390,40 @@
     <!-- 📁 플레이리스트 "보기 전용" 화면 - 지금 다른 곡이 재생 중일 때, 그 곡이 들어있지 않은 다른
          플레이리스트를 열면 이 화면을 쓴다. 재생 엔진(#playlist-player-wrapper 안의 MixTapeApp)은 전혀
          건드리지 않고 IndexedDB에서 트랙만 직접 읽어와 보여줘서, 재생 중이던 곡이 끊기지 않고
-         전역 PiP에도 계속 그 곡이 보인다. 곡을 누르면 그제서야 실제로 이 플레이리스트로 재생이 전환된다. -->
+         전역 PiP에도 계속 그 곡이 보인다. 곡을 누르면 그제서야 실제로 이 플레이리스트로 재생이 전환된다.
+         ⚠️ 겉모습은 실제 카세트 플레이어(.mixtape-app .cassette/.tracks 등)와 똑같이 보이도록, 그
+         전용 CSS 클래스들을 그대로 재사용한다 - 다만 엔진의 DOM/상태는 완전히 별개다(id도 전부 다름). -->
     <div id="playlist-browse-wrapper" style="display:none;">
         <div style="display:flex; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
             <span onclick="closePlaylistBrowse()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--text-main); padding:8px 12px; border-radius:10px; background:var(--surface-secondary); flex-shrink:0;">← 플레이리스트</span>
-            <span id="playlist-browse-title" style="font-size:14.5px; font-weight:700; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
         </div>
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">🎧 다른 곡이 재생 중이에요. 아래 곡을 누르면 이 플레이리스트로 재생이 바뀌어요.</div>
-        <div id="playlist-browse-list"><div class="widget-text">불러오는 중...</div></div>
+        <div class="mixtape-app">
+            <div class="wrap">
+                <div class="cassette">
+                    <div class="cassette-main">
+                        <div class="tape-label">
+                            <span id="playlist-browse-tape-label">플레이리스트</span>
+                            <span id="playlist-browse-trackcount">0곡</span>
+                        </div>
+                        <div class="reels">
+                            <div class="reel"></div>
+                            <div class="reel"></div>
+                        </div>
+                        <div class="now-playing">
+                            <div class="np-title">🎧 다른 곡이 재생 중이에요</div>
+                            <div class="np-sub">아래 곡을 누르면 이 플레이리스트로 재생이 바뀌어요</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="list-head">
+                    <span>트랙리스트</span>
+                </div>
+                <ul class="tracks" id="playlist-browse-tracklist">
+                    <li><div class="empty-state" style="width:100%;">불러오는 중...</div></li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- 📁 플레이리스트 "음악 플레이" 화면 - 목록에서 하나를 클릭해야 보인다 (기존 플레이어 UI 그대로, 내부는 전혀 안 건드림) -->
@@ -10376,32 +10402,39 @@
         // 보기 전용 화면: 다른 곡이 재생 중일 때 열어본 "재생 중이 아닌" 플레이리스트.
         // 재생 엔진(MixTapeApp)의 playlist/currentIndex는 전혀 건드리지 않고, IndexedDB에서
         // 트랙만 직접 읽어와 보여준다. 곡을 누르면 그때 실제로 재생을 이 플레이리스트로 전환한다.
+        // 실제 카세트 플레이어(#mixtape-app-root)와 똑같은 CSS 클래스(.cassette/.tracks/.track-*)를
+        // 그대로 재사용해서 겉모습을 동일하게 만든다 - id는 전부 다르고, 이 DOM은 재생 엔진과
+        // 완전히 분리돼 있어서 재생 중인 다른 곡에는 아무 영향이 없다.
         async function renderPlaylistBrowseView(playlistId) {
-            const listEl = document.getElementById('playlist-browse-list');
-            const titleEl = document.getElementById('playlist-browse-title');
+            const labelEl = document.getElementById('playlist-browse-tape-label');
+            const countEl = document.getElementById('playlist-browse-trackcount');
+            const listEl = document.getElementById('playlist-browse-tracklist');
             try {
                 const playlists = await musicDbGetAllPlaylists();
                 const pl = playlists.find(p => p.id === playlistId);
-                if (titleEl) titleEl.textContent = pl ? `🎵 ${escapeNoticeText(pl.name || '이름없음')}` : '';
+                if (labelEl) labelEl.textContent = pl ? escapeNoticeText(pl.name || '이름없음') : '플레이리스트';
                 const tracks = (window.MixTapeApp && window.MixTapeApp.getTracksForPlaylist) ? await window.MixTapeApp.getTracksForPlaylist(playlistId) : [];
+                if (countEl) countEl.textContent = `${tracks.length}곡`;
                 if (!listEl) return;
                 if (tracks.length === 0) {
-                    listEl.innerHTML = '<div class="widget-text">아직 추가된 곡이 없어요.</div>';
+                    listEl.innerHTML = '<li><div class="empty-state" style="width:100%;">아직 추가된 곡이 없어요</div></li>';
                     return;
                 }
                 listEl.innerHTML = tracks.map((t, i) => `
-                    <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; margin-bottom:8px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px;">
-                        <span onclick="playTrackFromBrowse(${playlistId}, ${i})" style="flex:1; min-width:0; cursor:pointer; font-size:14px; font-weight:600; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">▶ ${escapeNoticeText(t.name || '이름없음')}</span>
-                        <span style="display:flex; gap:8px; flex-shrink:0; font-size:13px;">
-                            <span onclick="moveTrackInBrowse(${playlistId}, ${i}, -1)" style="cursor:pointer; ${i === 0 ? 'opacity:0.3; pointer-events:none;' : ''}" title="위로">▲</span>
-                            <span onclick="moveTrackInBrowse(${playlistId}, ${i}, 1)" style="cursor:pointer; ${i === tracks.length - 1 ? 'opacity:0.3; pointer-events:none;' : ''}" title="아래로">▼</span>
-                            <span onclick="removeTrackFromBrowse(${playlistId}, ${t.id})" style="cursor:pointer;" title="빼기">✕</span>
-                        </span>
-                    </div>
+                    <li onclick="playTrackFromBrowse(${playlistId}, ${i})">
+                        <div class="track-num">${String(i + 1).padStart(2, '0')}</div>
+                        <div class="track-info"><div class="track-name">${escapeNoticeText(t.name || '이름없음')}</div></div>
+                        <div class="track-dur">--:--</div>
+                        <div class="track-move">
+                            <button type="button" onclick="event.stopPropagation(); moveTrackInBrowse(${playlistId}, ${i}, -1);" title="위로 이동" ${i === 0 ? 'disabled' : ''}>▲</button>
+                            <button type="button" onclick="event.stopPropagation(); moveTrackInBrowse(${playlistId}, ${i}, 1);" title="아래로 이동" ${i === tracks.length - 1 ? 'disabled' : ''}>▼</button>
+                        </div>
+                        <button type="button" class="track-remove" onclick="event.stopPropagation(); removeTrackFromBrowse(${playlistId}, ${t.id});" title="이 플레이리스트에서 빼기">✕</button>
+                    </li>
                 `).join('');
             } catch (e) {
                 console.error('플레이리스트 미리보기 로딩 오류:', e);
-                if (listEl) listEl.innerHTML = '<div class="widget-text">불러오지 못했습니다.</div>';
+                if (listEl) listEl.innerHTML = '<li><div class="empty-state" style="width:100%;">불러오지 못했습니다.</div></li>';
             }
         }
 
