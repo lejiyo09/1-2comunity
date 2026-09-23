@@ -259,41 +259,6 @@
         .music-track-actions span { cursor: pointer; }
         .music-track-actions span.liked { color: #ef4444; }
 
-        /* Music Home 미니 플레이어 버튼 - 맨 emoji 텍스트가 아니라 사이트 디자인에 맞는 실제 버튼 컨테이너 */
-        .music-home-ctl-btn {
-            width: 34px; height: 34px;
-            border-radius: 50%;
-            border: 1px solid var(--border-color);
-            background: var(--surface-secondary);
-            color: var(--text-main);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 13px;
-            cursor: pointer;
-            flex-shrink: 0;
-            padding: 0; margin: 0; box-sizing: border-box;
-            transition: background .15s ease, color .15s ease, border-color .15s ease;
-        }
-        .music-home-ctl-btn:hover { background: var(--hover-bg); }
-        .music-home-ctl-btn.primary {
-            width: 46px; height: 46px;
-            background: var(--primary);
-            border-color: var(--primary);
-            color: #fff;
-            font-size: 16px;
-        }
-        .music-home-ctl-btn.primary:hover { filter: brightness(1.06); }
-        .music-home-ctl-btn.toggle-on { color: var(--primary); border-color: var(--primary); background: var(--primary-soft, rgba(37,99,235,0.08)); }
-
-        /* Music Home의 "재생 중" 카드는 아래 트랙 카드들에 비해 너무 크게 느껴진다는 피드백 -
-           일반 .card보다 패딩/제목/버튼/간격을 한 단계씩 더 줄인다 (다른 곳의 .card에는 영향 없음). */
-        .music-home-nowplaying-card { padding: 12px 14px; }
-        .music-home-nowplaying-card .card-title { font-size: 13px; margin-bottom: 4px; }
-        .music-home-nowplaying-card .widget-text { font-size: 13px; padding: 0; }
-        .music-home-nowplaying-card #music-home-player-controls { margin-top: 6px !important; }
-        .music-home-nowplaying-card #music-home-player-controls > div:first-child { margin-bottom: 4px !important; gap: 6px !important; }
-        .music-home-nowplaying-card #music-home-player-controls > div:last-child { gap: 6px !important; }
-        .music-home-nowplaying-card .music-home-ctl-btn { width: 24px; height: 24px; font-size: 10px; }
-        .music-home-nowplaying-card .music-home-ctl-btn.primary { width: 32px; height: 32px; font-size: 13px; }
         .notice-hub-tab { padding: 7px 16px; font-size: 13.5px; font-weight: 700; color: var(--text-muted); border: none; background: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s; }
         .notice-hub-tab.active { background: var(--card-bg); color: var(--primary); }
         .notice-hub-tab:hover:not(.active) { color: var(--text-main); }
@@ -3356,25 +3321,6 @@
         <div id="music-home-search-results" style="display:none;"></div>
 
         <div id="music-home-default-sections">
-        <div class="card music-home-nowplaying-card" style="margin-bottom:14px;">
-            <div class="card-title">▶️ 재생 중</div>
-            <div id="music-home-nowplaying" class="widget-text">재생 중인 곡이 없습니다.</div>
-            <div id="music-home-player-controls" style="display:none; margin-top:10px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                    <span id="music-home-cur-time" style="font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; width:34px;">0:00</span>
-                    <input type="range" id="music-home-seek" min="0" max="100" value="0" step="0.1" style="flex:1; accent-color:var(--primary); cursor:pointer;" oninput="handleMusicHomeSeek(this.value)">
-                    <span id="music-home-dur-time" style="font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; width:34px; text-align:right;">0:00</span>
-                </div>
-                <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                    <button type="button" class="music-home-ctl-btn" id="music-home-shuffle-btn" onclick="window.MixTapeApp && window.MixTapeApp.toggleShuffle(); updateMusicHomePlayerWidget();" title="셔플">⤨</button>
-                    <button type="button" class="music-home-ctl-btn" onclick="window.MixTapeApp && window.MixTapeApp.prevTrack(); setTimeout(updateMusicHomePlayerWidget, 50);" title="이전 곡">◀◀</button>
-                    <button type="button" class="music-home-ctl-btn primary" id="music-home-playpause-btn" onclick="window.MixTapeApp && window.MixTapeApp.togglePlay(); setTimeout(updateMusicHomePlayerWidget, 50);" title="재생/일시정지">▶</button>
-                    <button type="button" class="music-home-ctl-btn" onclick="window.MixTapeApp && window.MixTapeApp.nextTrack(); setTimeout(updateMusicHomePlayerWidget, 50);" title="다음 곡">▶▶</button>
-                    <button type="button" class="music-home-ctl-btn" id="music-home-repeat-btn" onclick="window.MixTapeApp && window.MixTapeApp.cycleRepeat(); updateMusicHomePlayerWidget();" title="반복">↻</button>
-                </div>
-            </div>
-        </div>
-
         <div class="dashboard-section-title">🔥 인기 음악</div>
         <div id="music-home-popular" class="widget-text" style="margin-bottom:22px;">불러오는 중...</div>
 
@@ -3917,22 +3863,12 @@
             sidebar.classList.remove('touch-expanded'); // 터치 기기에서 펼친 뒤 탭을 고르면 다시 접힘
             if (tabId === 'mixtape') {
                 if (typeof renderMusicHome === 'function') renderMusicHome();
-                // 나가기 전 다른 서브탭(내 음악 등)에 있었다면 그 상태를 유지하고, 실제로 Music Home이
-                // 보이는 상태일 때만 폴링을 시작한다 (안 보이는데 백그라운드로 도는 걸 방지)
-                const homePanel = document.getElementById('music-panel-home');
-                const isHomeActive = !!(homePanel && homePanel.classList.contains('active'));
-                if (isHomeActive && typeof startMusicHomePlayerPolling === 'function') {
-                    startMusicHomePlayerPolling();
-                }
-                // PiP 억제 플래그도 실제 보이는 서브탭 기준으로 정확히 맞춘다
-                const wasInMusicHome = !!window.__inMusicHomeScreen;
-                window.__inMusicHomeScreen = isHomeActive;
-                if (wasInMusicHome !== window.__inMusicHomeScreen && window.GlobalMiniController) {
-                    window.GlobalMiniController.handleGesture();
-                }
-            } else {
-                if (typeof stopMusicHomePlayerPolling === 'function') stopMusicHomePlayerPolling(); // Music 탭을 완전히 벗어나면 폴링도 멈춘다
-                if (window.__inMusicHomeScreen) window.__inMusicHomeScreen = false; // 다른 탭이면 이 플래그는 의미 없음 - 정리
+            } else if (window.__inPlaylistPlayScreen) {
+                // Music 탭 안의 "실제 재생 화면"을 보다가 다른 탭(홈/커뮤니티 등)으로 완전히 나가면,
+                // 이 플래그가 계속 true로 남아서 전역 PiP의 MixTape 표시가 계속 억제되는 문제가 있었다.
+                // 여기서도 반드시 꺼줘야 다른 탭에 있는 동안 PiP가 정상적으로 뜬다.
+                window.__inPlaylistPlayScreen = false;
+                if (window.GlobalMiniController) window.GlobalMiniController.handleGesture();
             }
             document.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -5564,7 +5500,8 @@
         let currentBgObjectUrl = null;
         function isSiteDarkModeNow() { return document.body.classList.contains('gmw-site-dark'); }
         function getActiveBackgroundPreset() {
-            try { return localStorage.getItem(BG_PRESET_KEY) || 'default1'; } catch (e) { return 'default1'; }
+            // 처음 접속하는(아직 아무 것도 고른 적 없는) 사용자의 기본값은 기본2(제공된 낮/밤 사진 세트)로 한다.
+            try { return localStorage.getItem(BG_PRESET_KEY) || 'default2'; } catch (e) { return 'default2'; }
         }
         function getBackgroundDarkDim() {
             try {
@@ -5767,7 +5704,7 @@
         window.resetCustomBackground = async function() {
             try {
                 await Promise.all([deleteBgBlobFromIndexedDB('light'), deleteBgBlobFromIndexedDB('dark'), deleteBgBlobFromIndexedDB('current')]);
-                try { localStorage.setItem(BG_PRESET_KEY, 'default1'); } catch (e) {}
+                try { localStorage.setItem(BG_PRESET_KEY, 'default2'); } catch (e) {}
                 await applyActiveBackground();
                 if (window.updateBgSettingsUI) window.updateBgSettingsUI();
                 const statusEl = document.getElementById('settings-bg-status');
@@ -10341,15 +10278,7 @@
         window.switchMusicSection = function(section) {
             document.querySelectorAll('.music-subnav-item').forEach(el => el.classList.toggle('active', el.dataset.section === section));
             document.querySelectorAll('.music-panel').forEach(el => el.classList.toggle('active', el.id === `music-panel-${section}`));
-            // PiP는 이제 "Music 탭 전체"가 아니라 "Music Home"과 "재생 중인 플레이리스트 페이지"에서만
-            // 숨긴다. 공유 음악/좋아요/내 음악/플레이리스트 목록에서는 PiP가 정상적으로 떠야 한다.
-            const wasInMusicHome = !!window.__inMusicHomeScreen;
-            window.__inMusicHomeScreen = (section === 'home');
-            if (wasInMusicHome !== window.__inMusicHomeScreen && window.GlobalMiniController) {
-                window.GlobalMiniController.handleGesture();
-            }
-            if (section === 'home') { renderMusicHome(); startMusicHomePlayerPolling(); }
-            else stopMusicHomePlayerPolling(); // 다른 화면으로 나가면 즉시 멈춘다 (불필요한 polling 방지)
+            if (section === 'home') renderMusicHome();
             if (section === 'shared') loadSharedMusic();
             else if (section === 'likes') loadMusicLikes();
             else if (section === 'mymusic') renderMyMusicList();
@@ -11004,9 +10933,6 @@
                 const url = URL.createObjectURL(rec.blob);
                 const playName = name || rec.title || rec.name;
                 window.MixTapeApp.playAdHoc(url, playName, rec.artwork || null);
-                // 공유 음악 재생과 동일하게 "지금 재생 중" 텍스트도 갱신한다 (이전에는 이 줄이 빠져 있었음)
-                const npEl = document.getElementById('music-home-nowplaying');
-                if (npEl) npEl.textContent = `🎵 ${playName}`;
             } catch (e) {
                 console.error('내 음악 재생 오류:', e);
                 alert("재생에 실패했습니다.");
@@ -11445,7 +11371,6 @@
             try {
                 const url = await getMusicSignedUrl(track.storage_path);
                 window.MixTapeApp.playAdHoc(url, title || track.title);
-                document.getElementById('music-home-nowplaying') && (document.getElementById('music-home-nowplaying').textContent = `🎵 ${track.title || title}`);
             } catch (e) {
                 console.error('재생 URL 발급 오류:', e);
                 return alert("재생에 실패했습니다.\n잠시 후 다시 시도해주세요.");
@@ -11542,66 +11467,7 @@
             resultsEl.innerHTML = html;
         };
 
-        function fmtMusicHomeTime(sec) {
-            sec = Math.max(0, Math.floor(sec || 0));
-            const m = Math.floor(sec / 60);
-            const s = sec % 60;
-            return `${m}:${String(s).padStart(2, '0')}`;
-        }
-
-        // 재생 중 위젯의 탐색바/버튼들을 전부 기존 MixTapeApp 상태로 갱신한다 (새 재생 로직 없음, 표시만 갱신)
-        function updateMusicHomePlayerWidget() {
-            const npEl = document.getElementById('music-home-nowplaying');
-            const controlsEl = document.getElementById('music-home-player-controls');
-            if (!npEl || !controlsEl) return;
-            try {
-                const np = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
-                if (!np || !np.name) {
-                    npEl.textContent = '재생 중인 곡이 없습니다.';
-                    controlsEl.style.display = 'none';
-                    return;
-                }
-                npEl.textContent = `🎵 ${np.name}`;
-                controlsEl.style.display = 'block';
-
-                const seekEl = document.getElementById('music-home-seek');
-                if (seekEl && document.activeElement !== seekEl) { // 사용자가 드래그 중이면 값을 덮어쓰지 않는다
-                    seekEl.max = np.duration || 0;
-                    seekEl.value = np.currentTime || 0;
-                }
-                document.getElementById('music-home-cur-time').textContent = fmtMusicHomeTime(np.currentTime);
-                document.getElementById('music-home-dur-time').textContent = fmtMusicHomeTime(np.duration);
-                document.getElementById('music-home-playpause-btn').textContent = np.playing ? 'Ⅱ' : '▶';
-                const shuffleBtn = document.getElementById('music-home-shuffle-btn');
-                if (shuffleBtn) shuffleBtn.classList.toggle('toggle-on', !!np.isShuffle);
-                const repeatBtn = document.getElementById('music-home-repeat-btn');
-                if (repeatBtn) {
-                    repeatBtn.classList.toggle('toggle-on', np.repeatMode !== 0);
-                    repeatBtn.textContent = np.repeatMode === 2 ? '⟳¹' : '↻'; // 카세트 플레이어와 동일한 기호(색깔 이모지 아님)
-                }
-            } catch (e) {
-                npEl.textContent = '재생 중인 곡이 없습니다.';
-                controlsEl.style.display = 'none';
-            }
-        }
-        window.updateMusicHomePlayerWidget = updateMusicHomePlayerWidget;
-
-        window.handleMusicHomeSeek = function(value) {
-            if (window.MixTapeApp && window.MixTapeApp.seekTo) window.MixTapeApp.seekTo(parseFloat(value));
-        };
-
-        // Music Home에 있는 동안만 탐색바/시간을 1초마다 갱신한다 (다른 화면으로 나가면 즉시 정지 - 불필요한 polling 방지)
-        let musicHomePlayerInterval = null;
-        function startMusicHomePlayerPolling() {
-            stopMusicHomePlayerPolling();
-            musicHomePlayerInterval = setInterval(updateMusicHomePlayerWidget, 1000);
-        }
-        function stopMusicHomePlayerPolling() {
-            if (musicHomePlayerInterval) { clearInterval(musicHomePlayerInterval); musicHomePlayerInterval = null; }
-        }
-
         async function renderMusicHome() {
-            updateMusicHomePlayerWidget();
             const myCountEl = document.getElementById('music-home-mycount');
             if (myCountEl) myCountEl.textContent = `${await musicDbCountTracks()}곡 보유 중`;
 
@@ -15778,10 +15644,10 @@
             // Document PiP(외부)는 사이트 자체를 벗어난 상태에서만 뜨므로, 마지막으로 활성화됐던 내부 탭이
             // 무엇이었는지와 무관하게 Focus/MixTape가 "실제로 켜져 있는지"만 기준으로 항상 보여줘야 한다.
             //
-            // 1-2 Music: PiP/인라인 미니플레이어를 숨기는 범위는 "Music 탭 전체"가 아니라
-            // "Music Home 화면"과 "재생 중인 플레이리스트를 들어간 페이지"로 한정한다.
-            // 공유 음악/좋아요/내 음악/플레이리스트 목록에서는 정상적으로 떠야 한다.
-            const suppressMixHere = !!window.__inMusicHomeScreen || !!window.__inPlaylistPlayScreen;
+            // 1-2 Music: Music Home은 이제 자체 "재생 중" 위젯이 없어서 항상 PiP/인라인이 정상적으로
+            // 떠야 한다. 유일한 예외는 "지금 재생 중인 바로 그 플레이리스트"의 실제 카세트 화면을
+            // 보고 있을 때뿐이다 (그 화면 자체가 이미 재생 상태를 보여주므로 중복 표시를 막는다).
+            const suppressMixHere = !!window.__inPlaylistPlayScreen;
             const suppressInlineFocus = page === 'planner';
             const suppressInlineMix = page === 'mixtape' && suppressMixHere;
 
