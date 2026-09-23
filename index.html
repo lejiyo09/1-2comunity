@@ -285,11 +285,15 @@
         .music-home-ctl-btn.toggle-on { color: var(--primary); border-color: var(--primary); background: var(--primary-soft, rgba(37,99,235,0.08)); }
 
         /* Music Home의 "재생 중" 카드는 아래 트랙 카드들에 비해 너무 크게 느껴진다는 피드백 -
-           일반 .card보다 패딩/제목/버튼을 한 단계씩 줄인다 (다른 곳의 .card에는 영향 없음). */
-        .music-home-nowplaying-card { padding: 16px 18px; }
-        .music-home-nowplaying-card .card-title { font-size: 14px; margin-bottom: 8px; }
-        .music-home-nowplaying-card .music-home-ctl-btn { width: 28px; height: 28px; font-size: 11px; }
-        .music-home-nowplaying-card .music-home-ctl-btn.primary { width: 38px; height: 38px; font-size: 14px; }
+           일반 .card보다 패딩/제목/버튼/간격을 한 단계씩 더 줄인다 (다른 곳의 .card에는 영향 없음). */
+        .music-home-nowplaying-card { padding: 12px 14px; }
+        .music-home-nowplaying-card .card-title { font-size: 13px; margin-bottom: 4px; }
+        .music-home-nowplaying-card .widget-text { font-size: 13px; padding: 0; }
+        .music-home-nowplaying-card #music-home-player-controls { margin-top: 6px !important; }
+        .music-home-nowplaying-card #music-home-player-controls > div:first-child { margin-bottom: 4px !important; gap: 6px !important; }
+        .music-home-nowplaying-card #music-home-player-controls > div:last-child { gap: 6px !important; }
+        .music-home-nowplaying-card .music-home-ctl-btn { width: 24px; height: 24px; font-size: 10px; }
+        .music-home-nowplaying-card .music-home-ctl-btn.primary { width: 32px; height: 32px; font-size: 13px; }
         .notice-hub-tab { padding: 7px 16px; font-size: 13.5px; font-weight: 700; color: var(--text-muted); border: none; background: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s; }
         .notice-hub-tab.active { background: var(--card-bg); color: var(--primary); }
         .notice-hub-tab:hover:not(.active) { color: var(--text-main); }
@@ -544,7 +548,7 @@
         .like-btn.liked { color: #ef4444; }
         .like-btn .like-count { font-variant-numeric: tabular-nums; }
 
-        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 24px; margin-bottom: 24px; }
         .dashboard-section-title { font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.2px; margin: 4px 0 12px 2px; }
         /* 홈 대시보드 섹션(바로가기/오늘 하루/공부&시험/설문&소통 등) 자유 배치 UI - 개인별 커스텀, localStorage에만 저장.
            섹션 이름 변경(제목 input), 섹션 순서(화살표), 위젯을 다른 섹션으로 이동/순서 변경(카드별 편집 바)까지 지원. */
@@ -562,11 +566,12 @@
         .widget-edit-bar { display: none; position: absolute; top: 8px; right: 8px; z-index: 5; align-items: center; gap: 6px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
         #home-sections-container.editing-sections .widget-edit-bar { display: flex; }
         .widget-drag-handle { font-size: 13px; color: var(--text-muted); line-height: 1; user-select: none; }
-        /* 위젯 가로/세로 크기 조절 버튼 - 드래그 손잡이 옆에 세로 구분선으로 붙는다 */
-        .widget-size-controls { display: flex; align-items: center; gap: 2px; padding-left: 6px; border-left: 1px solid var(--border-color); }
         .widget-size-btn { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--surface-secondary); color: var(--text-muted); font-size: 10px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-family: inherit; }
         .widget-size-btn:hover:not(:disabled) { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
         .widget-size-btn:disabled { opacity: 0.35; cursor: default; }
+        /* 카드 우하단 크기 조절 손잡이 - 눌러서 끌면 가로(칸)/세로(픽셀)를 자유롭게 조절한다 */
+        .widget-resize-handle { display: none; position: absolute; right: 6px; bottom: 6px; width: 20px; height: 20px; border-radius: 6px; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); background: var(--surface-secondary); border: 1px solid var(--border-color); cursor: nwse-resize; z-index: 5; touch-action: none; user-select: none; }
+        #home-sections-container.editing-sections .widget-resize-handle { display: flex; }
         #home-sections-container.editing-sections .card[data-widget-id] { cursor: grab; }
         #home-sections-container.editing-sections .card[data-widget-id]:active { cursor: grabbing; }
         .card[data-widget-id].dragging-widget { opacity: 0.35; }
@@ -2152,6 +2157,7 @@
                     <button id="btn-edit-home-layout" class="btn-sub" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
                     <button id="btn-reset-home-layout" class="btn-sub" style="display:none;" onclick="resetHomeLayout()">↺ 초기화</button>
                 </div>
+                <div id="home-hidden-widgets-panel" style="display:none; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;"></div>
 
                 <div id="home-sections-container">
                 <div class="home-section" data-section-id="shortcuts">
@@ -2160,7 +2166,7 @@
                     <span class="home-section-arrows"></span>
                 </div>
                 <div class="dashboard-grid" data-section-grid>
-                    <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 3;">
+                    <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 6;">
                         <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
                             <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null)">+ 바로가기 추가</button>
                         </div>
@@ -2180,7 +2186,7 @@
                     <span class="home-section-arrows"></span>
                 </div>
                 <!-- 우선순위 스트립: 왼쪽 날씨, 가운데 오늘의 미션(절반 크기로 축소), 오른쪽 지금 학교는 -->
-                <div class="dashboard-grid" data-section-grid style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 16px;">
+                <div class="dashboard-grid" data-section-grid style="margin-bottom: 16px;">
                     <div class="card" data-widget-id="w-weather">
                         <div class="card-title">현재 날씨 🪟</div>
                         <div class="weather-info" id="weather-widget">데이터 동기화 중...</div>
@@ -2269,7 +2275,7 @@
                         </div>
                         <div id="poll-widget">불러오는 중...</div>
                     </div>
-                    <div class="card clickable" data-widget-id="w-community" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 2;">
+                    <div class="card clickable" data-widget-id="w-community" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 4;">
                         <div class="card-title">입만사니 인기글 (최근 1주) 🔥</div>
                         <div id="home-popular-posts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
                     </div>
@@ -3350,7 +3356,7 @@
         <div id="music-home-search-results" style="display:none;"></div>
 
         <div id="music-home-default-sections">
-        <div class="card music-home-nowplaying-card" style="margin-bottom:18px;">
+        <div class="card music-home-nowplaying-card" style="margin-bottom:14px;">
             <div class="card-title">▶️ 재생 중</div>
             <div id="music-home-nowplaying" class="widget-text">재생 중인 곡이 없습니다.</div>
             <div id="music-home-player-controls" style="display:none; margin-top:10px;">
@@ -3433,6 +3439,19 @@
             </div>
         </div>
         <div id="playlist-name-list"><div class="widget-text">불러오는 중...</div></div>
+    </div>
+
+    <!-- 📁 플레이리스트 "보기 전용" 화면 - 지금 다른 곡이 재생 중일 때, 그 곡이 들어있지 않은 다른
+         플레이리스트를 열면 이 화면을 쓴다. 재생 엔진(#playlist-player-wrapper 안의 MixTapeApp)은 전혀
+         건드리지 않고 IndexedDB에서 트랙만 직접 읽어와 보여줘서, 재생 중이던 곡이 끊기지 않고
+         전역 PiP에도 계속 그 곡이 보인다. 곡을 누르면 그제서야 실제로 이 플레이리스트로 재생이 전환된다. -->
+    <div id="playlist-browse-wrapper" style="display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <span onclick="closePlaylistBrowse()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--text-main); padding:8px 12px; border-radius:10px; background:var(--surface-secondary);">← 플레이리스트</span>
+            <span id="playlist-browse-title" style="font-size:14.5px; font-weight:700; color:var(--text-main);"></span>
+        </div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">🎧 다른 곡이 재생 중이에요. 아래 곡을 누르면 이 플레이리스트로 재생이 바뀌어요.</div>
+        <div id="playlist-browse-list"><div class="widget-text">불러오는 중...</div></div>
     </div>
 
     <!-- 📁 플레이리스트 "음악 플레이" 화면 - 목록에서 하나를 클릭해야 보인다 (기존 플레이어 UI 그대로, 내부는 전혀 안 건드림) -->
@@ -4224,21 +4243,24 @@
 
         // =========================================================================
         // 위젯 가로/세로 크기 편집 (개인별 커스텀, localStorage에만 저장 - 순서/섹션 배치와는 별개 저장소)
-        // - 가로: 3컬럼 그리드 기준 grid-column span (1~3)
-        // - 세로: 내용에 맞춰 자동(0=미지정)이던 높이에 min-height를 강제로 얹는 방식 (40px 단위)
+        // - 가로: 6컬럼 그리드 기준 grid-column span (1~6). 예전엔 3컬럼/3단계뿐이라 버튼을 눌러도
+        //   너무 성글게(1/3 단위로만) 바뀐다는 피드백이 있어 칸 수를 두 배로 세분화했다.
+        // - 세로: 예전엔 40px 단위 버튼으로만 조절 가능했는데, 카드 우하단 손잡이(⤡)를 마우스/터치로
+        //   직접 드래그해서 원하는 픽셀 값으로 자유롭게 조절하도록 바꿨다 (setupWidgetResizeHandle).
         // =========================================================================
         const HOME_WIDGET_SIZE_KEY = 'hanilgo_home_widget_sizes';
         const WIDGET_COL_SPAN_MIN = 1;
-        const WIDGET_COL_SPAN_MAX = 3; // 홈 대시보드 섹션은 전부 3컬럼 그리드
-        const WIDGET_MIN_HEIGHT_STEP = 40; // px
+        const WIDGET_COL_SPAN_MAX = 6; // 홈 대시보드 섹션은 전부 6컬럼 그리드
+        const WIDGET_GRID_GAP = 24; // .dashboard-grid의 gap과 맞아야 드래그 중 칸 수 계산이 정확하다
+        const WIDGET_MIN_HEIGHT_PX = 60; // 드래그로 줄일 수 있는 최소 높이
 
         // 페이지 로드 시, 아직 아무것도 건드리기 전 각 위젯 카드의 원래 기본 grid-column(HTML에 박혀있던
         // 인라인 style)을 기억해둔다. JS로 한 번 덮어쓰면 원본 값은 사라지므로, "기본값으로 되돌리기"를
-        // 하려면 이렇게 미리 기억해둔 값이 필요하다.
+        // 하려면 이렇게 미리 기억해둔 값이 필요하다. (인라인 span이 없는 위젯은 6컬럼 기준 2칸 = 1/3 폭이 기본)
         const HOME_WIDGET_DEFAULT_SIZES = {};
         document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => {
             const m = /span\s+(\d+)/.exec(el.style.gridColumn || '');
-            HOME_WIDGET_DEFAULT_SIZES[el.dataset.widgetId] = { colSpan: m ? parseInt(m[1], 10) : 1, minHeight: 0 };
+            HOME_WIDGET_DEFAULT_SIZES[el.dataset.widgetId] = { colSpan: m ? parseInt(m[1], 10) : 2, minHeight: 0 };
         });
 
         function loadHomeWidgetSizes() {
@@ -4251,7 +4273,7 @@
             try { localStorage.setItem(HOME_WIDGET_SIZE_KEY, JSON.stringify(sizes)); } catch (e) {}
         }
         function getEffectiveWidgetSize(widgetId) {
-            const def = HOME_WIDGET_DEFAULT_SIZES[widgetId] || { colSpan: 1, minHeight: 0 };
+            const def = HOME_WIDGET_DEFAULT_SIZES[widgetId] || { colSpan: 2, minHeight: 0 };
             const saved = loadHomeWidgetSizes()[widgetId] || {};
             return { colSpan: saved.colSpan || def.colSpan, minHeight: saved.minHeight || def.minHeight };
         }
@@ -4265,31 +4287,41 @@
             });
         }
 
-        window.adjustWidgetWidth = function(widgetId, delta) {
-            const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
-            if (!widgetEl) return;
-            const eff = getEffectiveWidgetSize(widgetId);
-            const next = Math.max(WIDGET_COL_SPAN_MIN, Math.min(WIDGET_COL_SPAN_MAX, eff.colSpan + delta));
-            if (next === eff.colSpan) return;
-            const sizes = loadHomeWidgetSizes();
-            sizes[widgetId] = { ...(sizes[widgetId] || {}), colSpan: next };
-            saveHomeWidgetSizes(sizes);
-            widgetEl.style.gridColumn = `span ${next}`;
-            if (homeSectionEditMode) renderHomeEditControls(); // 버튼 비활성화 상태(최소/최대 도달) 갱신
-        };
+        // 카드 우하단 손잡이를 눌러서 끌면, 가로(가장 가까운 칸 수로 반올림)와 세로(픽셀 단위 자유 조절)를
+        // 동시에 조절한다. pointer capture를 쓰면 드래그 중 커서가 손잡이 밖으로 나가도 이벤트가 계속
+        // 이 손잡이로만 전달되므로 document에 별도 리스너를 붙였다 떼는 번거로움이 없다.
+        function setupWidgetResizeHandle(handleEl, widgetId) {
+            handleEl.addEventListener('pointerdown', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                const grid = widgetEl && widgetEl.closest('[data-section-grid]');
+                if (!widgetEl || !grid) return;
+                const eff = getEffectiveWidgetSize(widgetId);
+                const startX = e.clientX, startY = e.clientY;
+                const startColSpan = eff.colSpan;
+                const startHeightPx = widgetEl.offsetHeight;
+                const colWidth = (grid.getBoundingClientRect().width - (WIDGET_COL_SPAN_MAX - 1) * WIDGET_GRID_GAP) / WIDGET_COL_SPAN_MAX;
+                let curColSpan = startColSpan, curHeight = startHeightPx;
+                handleEl.setPointerCapture(e.pointerId);
 
-        window.adjustWidgetHeight = function(widgetId, delta) {
-            const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
-            if (!widgetEl) return;
-            const eff = getEffectiveWidgetSize(widgetId);
-            const next = Math.max(0, eff.minHeight + delta * WIDGET_MIN_HEIGHT_STEP);
-            if (next === eff.minHeight) return;
-            const sizes = loadHomeWidgetSizes();
-            sizes[widgetId] = { ...(sizes[widgetId] || {}), minHeight: next };
-            saveHomeWidgetSizes(sizes);
-            widgetEl.style.minHeight = next ? `${next}px` : '';
-            if (homeSectionEditMode) renderHomeEditControls();
-        };
+                function onMove(ev) {
+                    const spanFloat = startColSpan + (ev.clientX - startX) / (colWidth + WIDGET_GRID_GAP);
+                    curColSpan = Math.max(WIDGET_COL_SPAN_MIN, Math.min(WIDGET_COL_SPAN_MAX, Math.round(spanFloat)));
+                    curHeight = Math.max(WIDGET_MIN_HEIGHT_PX, Math.round(startHeightPx + (ev.clientY - startY)));
+                    widgetEl.style.gridColumn = `span ${curColSpan}`;
+                    widgetEl.style.minHeight = `${curHeight}px`;
+                }
+                function onUp() {
+                    handleEl.removeEventListener('pointermove', onMove);
+                    handleEl.removeEventListener('pointerup', onUp);
+                    const sizes = loadHomeWidgetSizes();
+                    sizes[widgetId] = { colSpan: curColSpan, minHeight: curHeight };
+                    saveHomeWidgetSizes(sizes);
+                }
+                handleEl.addEventListener('pointermove', onMove);
+                handleEl.addEventListener('pointerup', onUp);
+            });
+        }
 
         function loadHomeLayout() {
             try {
@@ -4351,24 +4383,81 @@
                         bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
                         widgetEl.prepend(bar);
                     }
-                    // 크기 버튼은 최소/최대 도달 시 비활성화 상태가 바뀌므로 매번 다시 그린다
-                    const eff = getEffectiveWidgetSize(widgetId);
                     bar.innerHTML = `
                         <span class="widget-drag-handle" title="드래그해서 옮기기">⠿</span>
-                        <span class="widget-size-controls">
-                            <button type="button" class="widget-size-btn" onclick="adjustWidgetWidth('${widgetId}', -1)" title="좁게" ${eff.colSpan <= WIDGET_COL_SPAN_MIN ? 'disabled' : ''}>↔−</button>
-                            <button type="button" class="widget-size-btn" onclick="adjustWidgetWidth('${widgetId}', 1)" title="넓게" ${eff.colSpan >= WIDGET_COL_SPAN_MAX ? 'disabled' : ''}>↔+</button>
-                            <button type="button" class="widget-size-btn" onclick="adjustWidgetHeight('${widgetId}', -1)" title="낮게" ${eff.minHeight <= 0 ? 'disabled' : ''}>↕−</button>
-                            <button type="button" class="widget-size-btn" onclick="adjustWidgetHeight('${widgetId}', 1)" title="높게">↕+</button>
-                        </span>
+                        <button type="button" class="widget-size-btn" onclick="hideHomeWidget('${widgetId}')" title="이 위젯 숨기기">🙈</button>
                     `;
+                    // 크기 조절 손잡이는 리렌더할 때마다 다시 만들지 않는다 - 이미 있으면 그대로 두고
+                    // (드래그 중 재생성되면 진행 중인 드래그가 끊긴다), 처음 편집 모드로 들어갔을 때만 만든다.
+                    let handle = widgetEl.querySelector(':scope > .widget-resize-handle');
+                    if (!handle) {
+                        handle = document.createElement('span');
+                        handle.className = 'widget-resize-handle';
+                        handle.title = '드래그해서 크기 조절';
+                        handle.textContent = '⤡';
+                        widgetEl.appendChild(handle);
+                        setupWidgetResizeHandle(handle, widgetId);
+                    }
                 });
             });
+            renderHomeHiddenWidgetPicker();
         }
 
         function removeHomeWidgetEditBars() {
             document.querySelectorAll('#home-sections-container .widget-edit-bar').forEach(el => el.remove());
+            document.querySelectorAll('#home-sections-container .widget-resize-handle').forEach(el => el.remove());
             document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => { el.draggable = false; });
+            renderHomeHiddenWidgetPicker();
+        }
+
+        // =========================================================================
+        // 위젯 숨기기/다시 보이기 (개인별 커스텀, localStorage에만 저장)
+        // 위젯을 전부 꺼내놓는 대신, 필요 없는 건 숨기고 필요한 것만 골라서 보이게 한다.
+        // =========================================================================
+        const HOME_WIDGET_HIDDEN_KEY = 'hanilgo_home_widget_hidden';
+        const HOME_WIDGET_LABELS = {
+            'w-shortcuts': '🔗 바로가기', 'w-weather': '🪟 현재 날씨', 'w-missions': '🎯 오늘의 미션',
+            'w-period': '🕒 지금 우리 학교는', 'w-meal': '🍱 오늘의 급식', 'w-timetable': '🗓️ 오늘의 시간표',
+            'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위',
+            'w-calendar': '📅 일정', 'w-planner-time': '📖 오늘의 공부', 'w-planner-tasks': '📋 오늘 할 일',
+            'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글'
+        };
+        function loadHiddenHomeWidgets() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(HOME_WIDGET_HIDDEN_KEY) || '[]');
+                return Array.isArray(saved) ? saved.filter(id => ALL_HOME_WIDGET_IDS.includes(id)) : [];
+            } catch (e) { return []; }
+        }
+        function saveHiddenHomeWidgets(ids) {
+            try { localStorage.setItem(HOME_WIDGET_HIDDEN_KEY, JSON.stringify(ids)); } catch (e) {}
+        }
+        function applyHomeWidgetVisibility() {
+            const hidden = new Set(loadHiddenHomeWidgets());
+            document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => {
+                el.style.display = hidden.has(el.dataset.widgetId) ? 'none' : '';
+            });
+        }
+        window.hideHomeWidget = function(widgetId) {
+            const hidden = loadHiddenHomeWidgets();
+            if (!hidden.includes(widgetId)) hidden.push(widgetId);
+            saveHiddenHomeWidgets(hidden);
+            applyHomeWidgetVisibility();
+            renderHomeHiddenWidgetPicker();
+        };
+        window.showHomeWidget = function(widgetId) {
+            saveHiddenHomeWidgets(loadHiddenHomeWidgets().filter(id => id !== widgetId));
+            applyHomeWidgetVisibility();
+            renderHomeHiddenWidgetPicker();
+        };
+        // 편집 모드일 때만, 숨겨둔 위젯이 있으면 "+ 이름"으로 다시 꺼낼 수 있는 버튼들을 보여준다.
+        function renderHomeHiddenWidgetPicker() {
+            const panel = document.getElementById('home-hidden-widgets-panel');
+            if (!panel) return;
+            const hidden = loadHiddenHomeWidgets();
+            if (!homeSectionEditMode || hidden.length === 0) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
+            panel.style.display = 'flex';
+            panel.innerHTML = `<span style="font-size:12px; color:var(--text-muted);">숨긴 위젯 (눌러서 다시 꺼내기):</span>` +
+                hidden.map(id => `<button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="showHomeWidget('${id}')">+ ${HOME_WIDGET_LABELS[id] || id}</button>`).join('');
         }
 
         window.moveHomeSection = function(sectionId, dir) {
@@ -4401,9 +4490,10 @@
         window.resetHomeLayout = function() {
             if (!confirm('위젯 배치를 기본값으로 되돌릴까요? (이 브라우저에 저장된 개인 설정만 초기화됩니다)')) return;
             saveHomeLayout(DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() })));
-            try { localStorage.removeItem(HOME_WIDGET_SIZE_KEY); } catch (e) {}
+            try { localStorage.removeItem(HOME_WIDGET_SIZE_KEY); localStorage.removeItem(HOME_WIDGET_HIDDEN_KEY); } catch (e) {}
             applyHomeLayout();
             applyHomeWidgetSizes();
+            applyHomeWidgetVisibility();
             if (homeSectionEditMode) renderHomeEditControls();
         }
 
@@ -4509,6 +4599,7 @@
 
         applyHomeLayout(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 레이아웃을 바로 적용
         applyHomeWidgetSizes(); // 저장된 위젯별 가로/세로 크기도 함께 적용
+        applyHomeWidgetVisibility(); // 숨겨둔 위젯이 있으면 처음부터 숨긴 채로 시작
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
@@ -8232,8 +8323,10 @@
         // Supabase Edge Function(upload-freeimage)이 서버에서 대신 업로드해준다(서버-서버 요청은 CORS
         // 제약이 없음). ⚠️ 이 Edge Function은 반드시 Supabase 프로젝트에 별도로 배포해야 동작한다 -
         // 배포 전까지는 이 함수가 항상 실패한다.
+        const IMAGE_UPLOAD_MAX_SIZE = 60 * 1024 * 1024; // 60MB - freeimage.host 업로드 용량 제한
         async function uploadImageToFreeImageHost(file) {
             if (!currentUser) throw new Error('로그인이 필요합니다.');
+            if (file.size > IMAGE_UPLOAD_MAX_SIZE) throw new Error('이미지 용량은 최대 60MB까지 업로드할 수 있습니다.');
             const idToken = await currentUser.getIdToken();
             const formData = new FormData();
             formData.append('firebaseIdToken', idToken);
@@ -9129,7 +9222,7 @@
                     console.error('게시글 이미지 업로드 오류:', e);
                     const placeholder = document.getElementById(placeholderId);
                     if (placeholder) placeholder.remove();
-                    alert('이미지 업로드 중 오류가 발생했습니다.');
+                    alert(e.message && e.message.includes('60MB') ? e.message : '이미지 업로드 중 오류가 발생했습니다.');
                 } finally {
                     richImageUploadsInFlight.delete(targetId);
                 }
@@ -10264,6 +10357,7 @@
                 // 문서 요구사항: 플레이리스트 섹션에 들어오면 항상 "이름 목록"부터 먼저 보여준다
                 // (재생 중이던 곡을 멈추지는 않는다 - 화면 전환만 할 뿐 audio는 그대로 재생된다)
                 document.getElementById('playlist-player-wrapper').style.display = 'none';
+                document.getElementById('playlist-browse-wrapper').style.display = 'none';
                 document.getElementById('playlist-name-list-view').style.display = 'block';
                 window.__inPlaylistPlayScreen = false;
                 if (window.GlobalMiniController) window.GlobalMiniController.handleGesture(); // PiP 억제 해제 반영
@@ -10313,9 +10407,29 @@
             }
         };
 
+        // ⚠️ 지금 다른 곡이 재생 중인데, 그 곡이 들어있지 않은 다른 플레이리스트를 열면 - 예전엔
+        // switchToPlaylist()가 무조건 재생을 멈추고 그 플레이리스트로 갈아탔다. 그러면 "재생 중인
+        // 플레이리스트가 아닌 다른 걸 들어가도 원래 곡이 계속 재생되면서 PiP로 보여야 한다"는
+        // 요구사항과 맞지 않는다. 그래서 재생 중인 곡이 있고 그게 이 플레이리스트가 아니면, 재생
+        // 엔진은 건드리지 않고 "보기 전용" 화면(#playlist-browse-wrapper)만 연다 - 그래야 재생이
+        // 끊기지 않고, __inPlaylistPlayScreen이 false로 남아 전역 PiP도 계속 보인다.
         window.openPlaylistPlayer = async function(playlistId) {
+            const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
+            const nowPlaying = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
+            const isSomethingElsePlaying = !!(nowPlaying && nowPlaying.playing) && currentId !== playlistId;
+
+            document.getElementById('playlist-name-list-view').style.display = 'none';
+
+            if (isSomethingElsePlaying) {
+                document.getElementById('playlist-player-wrapper').style.display = 'none';
+                document.getElementById('playlist-browse-wrapper').style.display = 'block';
+                window.__inPlaylistPlayScreen = false;
+                await renderPlaylistBrowseView(playlistId);
+                if (window.GlobalMiniController) window.GlobalMiniController.handleGesture();
+                return;
+            }
+
             try {
-                const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
                 // ⚠️ switchPlaylist()는 호출될 때마다 무조건 재생을 멈추고 처음부터 다시 불러온다.
                 // 그래서 "이미 열려있는 바로 그 플레이리스트"를 다시 클릭했을 때는 아예 호출하지 않는다 -
                 // 이래야 재생 중이던 곡이 화면 전환 때문에 끊기지 않는다.
@@ -10323,11 +10437,79 @@
                     await window.MixTapeApp.switchToPlaylist(playlistId);
                 }
             } catch (e) { console.error('플레이리스트 열기 오류:', e); }
-            document.getElementById('playlist-name-list-view').style.display = 'none';
+            document.getElementById('playlist-browse-wrapper').style.display = 'none';
             document.getElementById('playlist-player-wrapper').style.display = 'block';
             resetPlaylistSelectModeUI(); // 문서 요구사항: 플레이리스트를 바꾸면 선택 모드는 항상 종료된 상태로 시작
             window.__inPlaylistPlayScreen = true;
             if (window.GlobalMiniController) window.GlobalMiniController.handleGesture(); // 재생화면 진입 - PiP 억제 반영
+        };
+
+        // 보기 전용 화면: 다른 곡이 재생 중일 때 열어본 "재생 중이 아닌" 플레이리스트.
+        // 재생 엔진(MixTapeApp)의 playlist/currentIndex는 전혀 건드리지 않고, IndexedDB에서
+        // 트랙만 직접 읽어와 보여준다. 곡을 누르면 그때 실제로 재생을 이 플레이리스트로 전환한다.
+        async function renderPlaylistBrowseView(playlistId) {
+            const listEl = document.getElementById('playlist-browse-list');
+            const titleEl = document.getElementById('playlist-browse-title');
+            try {
+                const playlists = await musicDbGetAllPlaylists();
+                const pl = playlists.find(p => p.id === playlistId);
+                if (titleEl) titleEl.textContent = pl ? `🎵 ${escapeNoticeText(pl.name || '이름없음')}` : '';
+                const tracks = (window.MixTapeApp && window.MixTapeApp.getTracksForPlaylist) ? await window.MixTapeApp.getTracksForPlaylist(playlistId) : [];
+                if (!listEl) return;
+                if (tracks.length === 0) {
+                    listEl.innerHTML = '<div class="widget-text">아직 추가된 곡이 없어요.</div>';
+                    return;
+                }
+                listEl.innerHTML = tracks.map((t, i) => `
+                    <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; margin-bottom:8px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px;">
+                        <span onclick="playTrackFromBrowse(${playlistId}, ${i})" style="flex:1; min-width:0; cursor:pointer; font-size:14px; font-weight:600; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">▶ ${escapeNoticeText(t.name || '이름없음')}</span>
+                        <span style="display:flex; gap:8px; flex-shrink:0; font-size:13px;">
+                            <span onclick="moveTrackInBrowse(${playlistId}, ${i}, -1)" style="cursor:pointer; ${i === 0 ? 'opacity:0.3; pointer-events:none;' : ''}" title="위로">▲</span>
+                            <span onclick="moveTrackInBrowse(${playlistId}, ${i}, 1)" style="cursor:pointer; ${i === tracks.length - 1 ? 'opacity:0.3; pointer-events:none;' : ''}" title="아래로">▼</span>
+                            <span onclick="removeTrackFromBrowse(${playlistId}, ${t.id})" style="cursor:pointer;" title="빼기">✕</span>
+                        </span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('플레이리스트 미리보기 로딩 오류:', e);
+                if (listEl) listEl.innerHTML = '<div class="widget-text">불러오지 못했습니다.</div>';
+            }
+        }
+
+        window.playTrackFromBrowse = async function(playlistId, index) {
+            try {
+                if (window.MixTapeApp && window.MixTapeApp.playTrackInPlaylist) {
+                    await window.MixTapeApp.playTrackInPlaylist(playlistId, index);
+                }
+            } catch (e) { console.error('플레이리스트 트랙 재생 오류:', e); }
+            openPlaylistPlayer(playlistId); // 이제 이 플레이리스트가 재생 중이니, 실제 재생 화면으로 전환한다
+        };
+
+        window.removeTrackFromBrowse = async function(playlistId, trackId) {
+            try {
+                if (window.MixTapeApp && window.MixTapeApp.removeTrackFromPlaylist) {
+                    await window.MixTapeApp.removeTrackFromPlaylist(playlistId, trackId);
+                }
+                await renderPlaylistBrowseView(playlistId);
+            } catch (e) { console.error('플레이리스트 트랙 제거 오류:', e); }
+        };
+
+        window.moveTrackInBrowse = async function(playlistId, index, dir) {
+            try {
+                if (!window.MixTapeApp || !window.MixTapeApp.getTracksForPlaylist || !window.MixTapeApp.reorderPlaylistTracks) return;
+                const tracks = await window.MixTapeApp.getTracksForPlaylist(playlistId);
+                const j = index + dir;
+                if (j < 0 || j >= tracks.length) return;
+                [tracks[index], tracks[j]] = [tracks[j], tracks[index]];
+                await window.MixTapeApp.reorderPlaylistTracks(playlistId, tracks.map(t => t.id));
+                await renderPlaylistBrowseView(playlistId);
+            } catch (e) { console.error('플레이리스트 순서 변경 오류:', e); }
+        };
+
+        window.closePlaylistBrowse = function() {
+            document.getElementById('playlist-browse-wrapper').style.display = 'none';
+            document.getElementById('playlist-name-list-view').style.display = 'block';
+            renderPlaylistNameList();
         };
 
         window.closePlaylistPlayer = function() {
@@ -11958,7 +12140,11 @@
         }
 
         // --- 시험 범위 & 실제 월간 수행평가 캘린더 ---
-        const subjects = ["국어", "수학", "영어", "한국사", "통합과학", "통합사회"];
+        const subjects = ["국어", "수학", "영어", "한국사", "통합과학", "통합사회"]; // exam_meta/subjects 문서가 아직 없을 때 쓰는 최초 시드 값
+        // 과목 "이름 수정"이 가능해지면서, 기본 과목 목록 자체를 더 이상 하드코딩 상수로 고정해두지 않고
+        // Firestore(exam_meta/subjects)에서 실시간으로 읽어온다 - 그래야 이름을 바꾸면 모두에게 반영된다.
+        let examSubjectNames = [...subjects];
+        let examNotesDataCache = {};
         function escapeHtml(str) {
             return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
@@ -11969,25 +12155,61 @@
         window.resizeExamNoteTextareas = function() {
             document.querySelectorAll('#exam-notes-container .subject-input').forEach(autoResizeExamNoteTextarea);
         };
+        function renderExamNotes() {
+            const container = document.getElementById('exam-notes-container'); if (!container) return;
+            container.innerHTML = '';
+            const data = examNotesDataCache;
+            // 기본 과목(exam_meta/subjects) + 누군가 "+ 과목 추가"로 새로 만든 과목(exam_notes에 문서가 있으면) 전부 보여준다.
+            // 홈 위젯(listenToHomeWidgets의 targets)은 별도의 고정 5과목 배열을 그대로 쓰므로 새 과목/이름 변경이 거기엔 안 뜬다.
+            const allSubjects = [...examSubjectNames];
+            Object.keys(data).forEach(sub => { if (!allSubjects.includes(sub)) allSubjects.push(sub); });
+            allSubjects.forEach(sub => {
+                const row = document.createElement('div'); row.className = 'subject-row';
+                const escSub = escapeHtml(sub).replace(/'/g, "\\'");
+                row.innerHTML = `<span class="subject-name">${escapeHtml(sub)}</span><button type="button" onclick="renameExamSubject('${escSub}')" class="btn-sub" style="font-size:11px; padding:3px 7px;" title="과목 이름 수정">✏️</button><textarea class="subject-input" id="note-${sub}" rows="1" placeholder="${escapeHtml(sub)} 범위를 업데이트하세요.">${escapeHtml(data[sub] || '')}</textarea><button onclick="saveExamNote('${escSub}')" class="btn-sub" style="color:var(--primary); border-color:var(--primary);">저장</button>`;
+                container.appendChild(row);
+                const ta = row.querySelector('textarea');
+                ta.addEventListener('input', () => autoResizeExamNoteTextarea(ta));
+                autoResizeExamNoteTextarea(ta);
+            });
+        }
         function listenToExamNotes() {
+            onSnapshot(doc(fdb, 'exam_meta', 'subjects'), (snap) => {
+                if (snap.exists() && Array.isArray(snap.data().names) && snap.data().names.length) {
+                    examSubjectNames = snap.data().names;
+                } else {
+                    examSubjectNames = [...subjects];
+                    setDoc(doc(fdb, 'exam_meta', 'subjects'), { names: subjects }, { merge: true }).catch(() => {}); // 최초 1회 시드
+                }
+                renderExamNotes();
+            });
             onSnapshot(collection(fdb, 'exam_notes'), (snap) => {
-                const container = document.getElementById('exam-notes-container'); container.innerHTML = '';
-                const data = {}; snap.forEach(d => { data[d.id] = d.data().text || ''; });
-                // 기본 6과목 + 누군가 "+ 과목 추가"로 새로 만든 과목(exam_notes에 문서가 있으면) 전부 보여준다.
-                // 홈 위젯(listenToHomeWidgets의 targets)은 기본 6과목 배열을 그대로 쓰므로 새 과목이 거기엔 안 뜬다.
-                const allSubjects = [...subjects];
-                Object.keys(data).forEach(sub => { if (!allSubjects.includes(sub)) allSubjects.push(sub); });
-                allSubjects.forEach(sub => {
-                    const row = document.createElement('div'); row.className = 'subject-row';
-                    row.innerHTML = `<span class="subject-name">${sub}</span><textarea class="subject-input" id="note-${sub}" rows="1" placeholder="${sub} 범위를 업데이트하세요.">${escapeHtml(data[sub] || '')}</textarea><button onclick="saveExamNote('${sub}')" class="btn-sub" style="color:var(--primary); border-color:var(--primary);">저장</button>`;
-                    container.appendChild(row);
-                    const ta = row.querySelector('textarea');
-                    ta.addEventListener('input', () => autoResizeExamNoteTextarea(ta));
-                    autoResizeExamNoteTextarea(ta);
-                });
+                examNotesDataCache = {}; snap.forEach(d => { examNotesDataCache[d.id] = d.data().text || ''; });
+                renderExamNotes();
             });
         }
         window.saveExamNote = async function(sub) { try { await setDoc(doc(fdb, 'exam_notes', sub), { text: document.getElementById(`note-${sub}`).value.trim() }); alert(`저장 완료`); } catch(e) {} }
+        // 과목 이름 수정: exam_notes 문서 id 자체가 과목명이라 "이름만 바꾸는" 게 불가능해서,
+        // 새 이름으로 문서를 새로 만들고(기존 범위 텍스트는 그대로 옮김) 기존 문서를 지우는 방식으로 처리한다.
+        // 기본 과목(exam_meta/subjects에 들어있는 이름)이면 그 목록의 이름도 함께 바꿔서, 모두에게 실시간 반영된다.
+        window.renameExamSubject = async function(oldName) {
+            const newName = (prompt(`"${oldName}" 과목의 새 이름을 입력하세요.`, oldName) || '').trim();
+            if (!newName || newName === oldName) return;
+            const allCurrentNames = [...new Set([...examSubjectNames, ...Object.keys(examNotesDataCache)])];
+            if (allCurrentNames.includes(newName)) return alert('이미 있는 과목 이름입니다.');
+            try {
+                const oldSnap = await getDoc(doc(fdb, 'exam_notes', oldName));
+                const text = oldSnap.exists() ? (oldSnap.data().text || '') : '';
+                await setDoc(doc(fdb, 'exam_notes', newName), { text });
+                await deleteDoc(doc(fdb, 'exam_notes', oldName));
+                if (examSubjectNames.includes(oldName)) {
+                    const updatedNames = examSubjectNames.map(s => s === oldName ? newName : s);
+                    await setDoc(doc(fdb, 'exam_meta', 'subjects'), { names: updatedNames });
+                }
+            } catch (e) {
+                alert('과목 이름 수정 중 오류가 발생했습니다.');
+            }
+        };
         // 새 과목을 exam_notes에 빈 문서로 만들어 목록에 추가한다 (2반 정회원이면 누구나 - 기존 시험범위 쓰기 권한과 동일).
         window.addExamSubject = async function() {
             const name = (prompt('추가할 과목명을 입력하세요.') || '').trim();
@@ -12473,7 +12695,7 @@
                 const url = await uploadImageToFreeImageHost(file);
                 document.getElementById('modal-img').src = url;
                 alert("저장 버튼을 눌러야 영구 보관됩니다.");
-            } catch(e) { console.error('프로필 사진 업로드 오류:', e); alert("업로드에 실패했습니다."); } finally { btn.innerText = "사진 변경"; }
+            } catch(e) { console.error('프로필 사진 업로드 오류:', e); alert(e.message && e.message.includes('60MB') ? e.message : "업로드에 실패했습니다."); } finally { btn.innerText = "사진 변경"; }
         }
 
         window.saveProfileData = async function() {
@@ -13892,6 +14114,45 @@
     });
   }
 
+  // 아래 둘은 "보기 전용" 화면(재생 중이 아닌 다른 플레이리스트를 열었을 때) 전용이다.
+  // persistOrder/dbDeleteTrack은 currentPlaylistId(=지금 재생 중인 플레이리스트)를 암묵적으로 쓰기
+  // 때문에, 재생 중이 아닌 플레이리스트를 잘못 건드리지 않도록 playlistId를 명시로 받는 버전을 따로 둔다.
+  async function dbUpdateTrackOrderForPlaylist(playlistId, orderedTrackIds){
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("playlists", "readwrite");
+      const store = tx.objectStore("playlists");
+      const getReq = store.get(playlistId);
+      getReq.onsuccess = () => {
+        const rec = getReq.result;
+        if(!rec){ resolve(); return; }
+        rec.trackIds = orderedTrackIds;
+        const putReq = store.put(rec);
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => reject(putReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  async function dbRemoveTrackRefFromPlaylist(playlistId, trackId){
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("playlists", "readwrite");
+      const store = tx.objectStore("playlists");
+      const getReq = store.get(playlistId);
+      getReq.onsuccess = () => {
+        const rec = getReq.result;
+        if(!rec || !Array.isArray(rec.trackIds)){ resolve(); return; }
+        rec.trackIds = rec.trackIds.filter(tid => tid !== trackId);
+        const putReq = store.put(rec);
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => reject(putReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
   async function dbDeleteTrack(id){
     // v3: 이름은 예전 그대로지만 의미가 바뀌었다 - "내 음악(tracks)에서 영구 삭제"가 아니라
     // "현재 열려 있는 플레이리스트에서만 이 곡의 참조를 제거"한다. 다른 플레이리스트나 "내 음악"
@@ -14819,6 +15080,16 @@
     // "내 음악"에서 이 플레이리스트로 곡을 추가했을 때, 재생을 끊지 않고 목록만 다시 그린다.
     refreshIfCurrent: function(id){ if (id === currentPlaylistId) return refreshCurrentPlaylistTracks(); },
     getCurrentPlaylistId: function(){ return currentPlaylistId; },
+    // 1-2 Music: "보기 전용" 화면(#playlist-browse-wrapper)에서 곡을 눌렀을 때만 쓴다. 그제서야
+    // 실제로 이 플레이리스트로 재생을 전환하고, 누른 곡부터 바로 재생을 시작한다.
+    playTrackInPlaylist: async function(id, index){ await switchPlaylist(id); playTrack(index); },
+    // 아래 세 개는 전부 "보기 전용" 화면 전용이다 - 재생 엔진의 playlist/currentIndex(=지금
+    // 재생 중인 다른 플레이리스트)는 전혀 건드리지 않고, 지정한 플레이리스트id의 트랙만 IndexedDB에서
+    // 직접 읽고 쓴다. moveTrack/removeTrack/persistOrder는 currentPlaylistId를 암묵적으로 쓰기 때문에
+    // 재생 중이 아닌 다른 플레이리스트에는 그대로 재사용할 수 없어서 별도로 만들었다.
+    getTracksForPlaylist: function(id){ return dbGetTracksByPlaylist(id); },
+    reorderPlaylistTracks: function(id, orderedTrackIds){ return dbUpdateTrackOrderForPlaylist(id, orderedTrackIds); },
+    removeTrackFromPlaylist: function(id, trackId){ return dbRemoveTrackRefFromPlaylist(id, trackId); },
     // 1-2 Music: 선택 모드 제어 - 별도 화면을 새로 만들지 않고 기존 트랙리스트에 체크박스만 켠다.
     enterSelectMode: function(){
       selectModeActive = true;
@@ -15230,6 +15501,10 @@
         const inlineMixCard = document.getElementById('gmw-inline-mixtape');
 
         let pipWindow = null;
+        // Focus/MixTape 표시 조합(showFocus+showMix)이 실제로 바뀔 때만 resizeOpenPiP를 부르기 위한 키.
+        // render()는 재생 중 1초마다도 호출되는데, 매번 resizeTo를 부르면 사용자가 PiP 창을 손으로
+        // 늘려도 다음 tick에 바로 원래 크기로 되돌아가버리는 문제가 있었다 (드래그해도 계속 줄어듦).
+        let lastPiPSizeKey = null;
 
         // ===== 상태 관리자 =====
         const state = {
@@ -15392,10 +15667,12 @@
 
         // 인라인 위젯(.gmw-inline-card)과 같은 288px 너비를 기준으로 잡는다 - 전역 PiP가
         // 인라인보다 커 보인다는 피드백 반영. 세로는 실제 행 하나의 자연스러운 높이(패딩+링 46px)에 맞춘 값.
+        // ⚠️ 예전엔 80/160이라 실제 콘텐츠 높이(약 78px)와 여백이 거의 없어서, 브라우저/폰트 렌더링
+        // 차이로 아래쪽이 살짝씩 잘리는 문제가 있었다 - 위아래로 여유를 더 두었다.
         function sizeForPiP(showFocus, showMix){
-            if (showFocus && showMix) return { width: 288, height: 160 };
-            if (showMix) return { width: 288, height: 80 };
-            return { width: 288, height: 80 };
+            if (showFocus && showMix) return { width: 288, height: 180 };
+            if (showMix) return { width: 288, height: 96 };
+            return { width: 288, height: 96 };
         }
 
         // ----- Window 상태 관리: "숨김"이 아니라 완전히 닫는다(Option A) -----
@@ -15411,6 +15688,7 @@
             // close()는 'pagehide'를 비동기로 트리거해 pipRoot 반환 등 뒷정리를 하지만,
             // 그 사이 다른 코드가 pipWindow를 다시 참조하지 않도록 여기서도 즉시 참조를 끊는다.
             pipWindow = null;
+            lastPiPSizeKey = null;
         }
 
         // Document PiP는 반드시 실제 사용자 제스처 호출 스택 안에서 열어야 브라우저가 허용한다.
@@ -15421,6 +15699,7 @@
             try {
                 const { width, height } = sizeForPiP(showFocus, showMix);
                 pipWindow = await window.documentPictureInPicture.requestWindow({ width, height });
+                lastPiPSizeKey = `${showFocus}-${showMix}`; // 방금 이 크기로 열었으니, 조합이 안 바뀌는 한 다시 resizeTo를 부르지 않는다
 
                 const styleSrc = document.getElementById('gmw-pip-style');
                 if (styleSrc) pipWindow.document.head.appendChild(styleSrc.cloneNode(true));
@@ -15443,6 +15722,7 @@
                     pipHomeParent.appendChild(pipRoot);
                     pipRoot.style.display = 'none';
                     pipWindow = null;
+                    lastPiPSizeKey = null;
                     render(); // 닫힌 뒤 상태에 맞게 다시 그린다 (사이트를 보고 있었다면 inline이 나타남)
                 }, { once: true });
             } catch (err) {
@@ -15505,7 +15785,13 @@
                     // Focus도 MixTape도 완전히 꺼진 상태 - 더 보여줄 게 없으므로 이때도 창을 닫는다.
                     destroyPiPWindow();
                 } else {
-                    resizeOpenPiP(showFocus, showMix); // Focus/MixTape 조합이 바뀌었을 때 크기만 갱신
+                    // render()는 재생 중 1초에도 여러 번 호출되므로, 매번 resizeTo를 부르면 사용자가
+                    // 손으로 늘린 창 크기가 곧바로 원래 크기로 되돌아가버린다. 조합이 실제로 바뀔 때만 부른다.
+                    const sizeKey = `${showFocus}-${showMix}`;
+                    if (sizeKey !== lastPiPSizeKey) {
+                        resizeOpenPiP(showFocus, showMix);
+                        lastPiPSizeKey = sizeKey;
+                    }
                 }
             }
             return { showFocus, showMix };
