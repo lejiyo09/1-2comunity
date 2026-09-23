@@ -5500,7 +5500,8 @@
         let currentBgObjectUrl = null;
         function isSiteDarkModeNow() { return document.body.classList.contains('gmw-site-dark'); }
         function getActiveBackgroundPreset() {
-            try { return localStorage.getItem(BG_PRESET_KEY) || 'default1'; } catch (e) { return 'default1'; }
+            // 처음 접속하는(아직 아무 것도 고른 적 없는) 사용자의 기본값은 기본2(제공된 낮/밤 사진 세트)로 한다.
+            try { return localStorage.getItem(BG_PRESET_KEY) || 'default2'; } catch (e) { return 'default2'; }
         }
         function getBackgroundDarkDim() {
             try {
@@ -5703,7 +5704,7 @@
         window.resetCustomBackground = async function() {
             try {
                 await Promise.all([deleteBgBlobFromIndexedDB('light'), deleteBgBlobFromIndexedDB('dark'), deleteBgBlobFromIndexedDB('current')]);
-                try { localStorage.setItem(BG_PRESET_KEY, 'default1'); } catch (e) {}
+                try { localStorage.setItem(BG_PRESET_KEY, 'default2'); } catch (e) {}
                 await applyActiveBackground();
                 if (window.updateBgSettingsUI) window.updateBgSettingsUI();
                 const statusEl = document.getElementById('settings-bg-status');
