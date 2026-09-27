@@ -13952,6 +13952,47 @@
   const audio = new Audio();
   audio.preload = "metadata";
 
+  // Media Session API: OS/브라우저의 시스템 미디어 위젯(알림창, 잠금화면, 키보드 미디어키 등)에
+  // 곡 제목/앨범아트와 이전곡·다음곡 버튼이 뜨게 한다. 이걸 안 해두면 시스템 위젯이 그냥
+  // 페이지 제목 + 재생/일시정지 버튼만 보여주는 기본 상태로 남는다 (다른 사이트들과 비교됐던 문제).
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play', () => { if (audio.paused) togglePlay(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (!audio.paused) togglePlay(); });
+    navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+    navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack(false));
+    navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; setPlayingState(false); });
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime != null) audio.currentTime = details.seekTime;
+      });
+    } catch (e) { /* 일부 브라우저는 seekto 핸들러를 지원하지 않을 수 있다 - 무시 */ }
+  }
+
+  // 지금 재생 중인 곡의 제목/앨범아트를 Media Session 메타데이터로 반영한다.
+  // updateNowPlaying()(일반 재생목록 곡 전환)과 playAdHoc(임시 재생) 양쪽에서 호출한다.
+  let mediaSessionArtworkUrl = null;
+  function updateMediaSessionMetadata(){
+    if (!('mediaSession' in navigator)) return;
+    let title, artworkBlob;
+    if (isAdHocPlaying) {
+      title = adHocName || '재생 중';
+      artworkBlob = adHocArtwork || null;
+    } else if (currentIndex >= 0 && playlist[currentIndex]) {
+      title = playlist[currentIndex].name;
+      artworkBlob = playlist[currentIndex].artwork || null;
+    } else {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+    if (mediaSessionArtworkUrl) { URL.revokeObjectURL(mediaSessionArtworkUrl); mediaSessionArtworkUrl = null; }
+    const artwork = [];
+    if (artworkBlob) {
+      mediaSessionArtworkUrl = URL.createObjectURL(artworkBlob);
+      artwork.push({ src: mediaSessionArtworkUrl, sizes: '512x512', type: artworkBlob.type || 'image/png' });
+    }
+    navigator.mediaSession.metadata = new MediaMetadata({ title, artist: '1-2 Music', artwork });
+  }
+
   // ---------- IndexedDB persistence ----------
   const DB_NAME = "mixtapeDB";
   const DB_VERSION = 3; // v3: 플레이리스트가 track을 직접 소유하지 않고 trackIds 배열로 "참조"한다 (Blob 복사 제거)
@@ -14901,12 +14942,14 @@
       npTitle.textContent = "재생할 곡을 선택하세요";
       npSub.textContent = "대기 중";
       renderIpodScreen();
+      updateMediaSessionMetadata();
       return;
     }
     const track = playlist[currentIndex];
     npTitle.textContent = track.name;
     npSub.textContent = `${currentIndex+1} / ${playlist.length}곡`;
     renderIpodScreen();
+    updateMediaSessionMetadata();
   }
 
   function setPlayingState(playing){
@@ -14914,6 +14957,7 @@
     playBtn.textContent = playing ? "⏸" : "▶";
     statusText.textContent = playing ? "재생 중" : (currentIndex === -1 ? "준비됨" : "일시정지");
     setIpodPlaying(playing);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
   }
 
   function togglePlay(){
@@ -15152,6 +15196,8 @@
         adHocName = name || null;
         adHocArtwork = artwork || null;
         if (mixtapeRoot) mixtapeRoot.classList.add('playing');
+        updateMediaSessionMetadata();
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         notifyMiniWidgetMixtape();
       } catch (e) { console.warn('1-2 Music 임시 재생 실패:', e); }
     },
