@@ -2087,6 +2087,19 @@
                     <div id="settings-accent-swatches" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
                 </div>
 
+                <div style="padding:14px 0; border-top:1px solid var(--border-color);">
+                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">내 음악 · 플래너 데이터 백업</div>
+                    <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px;">다른 사이트(예: 예전 주소)에서 쓰던 음악/플레이리스트/플래너 기록을 이 사이트로 옮길 때 써요. 브라우저 보안 정책상 다른 사이트의 데이터를 직접 읽어올 수는 없어서, 그 사이트에서 "내보내기"로 파일을 받은 다음 여기서 "가져오기"로 불러오는 방식이에요.</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-sub" onclick="exportMusicAndPlannerData()">📤 내보내기 (이 사이트 데이터를 파일로)</button>
+                        <label class="btn-sub" style="cursor:pointer; margin:0;">
+                            📥 가져오기 (파일 선택)
+                            <input type="file" accept="application/json,.json" style="display:none;" onchange="handleDataImportFileSelected(event)">
+                        </label>
+                    </div>
+                    <div id="data-export-import-status" style="font-size:11.5px; color:var(--text-muted); margin-top:8px;"></div>
+                </div>
+
                 <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.0</div>
             </div>
         </div>
@@ -2578,12 +2591,22 @@
                     <span class="close-btn" onclick="closeMusicShareModal()">&times;</span>
                     <div class="card-title" style="margin-bottom: 14px;">🎵 내 음악 공유하기</div>
                     <div id="music-share-quota" style="font-size:12px; color:var(--text-muted); margin-bottom:12px;"></div>
+                    <div style="display:flex; gap:6px; margin-bottom:12px;">
+                        <button type="button" class="btn-sub" id="music-share-mode-upload-btn" onclick="setMusicShareMode('upload')" style="flex:1;">📤 파일 업로드</button>
+                        <button type="button" class="btn-sub" id="music-share-mode-mymusic-btn" onclick="setMusicShareMode('mymusic')" style="flex:1;">📼 내 음악에서 선택</button>
+                    </div>
                     <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">제목</label>
                     <input type="text" id="music-share-title" class="auth-input" placeholder="곡 제목" style="margin-bottom: 12px; padding: 10px 14px;">
                     <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">아티스트 (선택)</label>
                     <input type="text" id="music-share-artist" class="auth-input" placeholder="아티스트명" style="margin-bottom: 12px; padding: 10px 14px;">
-                    <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">MP3 파일</label>
-                    <input type="file" id="music-share-file" accept="audio/*,.mp3" class="auth-input" style="margin-bottom: 6px; padding: 10px 14px; background: var(--input-bg); color: var(--text-main);" onchange="handleMusicShareFileSelected(event)">
+                    <div id="music-share-upload-fields">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">MP3 파일</label>
+                        <input type="file" id="music-share-file" accept="audio/*,.mp3" class="auth-input" style="margin-bottom: 6px; padding: 10px 14px; background: var(--input-bg); color: var(--text-main);" onchange="handleMusicShareFileSelected(event)">
+                    </div>
+                    <div id="music-share-mymusic-fields" style="display:none;">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">내 음악에서 선택</label>
+                        <select id="music-share-mymusic-select" class="auth-select" style="margin-bottom: 6px; padding: 10px 14px;" onchange="handleMusicShareLibraryTrackSelected()"></select>
+                    </div>
                     <div class="archive-cloud-note">본인이 저작권을 가진 음원만 공유해주세요. 최대 10곡, 곡당 30MB까지 공유할 수 있어요.</div>
                     <div id="music-share-progress" style="display:none; font-size:12px; color:var(--primary); font-weight:600; margin-top:8px;"></div>
                     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
@@ -2600,7 +2623,10 @@
                     <div class="card-title" style="margin-bottom: 10px;">내 음악에서 추가</div>
                     <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">추가할 플레이리스트</label>
                     <select id="add-from-library-target" class="auth-select" style="margin-bottom: 12px; padding: 10px 14px;"></select>
-                    <input type="text" id="add-from-library-search" class="auth-input" placeholder="🔍 내 음악 검색" style="margin-bottom: 10px; padding: 9px 14px; font-size:13px;" oninput="renderAddFromLibraryList()">
+                    <input type="text" id="add-from-library-search" class="auth-input" placeholder="🔍 내 음악 검색" style="margin-bottom: 8px; padding: 9px 14px; font-size:13px;" oninput="renderAddFromLibraryList()">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--text-muted); margin-bottom:6px; cursor:pointer;">
+                        <input type="checkbox" id="add-from-library-select-all" onchange="toggleSelectAllAddFromLibrary(this.checked)"> 전체 선택
+                    </label>
                     <div id="add-from-library-list" style="max-height: 260px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 6px;"></div>
                     <div class="archive-cloud-note">체크한 곡이 선택한 플레이리스트에 추가돼요.</div>
                     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
@@ -3547,7 +3573,11 @@
 
   <div class="list-head">
     <span>트랙리스트</span>
-    <button id="clearAllBtn">전체 지우기</button>
+    <span style="display:flex; gap:12px;">
+      <button id="shuffleOrderBtn" type="button">섞기</button>
+      <button id="reverseOrderBtn" type="button">뒤집기</button>
+      <button id="clearAllBtn">전체 지우기</button>
+    </span>
   </div>
 
   <ul class="tracks" id="trackList">
@@ -10804,6 +10834,142 @@
             });
         }
 
+        // =========================================================================
+        // 📤📥 내 음악 + 플래너 데이터 내보내기/가져오기
+        // IndexedDB(mixtapeDB)와 localStorage(planner_*)는 브라우저 출처(origin)별로 완전히 분리돼
+        // 있어서, 다른 사이트(예: 예전 배포 주소)의 데이터를 코드로 직접 읽어올 방법이 없다
+        // (Same-Origin Policy). 그래서 예전 사이트에서 "내보내기"로 파일을 받아, 옮기고 싶은
+        // 사이트에서 "가져오기"로 그 파일을 불러오는 방식으로만 옮길 수 있다.
+        // openMusicDB()가 여는 mixtapeDB는 열릴 때 자동으로 v1/v2(트랙이 playlistId를 직접 들고
+        // 있던 구조) → v3(플레이리스트가 trackIds로 참조)로 이미 마이그레이션되므로, 여기서 읽는
+        // 데이터는 항상 정리된 v3 형태다. 다만 그 시절 트랙은 title/artist가 아예 없을 수 있어
+        // (예전엔 name만 있었음) 없으면 "미상"으로 채운다.
+        // =========================================================================
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            });
+        }
+        function base64ToBlob(dataUrl) {
+            const [meta, b64] = dataUrl.split(',');
+            const mime = (meta.match(/data:(.*?);base64/) || [null, 'application/octet-stream'])[1];
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new Blob([bytes], { type: mime });
+        }
+
+        window.exportMusicAndPlannerData = async function() {
+            const statusEl = document.getElementById('data-export-import-status');
+            if (statusEl) statusEl.textContent = '내보낼 데이터를 모으는 중... (곡이 많으면 시간이 걸릴 수 있어요)';
+            try {
+                const [tracks, playlists] = await Promise.all([musicDbGetAllTracks(), musicDbGetAllPlaylists()]);
+                const exportedTracks = [];
+                for (const t of tracks) {
+                    if (!t.blob) continue;
+                    exportedTracks.push({
+                        id: t.id,
+                        title: t.title || t.name || '제목 없음',
+                        artist: t.artist || '미상',
+                        blobBase64: await blobToBase64(t.blob),
+                        artworkBase64: t.artwork ? await blobToBase64(t.artwork) : null
+                    });
+                }
+                const exportedPlaylists = playlists.map(p => ({ name: p.name || '이름없음', trackIds: Array.isArray(p.trackIds) ? p.trackIds : [] }));
+
+                const planner = {};
+                Object.keys(localStorage).filter(k => k.indexOf('planner_') === 0).forEach(k => { planner[k] = localStorage.getItem(k); });
+
+                const payload = { exportedAt: Date.now(), tracks: exportedTracks, playlists: exportedPlaylists, planner };
+                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `1-2comunity-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a); a.click(); a.remove();
+                URL.revokeObjectURL(url);
+                if (statusEl) statusEl.textContent = `내보내기 완료 (곡 ${exportedTracks.length}개, 플레이리스트 ${exportedPlaylists.length}개, 플래너 항목 ${Object.keys(planner).length}개)`;
+            } catch (e) {
+                console.error('데이터 내보내기 오류:', e);
+                if (statusEl) statusEl.textContent = '내보내기 중 오류가 발생했습니다.';
+            }
+        };
+
+        window.handleDataImportFileSelected = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const statusEl = document.getElementById('data-export-import-status');
+            if (!confirm('선택한 백업 파일의 곡·플레이리스트·플래너 기록을 지금 이 사이트로 가져옵니다.\n기존 데이터는 지우지 않고 합쳐져요. 계속할까요?')) { event.target.value = ''; return; }
+            if (statusEl) statusEl.textContent = '가져오는 중... (곡이 많으면 시간이 걸릴 수 있어요)';
+            try {
+                const payload = JSON.parse(await file.text());
+
+                // 1) 트랙: id가 그대로 겹칠 수 없으므로 전부 새로 만들고, 예전 id -> 새 id를 기록해둔다.
+                const idMap = {};
+                let importedTrackCount = 0;
+                for (const t of (payload.tracks || [])) {
+                    if (!t.blobBase64) continue;
+                    const blob = base64ToBlob(t.blobBase64);
+                    const artworkBlob = t.artworkBase64 ? base64ToBlob(t.artworkBase64) : null;
+                    const newId = await musicDbAddTrackOnly(blob, t.title || '제목 없음', t.artist || '미상', 'imported', artworkBlob);
+                    idMap[t.id] = newId;
+                    importedTrackCount++;
+                }
+
+                // 2) 플레이리스트: 같은 이름이 이미 있으면 그 안에 곡만 추가하고, 없으면 새로 만든다.
+                const existingPlaylists = await musicDbGetAllPlaylists();
+                let importedPlaylistCount = 0;
+                for (const p of (payload.playlists || [])) {
+                    const newTrackIds = (p.trackIds || []).map(oldId => idMap[oldId]).filter(id => id != null);
+                    if (newTrackIds.length === 0) continue;
+                    const target = existingPlaylists.find(ep => ep.name === p.name);
+                    if (target) {
+                        const merged = Array.from(new Set([...(target.trackIds || []), ...newTrackIds]));
+                        await window.MixTapeApp.reorderPlaylistTracks(target.id, merged);
+                    } else {
+                        const newPlaylistId = await window.MixTapeApp.createPlaylistNamed(p.name);
+                        await window.MixTapeApp.reorderPlaylistTracks(newPlaylistId, newTrackIds);
+                        existingPlaylists.push({ id: newPlaylistId, name: p.name, trackIds: newTrackIds });
+                    }
+                    importedPlaylistCount++;
+                }
+
+                // 3) 플래너: 객체(JSON) 값은 병합하되 기존 값을 우선하고(덮어쓰지 않음) 없는 항목만 채운다.
+                //    그 외 값은 이 브라우저에 아직 그 키가 전혀 없을 때만 채운다.
+                let importedPlannerKeys = 0;
+                Object.entries(payload.planner || {}).forEach(([key, value]) => {
+                    const existingRaw = localStorage.getItem(key);
+                    if (existingRaw == null) {
+                        localStorage.setItem(key, value);
+                        importedPlannerKeys++;
+                        return;
+                    }
+                    try {
+                        const existingObj = JSON.parse(existingRaw);
+                        const importedObj = JSON.parse(value);
+                        if (existingObj && importedObj && typeof existingObj === 'object' && typeof importedObj === 'object' && !Array.isArray(existingObj) && !Array.isArray(importedObj)) {
+                            localStorage.setItem(key, JSON.stringify({ ...importedObj, ...existingObj }));
+                            importedPlannerKeys++;
+                        }
+                    } catch (e) { /* JSON이 아니거나 배열이면 기존 값을 그대로 둔다 (충돌 방지) */ }
+                });
+
+                if (typeof renderMyMusicList === 'function') renderMyMusicList();
+                if (typeof renderPlaylistNameList === 'function') renderPlaylistNameList();
+
+                const summary = `가져오기 완료 - 곡 ${importedTrackCount}개, 플레이리스트 ${importedPlaylistCount}개, 플래너 항목 ${importedPlannerKeys}개.\n플래너 기록은 새로고침해야 화면에 반영돼요.`;
+                if (statusEl) statusEl.textContent = summary;
+                alert(summary);
+            } catch (e) {
+                console.error('데이터 가져오기 오류:', e);
+                if (statusEl) statusEl.textContent = '가져오기 중 오류가 발생했습니다. 올바른 백업 파일인지 확인해주세요.';
+            } finally {
+                event.target.value = '';
+            }
+        };
+
         // 이 트랙을 참조하고 있는 플레이리스트 목록 (내 음악에서 삭제하기 전 고아 참조 방지용 확인)
         async function musicDbGetPlaylistsReferencing(trackId) {
             const playlists = await musicDbGetAllPlaylists();
@@ -11316,6 +11482,8 @@
         };
         window.renderAddFromLibraryList = function() {
             const listEl = document.getElementById('add-from-library-list');
+            const selectAllEl = document.getElementById('add-from-library-select-all');
+            if (selectAllEl) selectAllEl.checked = false; // 목록이 다시 그려지면(검색 등) 전체선택 상태도 초기화한다
             const q = (document.getElementById('add-from-library-search')?.value || '').trim().toLowerCase();
             let tracks = addFromLibraryTracks;
             if (q) tracks = tracks.filter(t => (t.name || '').toLowerCase().includes(q));
@@ -11329,6 +11497,10 @@
                     <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeNoticeText(t.name || '제목 없음')}</span>
                 </label>
             `).join('');
+        };
+        // 지금 화면에 보이는(검색으로 필터된) 곡들만 대상으로 전체 선택/해제한다.
+        window.toggleSelectAllAddFromLibrary = function(checked) {
+            document.querySelectorAll('.add-from-library-check').forEach(cb => { cb.checked = checked; });
         };
         window.submitAddFromLibrary = async function() {
             const targetId = parseInt(document.getElementById('add-from-library-target').value, 10);
@@ -11598,12 +11770,16 @@
             }
         };
 
+        // 직접 파일을 올리는 대신, 이미 "내 음악"에 있는 곡을 그대로 공유할 수도 있게 한다.
+        let musicShareMode = 'upload'; // 'upload' | 'mymusic'
+        let musicShareLibraryTracks = [];
         window.openMusicShareModal = async function() {
             if (!currentUser) return showLoginScreen(() => openMusicShareModal());
             if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
             document.getElementById('music-share-title').value = '';
             document.getElementById('music-share-artist').value = '';
             document.getElementById('music-share-file').value = '';
+            window.setMusicShareMode('upload');
             const quotaEl = document.getElementById('music-share-quota');
             quotaEl.textContent = '공유 개수를 확인하는 중...';
             document.getElementById('music-share-modal').style.display = 'flex';
@@ -11612,9 +11788,38 @@
                 if (error) throw error;
                 quotaEl.textContent = `현재 ${count || 0} / ${MUSIC_SHARE_LIMIT}곡 공유 중`;
             } catch (e) { quotaEl.textContent = ''; }
+            try {
+                musicShareLibraryTracks = await musicDbGetAllTracks();
+                const select = document.getElementById('music-share-mymusic-select');
+                select.innerHTML = musicShareLibraryTracks.length
+                    ? musicShareLibraryTracks.map(t => `<option value="${t.id}">${escapeNoticeText(t.name || '제목 없음')}</option>`).join('')
+                    : '<option value="">내 음악이 없습니다</option>';
+            } catch (e) { console.error('내 음악 목록 로딩 오류:', e); }
         };
         window.closeMusicShareModal = function() {
             document.getElementById('music-share-modal').style.display = 'none';
+        };
+        window.setMusicShareMode = function(mode) {
+            musicShareMode = mode;
+            document.getElementById('music-share-upload-fields').style.display = mode === 'upload' ? 'block' : 'none';
+            document.getElementById('music-share-mymusic-fields').style.display = mode === 'mymusic' ? 'block' : 'none';
+            const uploadBtn = document.getElementById('music-share-mode-upload-btn');
+            const mymusicBtn = document.getElementById('music-share-mode-mymusic-btn');
+            if (uploadBtn) { uploadBtn.style.borderColor = mode === 'upload' ? 'var(--primary)' : ''; uploadBtn.style.color = mode === 'upload' ? 'var(--primary)' : ''; }
+            if (mymusicBtn) { mymusicBtn.style.borderColor = mode === 'mymusic' ? 'var(--primary)' : ''; mymusicBtn.style.color = mode === 'mymusic' ? 'var(--primary)' : ''; }
+            if (mode === 'mymusic') handleMusicShareLibraryTrackSelected();
+        };
+        // 내 음악에서 곡을 고르면, 아직 직접 입력하지 않은 제목/아티스트 칸만 그 곡 정보로 채워준다
+        // (이미 사용자가 손으로 고친 값은 덮어쓰지 않는다).
+        window.handleMusicShareLibraryTrackSelected = function() {
+            const select = document.getElementById('music-share-mymusic-select');
+            const trackId = parseInt(select.value, 10);
+            const track = musicShareLibraryTracks.find(t => t.id === trackId);
+            if (!track) return;
+            const titleInput = document.getElementById('music-share-title');
+            const artistInput = document.getElementById('music-share-artist');
+            if (!titleInput.value.trim()) titleInput.value = track.title || track.name || '';
+            if (!artistInput.value.trim() && track.artist) artistInput.value = track.artist;
         };
 
         // 🔧 개발자용 진단 함수 (UI 버튼 없음 - 브라우저 개발자도구 콘솔에서 직접 호출해서 확인).
@@ -11662,9 +11867,19 @@
             const submitBtn = document.getElementById('music-share-submit-btn');
             if (!currentUser) return showLoginScreen(() => handleMusicShareSubmit());
             if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
-            const file = fileInput.files.length > 0 ? fileInput.files[0] : null;
-            if (!file) return alert("MP3 파일을 선택해주세요.");
-            if (!/audio\//.test(file.type) && !/\.(mp3|m4a|wav|ogg)$/i.test(file.name)) return alert("오디오 파일만 공유할 수 있습니다.");
+
+            let file;
+            if (musicShareMode === 'mymusic') {
+                // 이미 "내 음악"에 저장돼 있던 곡이라 blob이 그대로 있다 - 새로 업로드할 필요 없이 그 blob을 그대로 공유한다.
+                const trackId = parseInt(document.getElementById('music-share-mymusic-select').value, 10);
+                const track = musicShareLibraryTracks.find(t => t.id === trackId);
+                if (!track) return alert("공유할 곡을 선택해주세요.");
+                file = track.blob;
+            } else {
+                file = fileInput.files.length > 0 ? fileInput.files[0] : null;
+                if (!file) return alert("MP3 파일을 선택해주세요.");
+                if (!/audio\//.test(file.type) && !/\.(mp3|m4a|wav|ogg)$/i.test(file.name)) return alert("오디오 파일만 공유할 수 있습니다.");
+            }
             if (file.size > MAX_SHARED_MUSIC_SIZE) return alert("이 음악은 30MB를 초과하여 공유할 수 없습니다.");
 
             const original = submitBtn.textContent;
@@ -14211,6 +14426,8 @@
   const trackCountEl = $("trackCount");
   const volumeEl = $("volume");
   const clearAllBtn = $("clearAllBtn");
+  const shuffleOrderBtn = $("shuffleOrderBtn");
+  const reverseOrderBtn = $("reverseOrderBtn");
   const sideLabel = $("sideLabel");
   const trackPreviewEl = $("trackPreview");
   const sideTabEl = $("sideTab");
@@ -14841,6 +15058,28 @@
     repeatBtn.title = repeatMode === 0 ? "반복 꺼짐" : repeatMode === 1 ? "전체 반복" : "한 곡 반복";
   });
 
+  // "섞기"/"뒤집기"는 재생목록 자체의 순서를 바꾸는 것이다(재생 중 다음 곡을 무작위로 고르는
+  // shuffleBtn의 재생 모드와는 다르다) - moveTrack()과 동일하게 현재 재생 중인 곡의 위치를 새 순서에서
+  // 다시 찾아 currentIndex를 갱신하고, 화면을 다시 그린 뒤 바뀐 순서를 저장한다.
+  shuffleOrderBtn.addEventListener("click", () => {
+    if(playlist.length < 2) return;
+    const currentTrackId = (currentIndex >= 0 && playlist[currentIndex]) ? playlist[currentIndex].id : null;
+    for(let i = playlist.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [playlist[i], playlist[j]] = [playlist[j], playlist[i]];
+    }
+    if(currentTrackId != null) currentIndex = playlist.findIndex(t => t.id === currentTrackId);
+    renderList();
+    persistOrder();
+  });
+  reverseOrderBtn.addEventListener("click", () => {
+    if(playlist.length < 2) return;
+    playlist.reverse();
+    if(currentIndex >= 0) currentIndex = playlist.length - 1 - currentIndex;
+    renderList();
+    persistOrder();
+  });
+
   clearAllBtn.addEventListener("click", async () => {
     if(playlist.length === 0) return;
     if(!confirm("이 플레이리스트의 곡을 모두 빼시겠어요?\n(저장된 음악 파일 자체는 삭제되지 않고 '내 음악'에 그대로 남아요)")) return;
@@ -14989,6 +15228,8 @@
     getTracksForPlaylist: function(id){ return dbGetTracksByPlaylist(id); },
     reorderPlaylistTracks: function(id, orderedTrackIds){ return dbUpdateTrackOrderForPlaylist(id, orderedTrackIds); },
     removeTrackFromPlaylist: function(id, trackId){ return dbRemoveTrackRefFromPlaylist(id, trackId); },
+    // 데이터 가져오기(백업 파일 복원) 전용: 프롬프트 없이 이름을 지정해서 바로 플레이리스트를 만든다.
+    createPlaylistNamed: function(name){ return dbAddPlaylist(name || '가져온 플레이리스트'); },
     // 1-2 Music: 선택 모드 제어 - 별도 화면을 새로 만들지 않고 기존 트랙리스트에 체크박스만 켠다.
     enterSelectMode: function(){
       selectModeActive = true;
