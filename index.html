@@ -2230,7 +2230,7 @@
                         <div class="home-mini-value" id="home-planner-tasks">0 / 0</div>
                         <div class="home-mini-sub">완료 / 전체</div>
                     </div>
-                    <div class="card clickable home-mini-card" data-widget-id="w-mixtape" onclick="switchTab('mixtape')">
+                    <div class="card clickable home-mini-card" data-widget-id="w-mixtape" onclick="window.goToNowPlayingPlaylist ? window.goToNowPlayingPlaylist() : switchTab('mixtape')">
                         <div class="home-mini-title">📼 현재 재생</div>
                         <div class="home-mini-value" id="home-mixtape-track">재생 중인 곡 없음</div>
                         <div class="home-mini-sub" id="home-mixtape-status">대기 중</div>
@@ -10331,6 +10331,20 @@
         //    공유/좋아요/다운로드기록/재생기록은 전부 music-write Edge Function을 통해서만 이루어진다.
         // =========================================================================
 
+        // Music 탭의 아무 화면이나 보여주는 대신, 지금 재생 중인 바로 그 플레이리스트의 실제 재생
+        // 화면으로 바로 이동한다. 홈 위젯("현재 재생")과 인라인 미니 위젯 둘 다 이 함수를 쓴다.
+        window.goToNowPlayingPlaylist = function() {
+            window.switchTab('mixtape');
+            window.switchMusicSection('library');
+            const nowPlaying = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
+            const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
+            // 임시 재생(공유 음악 등을 바로 듣는 것)은 특정 플레이리스트에 속하지 않으므로
+            // (getNowPlaying().index === -1) 이때는 목록 화면까지만 이동한다.
+            if (nowPlaying && nowPlaying.index !== -1 && currentId != null) {
+                window.openPlaylistPlayer(currentId);
+            }
+        };
+
         window.switchMusicSection = function(section) {
             document.querySelectorAll('.music-subnav-item').forEach(el => el.classList.toggle('active', el.dataset.section === section));
             document.querySelectorAll('.music-panel').forEach(el => el.classList.toggle('active', el.id === `music-panel-${section}`));
@@ -16018,7 +16032,12 @@
             if (inMixNext) inMixNext.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.nextTrack(); });
             if (inMixPopout) inMixPopout.addEventListener('click', (e) => { stop(e); popOut(); });
             if (inMixClose) inMixClose.addEventListener('click', (e) => { stop(e); mixInlineDismissed = true; render(); });
-            if (inlineMixCard) inlineMixCard.addEventListener('click', () => window.switchTab('mixtape'));
+            // 인라인 미니 위젯을 누르면 지금 재생 중인 바로 그 플레이리스트의 실제 재생 화면으로
+            // 바로 이동한다 (홈의 "현재 재생" 위젯과 동일한 동작 - goToNowPlayingPlaylist 참고).
+            if (inlineMixCard) inlineMixCard.addEventListener('click', () => {
+                if (window.goToNowPlayingPlaylist) window.goToNowPlayingPlaylist();
+                else window.switchTab('mixtape');
+            });
 
             // ---- PiP 컨트롤 ----
             const pipFocusToggle = pip$('gmw-pip-focus-toggle-btn');
