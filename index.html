@@ -2088,13 +2088,13 @@
                 </div>
 
                 <div style="padding:14px 0; border-top:1px solid var(--border-color);">
-                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">내 음악 · 플래너 데이터 백업</div>
-                    <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px;">다른 사이트(예: 예전 주소)에서 쓰던 음악/플레이리스트/플래너 기록을 이 사이트로 옮길 때 써요. 브라우저 보안 정책상 다른 사이트의 데이터를 직접 읽어올 수는 없어서, 그 사이트에서 "내보내기"로 파일을 받은 다음 여기서 "가져오기"로 불러오는 방식이에요.</div>
+                    <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">플래너 데이터 백업</div>
+                    <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px;">다른 사이트(예: 예전 주소)에서 쓰던 플래너 기록을 이 사이트로 옮길 때 써요. 브라우저 보안 정책상 다른 사이트의 데이터를 직접 읽어올 수는 없어서, 그 사이트에서 "내보내기"로 파일을 받은 다음 여기서 "가져오기"로 불러오는 방식이에요.</div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn-sub" onclick="exportMusicAndPlannerData()">📤 내보내기 (이 사이트 데이터를 파일로)</button>
+                        <button class="btn-sub" onclick="exportPlannerData()">📤 내보내기 (플래너 기록을 파일로)</button>
                         <label class="btn-sub" style="cursor:pointer; margin:0;">
                             📥 가져오기 (파일 선택)
-                            <input type="file" accept="application/json,.json" style="display:none;" onchange="handleDataImportFileSelected(event)">
+                            <input type="file" accept="application/json,.json" style="display:none;" onchange="handlePlannerImportFileSelected(event)">
                         </label>
                     </div>
                     <div id="data-export-import-status" style="font-size:11.5px; color:var(--text-muted); margin-top:8px;"></div>
@@ -10835,110 +10835,43 @@
         }
 
         // =========================================================================
-        // 📤📥 내 음악 + 플래너 데이터 내보내기/가져오기
-        // IndexedDB(mixtapeDB)와 localStorage(planner_*)는 브라우저 출처(origin)별로 완전히 분리돼
-        // 있어서, 다른 사이트(예: 예전 배포 주소)의 데이터를 코드로 직접 읽어올 방법이 없다
-        // (Same-Origin Policy). 그래서 예전 사이트에서 "내보내기"로 파일을 받아, 옮기고 싶은
-        // 사이트에서 "가져오기"로 그 파일을 불러오는 방식으로만 옮길 수 있다.
-        // openMusicDB()가 여는 mixtapeDB는 열릴 때 자동으로 v1/v2(트랙이 playlistId를 직접 들고
-        // 있던 구조) → v3(플레이리스트가 trackIds로 참조)로 이미 마이그레이션되므로, 여기서 읽는
-        // 데이터는 항상 정리된 v3 형태다. 다만 그 시절 트랙은 title/artist가 아예 없을 수 있어
-        // (예전엔 name만 있었음) 없으면 "미상"으로 채운다.
+        // 📤📥 플래너 데이터 내보내기/가져오기 (음악은 대상에서 제외 - 요청에 따라 플래너만 다룸)
+        // localStorage(planner_*)는 브라우저 출처(origin)별로 완전히 분리돼 있어서, 다른 사이트
+        // (예: 예전 배포 주소)의 데이터를 코드로 직접 읽어올 방법이 없다(Same-Origin Policy).
+        // 그래서 예전 사이트에서 "내보내기"로 파일을 받아, 옮기고 싶은 사이트에서 "가져오기"로
+        // 그 파일을 불러오는 방식으로만 옮길 수 있다.
         // =========================================================================
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(reader.error);
-                reader.readAsDataURL(blob);
-            });
-        }
-        function base64ToBlob(dataUrl) {
-            const [meta, b64] = dataUrl.split(',');
-            const mime = (meta.match(/data:(.*?);base64/) || [null, 'application/octet-stream'])[1];
-            const bin = atob(b64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            return new Blob([bytes], { type: mime });
-        }
-
-        window.exportMusicAndPlannerData = async function() {
+        window.exportPlannerData = function() {
             const statusEl = document.getElementById('data-export-import-status');
-            if (statusEl) statusEl.textContent = '내보낼 데이터를 모으는 중... (곡이 많으면 시간이 걸릴 수 있어요)';
             try {
-                const [tracks, playlists] = await Promise.all([musicDbGetAllTracks(), musicDbGetAllPlaylists()]);
-                const exportedTracks = [];
-                for (const t of tracks) {
-                    if (!t.blob) continue;
-                    exportedTracks.push({
-                        id: t.id,
-                        title: t.title || t.name || '제목 없음',
-                        artist: t.artist || '미상',
-                        blobBase64: await blobToBase64(t.blob),
-                        artworkBase64: t.artwork ? await blobToBase64(t.artwork) : null
-                    });
-                }
-                const exportedPlaylists = playlists.map(p => ({ name: p.name || '이름없음', trackIds: Array.isArray(p.trackIds) ? p.trackIds : [] }));
-
                 const planner = {};
                 Object.keys(localStorage).filter(k => k.indexOf('planner_') === 0).forEach(k => { planner[k] = localStorage.getItem(k); });
 
-                const payload = { exportedAt: Date.now(), tracks: exportedTracks, playlists: exportedPlaylists, planner };
+                const payload = { exportedAt: Date.now(), planner };
                 const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url; a.download = `1-2comunity-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                a.href = url; a.download = `1-2comunity-planner-backup-${new Date().toISOString().slice(0, 10)}.json`;
                 document.body.appendChild(a); a.click(); a.remove();
                 URL.revokeObjectURL(url);
-                if (statusEl) statusEl.textContent = `내보내기 완료 (곡 ${exportedTracks.length}개, 플레이리스트 ${exportedPlaylists.length}개, 플래너 항목 ${Object.keys(planner).length}개)`;
+                if (statusEl) statusEl.textContent = `내보내기 완료 (플래너 항목 ${Object.keys(planner).length}개)`;
             } catch (e) {
-                console.error('데이터 내보내기 오류:', e);
-                if (statusEl) statusEl.textContent = '내보내기 중 오류가 발생했습니다.';
+                console.error('플래너 데이터 내보내기 오류:', e);
+                if (statusEl) statusEl.textContent = '내보내기 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e);
             }
         };
 
-        window.handleDataImportFileSelected = async function(event) {
+        window.handlePlannerImportFileSelected = async function(event) {
             const file = event.target.files[0];
             if (!file) return;
             const statusEl = document.getElementById('data-export-import-status');
-            if (!confirm('선택한 백업 파일의 곡·플레이리스트·플래너 기록을 지금 이 사이트로 가져옵니다.\n기존 데이터는 지우지 않고 합쳐져요. 계속할까요?')) { event.target.value = ''; return; }
-            if (statusEl) statusEl.textContent = '가져오는 중... (곡이 많으면 시간이 걸릴 수 있어요)';
+            if (!confirm('선택한 백업 파일의 플래너 기록을 지금 이 사이트로 가져옵니다.\n기존 데이터는 지우지 않고 합쳐져요. 계속할까요?')) { event.target.value = ''; return; }
             try {
                 const payload = JSON.parse(await file.text());
-
-                // 1) 트랙: id가 그대로 겹칠 수 없으므로 전부 새로 만들고, 예전 id -> 새 id를 기록해둔다.
-                const idMap = {};
-                let importedTrackCount = 0;
-                for (const t of (payload.tracks || [])) {
-                    if (!t.blobBase64) continue;
-                    const blob = base64ToBlob(t.blobBase64);
-                    const artworkBlob = t.artworkBase64 ? base64ToBlob(t.artworkBase64) : null;
-                    const newId = await musicDbAddTrackOnly(blob, t.title || '제목 없음', t.artist || '미상', 'imported', artworkBlob);
-                    idMap[t.id] = newId;
-                    importedTrackCount++;
-                }
-
-                // 2) 플레이리스트: 같은 이름이 이미 있으면 그 안에 곡만 추가하고, 없으면 새로 만든다.
-                const existingPlaylists = await musicDbGetAllPlaylists();
-                let importedPlaylistCount = 0;
-                for (const p of (payload.playlists || [])) {
-                    const newTrackIds = (p.trackIds || []).map(oldId => idMap[oldId]).filter(id => id != null);
-                    if (newTrackIds.length === 0) continue;
-                    const target = existingPlaylists.find(ep => ep.name === p.name);
-                    if (target) {
-                        const merged = Array.from(new Set([...(target.trackIds || []), ...newTrackIds]));
-                        await window.MixTapeApp.reorderPlaylistTracks(target.id, merged);
-                    } else {
-                        const newPlaylistId = await window.MixTapeApp.createPlaylistNamed(p.name);
-                        await window.MixTapeApp.reorderPlaylistTracks(newPlaylistId, newTrackIds);
-                        existingPlaylists.push({ id: newPlaylistId, name: p.name, trackIds: newTrackIds });
-                    }
-                    importedPlaylistCount++;
-                }
-
-                // 3) 플래너: 객체(JSON) 값은 병합하되 기존 값을 우선하고(덮어쓰지 않음) 없는 항목만 채운다.
-                //    그 외 값은 이 브라우저에 아직 그 키가 전혀 없을 때만 채운다.
                 let importedPlannerKeys = 0;
+
+                // 객체(JSON) 값은 병합하되 기존 값을 우선하고(덮어쓰지 않음) 없는 항목만 채운다.
+                // 그 외 값은 이 브라우저에 아직 그 키가 전혀 없을 때만 채운다.
                 Object.entries(payload.planner || {}).forEach(([key, value]) => {
                     const existingRaw = localStorage.getItem(key);
                     if (existingRaw == null) {
@@ -10956,15 +10889,12 @@
                     } catch (e) { /* JSON이 아니거나 배열이면 기존 값을 그대로 둔다 (충돌 방지) */ }
                 });
 
-                if (typeof renderMyMusicList === 'function') renderMyMusicList();
-                if (typeof renderPlaylistNameList === 'function') renderPlaylistNameList();
-
-                const summary = `가져오기 완료 - 곡 ${importedTrackCount}개, 플레이리스트 ${importedPlaylistCount}개, 플래너 항목 ${importedPlannerKeys}개.\n플래너 기록은 새로고침해야 화면에 반영돼요.`;
+                const summary = `가져오기 완료 - 플래너 항목 ${importedPlannerKeys}개.\n새로고침해야 화면에 반영돼요.`;
                 if (statusEl) statusEl.textContent = summary;
                 alert(summary);
             } catch (e) {
-                console.error('데이터 가져오기 오류:', e);
-                if (statusEl) statusEl.textContent = '가져오기 중 오류가 발생했습니다. 올바른 백업 파일인지 확인해주세요.';
+                console.error('플래너 데이터 가져오기 오류:', e);
+                if (statusEl) statusEl.textContent = '가져오기 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e);
             } finally {
                 event.target.value = '';
             }
