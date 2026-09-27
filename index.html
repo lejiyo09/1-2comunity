@@ -10862,40 +10862,69 @@
             return new Blob([bytes], { type: mime });
         }
 
+        // ⚠️ 곡이 많으면 base64로 인코딩된 전체 데이터가 브라우저의 최대 문자열 길이(수백MB대)를
+        // 넘어서 JSON.stringify(하나의 거대한 문자열)에서 "Invalid string length" 오류가 났다.
+        // 그래서 하나의 큰 JSON 대신, 줄마다 값 하나씩 있는 NDJSON으로 내보내고(각 줄=트랙 하나 등
+        // 작은 문자열), Blob 생성 시에도 문자열들을 미리 합치지 않고 배열째로 넘겨서 Blob이 내부적으로
+        // (문자열 길이 제한과 무관하게) 이어붙이게 한다. 가져오기도 파일을 통째로 문자열로 읽지 않고
+        // 스트리밍으로 한 줄씩만 처리해서 같은 문제가 나지 않게 한다.
         window.exportMusicAndPlannerData = async function() {
             const statusEl = document.getElementById('data-export-import-status');
             if (statusEl) statusEl.textContent = '내보낼 데이터를 모으는 중... (곡이 많으면 시간이 걸릴 수 있어요)';
             try {
                 const [tracks, playlists] = await Promise.all([musicDbGetAllTracks(), musicDbGetAllPlaylists()]);
-                const exportedTracks = [];
+                const parts = [];
+                parts.push(JSON.stringify({ type: 'meta', exportedAt: Date.now() }) + '\n');
+                let exportedTrackCount = 0;
                 for (const t of tracks) {
                     if (!t.blob) continue;
-                    exportedTracks.push({
+                    const line = {
+                        type: 'track',
                         id: t.id,
                         title: t.title || t.name || '제목 없음',
                         artist: t.artist || '미상',
                         blobBase64: await blobToBase64(t.blob),
                         artworkBase64: t.artwork ? await blobToBase64(t.artwork) : null
-                    });
+                    };
+                    parts.push(JSON.stringify(line) + '\n'); // 트랙 하나 분량만 문자열로 만들어서 이어붙인다 (전체를 한 문자열로 합치지 않음)
+                    exportedTrackCount++;
                 }
                 const exportedPlaylists = playlists.map(p => ({ name: p.name || '이름없음', trackIds: Array.isArray(p.trackIds) ? p.trackIds : [] }));
+                exportedPlaylists.forEach(p => parts.push(JSON.stringify({ type: 'playlist', ...p }) + '\n'));
 
                 const planner = {};
                 Object.keys(localStorage).filter(k => k.indexOf('planner_') === 0).forEach(k => { planner[k] = localStorage.getItem(k); });
+                parts.push(JSON.stringify({ type: 'planner', data: planner }) + '\n');
 
-                const payload = { exportedAt: Date.now(), tracks: exportedTracks, playlists: exportedPlaylists, planner };
-                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                const blob = new Blob(parts, { type: 'application/x-ndjson' }); // 배열째로 넘겨서 큰 문자열을 한 번에 만들지 않는다
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url; a.download = `1-2comunity-backup-${new Date().toISOString().slice(0, 10)}.json`;
                 document.body.appendChild(a); a.click(); a.remove();
                 URL.revokeObjectURL(url);
-                if (statusEl) statusEl.textContent = `내보내기 완료 (곡 ${exportedTracks.length}개, 플레이리스트 ${exportedPlaylists.length}개, 플래너 항목 ${Object.keys(planner).length}개)`;
+                if (statusEl) statusEl.textContent = `내보내기 완료 (곡 ${exportedTrackCount}개, 플레이리스트 ${exportedPlaylists.length}개, 플래너 항목 ${Object.keys(planner).length}개)`;
             } catch (e) {
                 console.error('데이터 내보내기 오류:', e);
-                if (statusEl) statusEl.textContent = '내보내기 중 오류가 발생했습니다.';
+                if (statusEl) statusEl.textContent = '내보내기 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e);
             }
         };
+
+        // 백업 파일(NDJSON)을 한 줄씩만 메모리에 올려서 읽는다 - file.text()로 통째로 읽으면
+        // 내보내기 때와 똑같은 이유로 "Invalid string length"가 날 수 있어서 피한다.
+        async function* readNdjsonLines(file) {
+            const stream = file.stream().pipeThrough(new TextDecoderStream());
+            let buffer = '';
+            for await (const chunk of stream) {
+                buffer += chunk;
+                let idx;
+                while ((idx = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, idx);
+                    buffer = buffer.slice(idx + 1);
+                    if (line) yield line;
+                }
+            }
+            if (buffer) yield buffer;
+        }
 
         window.handleDataImportFileSelected = async function(event) {
             const file = event.target.files[0];
@@ -10904,57 +10933,59 @@
             if (!confirm('선택한 백업 파일의 곡·플레이리스트·플래너 기록을 지금 이 사이트로 가져옵니다.\n기존 데이터는 지우지 않고 합쳐져요. 계속할까요?')) { event.target.value = ''; return; }
             if (statusEl) statusEl.textContent = '가져오는 중... (곡이 많으면 시간이 걸릴 수 있어요)';
             try {
-                const payload = JSON.parse(await file.text());
-
-                // 1) 트랙: id가 그대로 겹칠 수 없으므로 전부 새로 만들고, 예전 id -> 새 id를 기록해둔다.
+                // 백업 파일은 NDJSON(한 줄에 값 하나)이다 - 파일을 통째로 문자열로 읽지 않고 한 줄씩만
+                // 처리한다. 내보내기가 항상 트랙들을 먼저, 그다음 플레이리스트를 쓰기 때문에, 플레이리스트
+                // 줄을 만날 때쯤엔 그 안에서 참조하는 트랙들의 새 id가 이미 idMap에 다 채워져 있다.
                 const idMap = {};
-                let importedTrackCount = 0;
-                for (const t of (payload.tracks || [])) {
-                    if (!t.blobBase64) continue;
-                    const blob = base64ToBlob(t.blobBase64);
-                    const artworkBlob = t.artworkBase64 ? base64ToBlob(t.artworkBase64) : null;
-                    const newId = await musicDbAddTrackOnly(blob, t.title || '제목 없음', t.artist || '미상', 'imported', artworkBlob);
-                    idMap[t.id] = newId;
-                    importedTrackCount++;
-                }
-
-                // 2) 플레이리스트: 같은 이름이 이미 있으면 그 안에 곡만 추가하고, 없으면 새로 만든다.
                 const existingPlaylists = await musicDbGetAllPlaylists();
-                let importedPlaylistCount = 0;
-                for (const p of (payload.playlists || [])) {
-                    const newTrackIds = (p.trackIds || []).map(oldId => idMap[oldId]).filter(id => id != null);
-                    if (newTrackIds.length === 0) continue;
-                    const target = existingPlaylists.find(ep => ep.name === p.name);
-                    if (target) {
-                        const merged = Array.from(new Set([...(target.trackIds || []), ...newTrackIds]));
-                        await window.MixTapeApp.reorderPlaylistTracks(target.id, merged);
-                    } else {
-                        const newPlaylistId = await window.MixTapeApp.createPlaylistNamed(p.name);
-                        await window.MixTapeApp.reorderPlaylistTracks(newPlaylistId, newTrackIds);
-                        existingPlaylists.push({ id: newPlaylistId, name: p.name, trackIds: newTrackIds });
-                    }
-                    importedPlaylistCount++;
-                }
+                let importedTrackCount = 0, importedPlaylistCount = 0, importedPlannerKeys = 0;
 
-                // 3) 플래너: 객체(JSON) 값은 병합하되 기존 값을 우선하고(덮어쓰지 않음) 없는 항목만 채운다.
-                //    그 외 값은 이 브라우저에 아직 그 키가 전혀 없을 때만 채운다.
-                let importedPlannerKeys = 0;
-                Object.entries(payload.planner || {}).forEach(([key, value]) => {
-                    const existingRaw = localStorage.getItem(key);
-                    if (existingRaw == null) {
-                        localStorage.setItem(key, value);
-                        importedPlannerKeys++;
-                        return;
-                    }
-                    try {
-                        const existingObj = JSON.parse(existingRaw);
-                        const importedObj = JSON.parse(value);
-                        if (existingObj && importedObj && typeof existingObj === 'object' && typeof importedObj === 'object' && !Array.isArray(existingObj) && !Array.isArray(importedObj)) {
-                            localStorage.setItem(key, JSON.stringify({ ...importedObj, ...existingObj }));
-                            importedPlannerKeys++;
+                for await (const line of readNdjsonLines(file)) {
+                    let rec;
+                    try { rec = JSON.parse(line); } catch (e) { continue; } // 손상된 줄은 건너뛴다
+
+                    if (rec.type === 'track') {
+                        if (!rec.blobBase64) continue;
+                        const blob = base64ToBlob(rec.blobBase64);
+                        const artworkBlob = rec.artworkBase64 ? base64ToBlob(rec.artworkBase64) : null;
+                        const newId = await musicDbAddTrackOnly(blob, rec.title || '제목 없음', rec.artist || '미상', 'imported', artworkBlob);
+                        idMap[rec.id] = newId;
+                        importedTrackCount++;
+                    } else if (rec.type === 'playlist') {
+                        const newTrackIds = (rec.trackIds || []).map(oldId => idMap[oldId]).filter(id => id != null);
+                        if (newTrackIds.length === 0) continue;
+                        const target = existingPlaylists.find(ep => ep.name === rec.name);
+                        if (target) {
+                            const merged = Array.from(new Set([...(target.trackIds || []), ...newTrackIds]));
+                            await window.MixTapeApp.reorderPlaylistTracks(target.id, merged);
+                            target.trackIds = merged;
+                        } else {
+                            const newPlaylistId = await window.MixTapeApp.createPlaylistNamed(rec.name);
+                            await window.MixTapeApp.reorderPlaylistTracks(newPlaylistId, newTrackIds);
+                            existingPlaylists.push({ id: newPlaylistId, name: rec.name, trackIds: newTrackIds });
                         }
-                    } catch (e) { /* JSON이 아니거나 배열이면 기존 값을 그대로 둔다 (충돌 방지) */ }
-                });
+                        importedPlaylistCount++;
+                    } else if (rec.type === 'planner') {
+                        // 객체(JSON) 값은 병합하되 기존 값을 우선하고(덮어쓰지 않음) 없는 항목만 채운다.
+                        // 그 외 값은 이 브라우저에 아직 그 키가 전혀 없을 때만 채운다.
+                        Object.entries(rec.data || {}).forEach(([key, value]) => {
+                            const existingRaw = localStorage.getItem(key);
+                            if (existingRaw == null) {
+                                localStorage.setItem(key, value);
+                                importedPlannerKeys++;
+                                return;
+                            }
+                            try {
+                                const existingObj = JSON.parse(existingRaw);
+                                const importedObj = JSON.parse(value);
+                                if (existingObj && importedObj && typeof existingObj === 'object' && typeof importedObj === 'object' && !Array.isArray(existingObj) && !Array.isArray(importedObj)) {
+                                    localStorage.setItem(key, JSON.stringify({ ...importedObj, ...existingObj }));
+                                    importedPlannerKeys++;
+                                }
+                            } catch (e) { /* JSON이 아니거나 배열이면 기존 값을 그대로 둔다 (충돌 방지) */ }
+                        });
+                    }
+                }
 
                 if (typeof renderMyMusicList === 'function') renderMyMusicList();
                 if (typeof renderPlaylistNameList === 'function') renderPlaylistNameList();
@@ -10964,7 +10995,7 @@
                 alert(summary);
             } catch (e) {
                 console.error('데이터 가져오기 오류:', e);
-                if (statusEl) statusEl.textContent = '가져오기 중 오류가 발생했습니다. 올바른 백업 파일인지 확인해주세요.';
+                if (statusEl) statusEl.textContent = '가져오기 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e);
             } finally {
                 event.target.value = '';
             }
