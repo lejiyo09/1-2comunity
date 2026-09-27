@@ -525,6 +525,7 @@
         .home-section-arrows { display: none; gap: 4px; flex-shrink: 0; }
         #home-sections-container.editing-sections .home-section-arrows { display: flex; }
         .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
+        .home-section-add-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
         #tab-home .home-section .card[data-widget-id] { position: relative; }
         /* 위젯을 손으로 잡아서 옮기는 드래그 앤 드롭. 편집 모드에서만 카드 전체가 draggable이 되고,
            왼쪽 위 "⠿" 손잡이는 드래그 가능하다는 시각적 힌트일 뿐 클릭 동작은 없다. */
@@ -2171,6 +2172,7 @@
 
                 <div id="home-layout-edit-toolbar">
                     <button id="btn-edit-home-layout" class="btn-sub" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
+                    <button id="btn-add-home-category" class="btn-sub" style="display:none;" onclick="addHomeCategory()">+ 새 카테고리</button>
                     <button id="btn-reset-home-layout" class="btn-sub" style="display:none;" onclick="resetHomeLayout()">↺ 초기화</button>
                 </div>
                 <div id="home-hidden-widgets-panel" style="display:none; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;"></div>
@@ -2185,7 +2187,7 @@
                     <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 6;">
                         <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
                             <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'shared')">+ 바로가기 추가</button>
-                            <button class="btn-sub" style="font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'personal')">👤 내 바로가기 추가</button>
+                            <button id="btn-add-shortcut-personal" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'personal')">👤 내 바로가기 추가</button>
                         </div>
                         <div id="shortcuts-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;"></div>
                         <style>
@@ -2305,24 +2307,8 @@
                     <span class="home-section-arrows"></span>
                 </div>
                 <div class="dashboard-grid" data-section-grid>
-                    <div class="card" data-widget-id="w-memo" style="grid-column: span 3;">
-                        <div class="card-title">
-                            <span>📝 나만의 메모</span>
-                            <span style="font-size:11px; font-weight:400; color:var(--text-muted);">나에게만 보여요</span>
-                        </div>
-                        <textarea id="home-memo-text" placeholder="여기에 메모를 남겨보세요 (이 브라우저에만 저장돼요)" style="width:100%; min-height:90px; resize:vertical; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:var(--input-bg, transparent); color:inherit;"></textarea>
-                        <div id="home-memo-photo-wrap" style="margin-top:8px; display:none; position:relative;">
-                            <img id="home-memo-photo-preview" style="width:100%; max-height:160px; object-fit:cover; border-radius:8px; display:block;">
-                            <button type="button" class="btn-sub" onclick="removeHomeMemoPhoto()" style="position:absolute; top:6px; right:6px; font-size:11px; padding:4px 8px;">✕ 사진 삭제</button>
-                        </div>
-                        <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-                            <label class="btn-sub" style="font-size:12px; padding:6px 12px; cursor:pointer;">
-                                📷 사진 첨부
-                                <input type="file" accept="image/*" onchange="handleHomeMemoPhotoSelected(event)" style="display:none;">
-                            </label>
-                            <span id="home-memo-save-status" style="font-size:11px; color:var(--text-muted);"></span>
-                        </div>
-                    </div>
+                    <div class="card" data-widget-id="w-memo" style="grid-column: span 3;"></div>
+                    <div class="card" data-widget-id="w-photo" style="grid-column: span 3;"></div>
                 </div>
                 </div>
                 </div>
@@ -3717,6 +3703,10 @@
         const MUSIC_BUCKET = 'music';
         // 자료실과 동일한 패턴: anon 키로는 직접 쓰기(공유/좋아요/다운로드기록)를 하지 않고 전부 Edge Function을 거친다.
         const MUSIC_WRITE_FUNCTION_URL = `${SUPABASE_MUSIC_URL}/functions/v1/music-write`;
+        // 공유 음악 삭제는 기존 music-write와 별도인 전용 함수로 분리했다 - 이미 배포되어 잘 동작 중인
+        // music-write(공유/좋아요/재생·다운로드기록)의 소스를 갖고 있지 않은 상태에서 함부로 덮어써
+        // 기존 기능을 깨뜨리는 위험을 피하기 위함이다 (supabase/functions/music-delete/index.ts 참고).
+        const MUSIC_DELETE_FUNCTION_URL = `${SUPABASE_MUSIC_URL}/functions/v1/music-delete`;
         const MUSIC_SHARE_LIMIT = 10;
         // ⚠️ 이 30MB 제한은 "커뮤니티 공유 음악"에만 적용된다. 개인 "내 음악"(IndexedDB) 직접 추가나
         // 노래찾기로 가져온 음악에는 이 제한을 적용하지 않는다 (그쪽은 브라우저 로컬 저장이라 별개).
@@ -4307,7 +4297,7 @@
             { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
             { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
             { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] },
-            { id: 'personal', label: '📝 나만의 공간 (개인)', widgets: ['w-memo'] }
+            { id: 'personal', label: '📝 나만의 공간 (개인)', widgets: ['w-memo', 'w-photo'] }
         ];
         const DEFAULT_HOME_SECTION_IDS = DEFAULT_HOME_LAYOUT.map(s => s.id);
         const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
@@ -4399,14 +4389,18 @@
             try {
                 const saved = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
                 if (Array.isArray(saved) && saved.every(s => s && typeof s.id === 'string' && typeof s.label === 'string' && Array.isArray(s.widgets))) {
-                    // 저장된 레이아웃의 섹션 구성과 위젯 구성이 지금 앱 버전과 정확히 같을 때만 신뢰한다
-                    // (업데이트로 섹션/위젯이 추가·삭제됐으면 저장된 값을 버리고 기본 레이아웃으로 되돌아간다).
-                    const sameSections = saved.length === DEFAULT_HOME_SECTION_IDS.length && DEFAULT_HOME_SECTION_IDS.every(id => saved.some(s => s.id === id));
+                    // 예전엔 "저장된 구성이 지금 기본 구성과 정확히 같아야만" 신뢰했다(기본 위젯이 추가/삭제되면
+                    // 사용자의 커스텀 배치를 통째로 버리고 초기화했다). 이제는 사용자가 직접 만든 카테고리나
+                    // 메모/사진 위젯을 계속 보존해야 하므로, "기본 섹션/위젯이 빠짐없이 들어있기만 하면"
+                    // (그 외에 더 있는 건 상관없이) 신뢰하도록 완화했다.
+                    const savedSectionIds = saved.map(s => s.id);
                     const savedWidgetIds = saved.flatMap(s => s.widgets);
-                    const sameWidgets = savedWidgetIds.length === ALL_HOME_WIDGET_IDS.length
-                        && new Set(savedWidgetIds).size === ALL_HOME_WIDGET_IDS.length
-                        && ALL_HOME_WIDGET_IDS.every(id => savedWidgetIds.includes(id));
-                    if (sameSections && sameWidgets) return saved.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
+                    const hasAllDefaultSections = DEFAULT_HOME_SECTION_IDS.every(id => savedSectionIds.includes(id));
+                    const hasAllDefaultWidgets = ALL_HOME_WIDGET_IDS.every(id => savedWidgetIds.includes(id));
+                    const noDuplicateWidgets = new Set(savedWidgetIds).size === savedWidgetIds.length;
+                    if (hasAllDefaultSections && hasAllDefaultWidgets && noDuplicateWidgets) {
+                        return saved.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
+                    }
                 }
             } catch (e) {}
             return DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
@@ -4416,19 +4410,52 @@
             try { localStorage.setItem(HOME_LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {}
         }
 
+        // 정적 HTML에 없는 섹션/위젯(사용자가 새로 만든 카테고리나 메모/사진 위젯)은 여기서 처음 만들어진다.
+        function createHomeSectionElement(sectionId, label) {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'home-section';
+            sectionEl.dataset.sectionId = sectionId;
+            const titleInput = document.createElement('input');
+            titleInput.type = 'text';
+            titleInput.className = 'dashboard-section-title-input';
+            titleInput.setAttribute('data-section-title', '');
+            titleInput.readOnly = !homeSectionEditMode;
+            titleInput.value = label;
+            const header = document.createElement('div');
+            header.className = 'home-section-header';
+            header.appendChild(titleInput);
+            const arrows = document.createElement('span');
+            arrows.className = 'home-section-arrows';
+            header.appendChild(arrows);
+            const grid = document.createElement('div');
+            grid.className = 'dashboard-grid';
+            grid.setAttribute('data-section-grid', '');
+            sectionEl.appendChild(header);
+            sectionEl.appendChild(grid);
+            return sectionEl;
+        }
+        function createHomeWidgetElement(widgetId) {
+            if (!isMemoWidgetId(widgetId) && !isPhotoWidgetId(widgetId)) return null; // 지금은 메모/사진만 동적으로 새로 만들 수 있다
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.dataset.widgetId = widgetId;
+            el.style.gridColumn = 'span 3';
+            return el;
+        }
         function applyHomeLayout() {
             const container = document.getElementById('home-sections-container');
             if (!container) return;
             loadHomeLayout().forEach(section => {
-                const sectionEl = container.querySelector(`.home-section[data-section-id="${section.id}"]`);
-                if (!sectionEl) return;
+                let sectionEl = container.querySelector(`.home-section[data-section-id="${section.id}"]`);
+                if (!sectionEl) sectionEl = createHomeSectionElement(section.id, section.label);
                 container.appendChild(sectionEl); // 순서대로 다시 appendChild하면 섹션 순서가 그대로 재배치된다
                 const titleInput = sectionEl.querySelector('[data-section-title]');
                 if (titleInput && document.activeElement !== titleInput) titleInput.value = section.label;
                 const grid = sectionEl.querySelector('[data-section-grid]');
                 if (!grid) return;
                 section.widgets.forEach(widgetId => {
-                    const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    let widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (!widgetEl) widgetEl = createHomeWidgetElement(widgetId);
                     if (widgetEl) grid.appendChild(widgetEl); // 다른 섹션에 있던 위젯도 여기로 옮겨오고, 순서대로 재배치
                 });
             });
@@ -4437,13 +4464,28 @@
         function renderHomeEditControls() {
             const layout = loadHomeLayout();
             layout.forEach((section, sIdx) => {
-                const arrows = document.querySelector(`.home-section[data-section-id="${section.id}"] .home-section-arrows`);
+                const sectionEl = document.querySelector(`.home-section[data-section-id="${section.id}"]`);
+                if (!sectionEl) return;
+                const arrows = sectionEl.querySelector('.home-section-arrows');
                 if (arrows) {
+                    const canDeleteSection = !DEFAULT_HOME_SECTION_IDS.includes(section.id);
                     arrows.innerHTML = `
                         ${sIdx > 0 ? `<button onclick="moveHomeSection('${section.id}', -1)" class="btn-sub">▲</button>` : ''}
                         ${sIdx < layout.length - 1 ? `<button onclick="moveHomeSection('${section.id}', 1)" class="btn-sub">▼</button>` : ''}
+                        ${canDeleteSection ? `<button onclick="deleteHomeCategory('${section.id}')" class="btn-sub" title="카테고리 삭제">🗑</button>` : ''}
                     `;
                 }
+                // 이 섹션에 "+ 메모 추가"/"+ 사진 추가"를 붙일 수 있는 자리(위젯을 담는 grid 바로 뒤)
+                let addRow = sectionEl.querySelector(':scope > .home-section-add-row');
+                if (!addRow) {
+                    addRow = document.createElement('div');
+                    addRow.className = 'home-section-add-row';
+                    sectionEl.appendChild(addRow);
+                }
+                addRow.innerHTML = `
+                    <button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="addPersonalWidget('${section.id}', 'memo')">+ 📝 메모 추가</button>
+                    <button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="addPersonalWidget('${section.id}', 'photo')">+ 🖼 사진 추가</button>
+                `;
                 section.widgets.forEach(widgetId => {
                     const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
                     if (!widgetEl) return;
@@ -4478,6 +4520,8 @@
         function removeHomeWidgetEditBars() {
             document.querySelectorAll('#home-sections-container .widget-edit-bar').forEach(el => el.remove());
             document.querySelectorAll('#home-sections-container .widget-resize-handle').forEach(el => el.remove());
+            document.querySelectorAll('#home-sections-container .home-section-add-row').forEach(el => el.remove());
+            document.querySelectorAll('#home-sections-container .home-section-arrows').forEach(el => { el.innerHTML = ''; });
             document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => { el.draggable = false; });
             renderHomeHiddenWidgetPicker();
         }
@@ -4493,12 +4537,15 @@
             'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위',
             'w-calendar': '📅 일정', 'w-planner-time': '📖 오늘의 공부', 'w-planner-tasks': '📋 오늘 할 일',
             'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글',
-            'w-memo': '📝 나만의 메모'
+            'w-memo': '📝 나만의 메모', 'w-photo': '🖼 나만의 사진'
         };
         function loadHiddenHomeWidgets() {
             try {
                 const saved = JSON.parse(localStorage.getItem(HOME_WIDGET_HIDDEN_KEY) || '[]');
-                return Array.isArray(saved) ? saved.filter(id => ALL_HOME_WIDGET_IDS.includes(id)) : [];
+                // 기본 위젯이든, 사용자가 새로 만든 메모/사진 위젯이든 전부 숨길 수 있어야 하므로 더 이상
+                // ALL_HOME_WIDGET_IDS(기본 위젯 목록)로만 걸러내지 않는다. 존재하지 않는 위젯 id가 섞여 있어도
+                // applyHomeWidgetVisibility()가 해당 DOM을 못 찾아 조용히 무시하므로 문제없다.
+                return Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : [];
             } catch (e) { return []; }
         }
         function saveHiddenHomeWidgets(ids) {
@@ -4530,7 +4577,14 @@
             if (!homeSectionEditMode || hidden.length === 0) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
             panel.style.display = 'flex';
             panel.innerHTML = `<span style="font-size:12px; color:var(--text-muted);">숨긴 위젯 (눌러서 다시 꺼내기):</span>` +
-                hidden.map(id => `<button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="showHomeWidget('${id}')">+ ${HOME_WIDGET_LABELS[id] || id}</button>`).join('');
+                hidden.map(id => `<button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="showHomeWidget('${id}')">+ ${homeWidgetDisplayLabel(id)}</button>`).join('');
+        }
+        // 기본 위젯은 고정 이름표(HOME_WIDGET_LABELS)를, 사용자가 새로 추가한 메모/사진 위젯은 종류로 이름을 보여준다.
+        function homeWidgetDisplayLabel(id) {
+            if (HOME_WIDGET_LABELS[id]) return HOME_WIDGET_LABELS[id];
+            if (typeof isMemoWidgetId === 'function' && isMemoWidgetId(id)) return '📝 메모';
+            if (typeof isPhotoWidgetId === 'function' && isPhotoWidgetId(id)) return '🖼 사진';
+            return id;
         }
 
         window.moveHomeSection = function(sectionId, dir) {
@@ -4561,7 +4615,23 @@
         }
 
         window.resetHomeLayout = function() {
-            if (!confirm('위젯 배치를 기본값으로 되돌릴까요? (이 브라우저에 저장된 개인 설정만 초기화됩니다)')) return;
+            if (!confirm('위젯 배치를 기본값으로 되돌릴까요? (사용자가 직접 만든 카테고리/메모/사진 위젯도 함께 삭제됩니다)')) return;
+            // 되돌리기 전에, 사용자가 직접 추가한 카테고리/위젯(기본 구성에 없는 것들)의 DOM과 저장된 데이터를
+            // 먼저 정리한다 - 그냥 saveHomeLayout(기본값)만 하면 그 커스텀 요소들이 화면에 그대로 남아있게 된다.
+            const currentLayout = loadHomeLayout();
+            currentLayout.forEach(section => {
+                section.widgets.forEach(widgetId => {
+                    if (ALL_HOME_WIDGET_IDS.includes(widgetId)) return;
+                    const cardEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (cardEl) cardEl.remove();
+                    try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
+                    deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
+                });
+                if (!DEFAULT_HOME_SECTION_IDS.includes(section.id)) {
+                    const sectionEl = document.querySelector(`.home-section[data-section-id="${section.id}"]`);
+                    if (sectionEl) sectionEl.remove();
+                }
+            });
             saveHomeLayout(DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() })));
             try { localStorage.removeItem(HOME_WIDGET_SIZE_KEY); localStorage.removeItem(HOME_WIDGET_HIDDEN_KEY); } catch (e) {}
             applyHomeLayout();
@@ -4666,14 +4736,57 @@
             if (btn) btn.textContent = homeSectionEditMode ? '✅ 편집 완료' : '🧩 위젯 순서 편집';
             const resetBtn = document.getElementById('btn-reset-home-layout');
             if (resetBtn) resetBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
+            const addCategoryBtn = document.getElementById('btn-add-home-category');
+            if (addCategoryBtn) addCategoryBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
+            updateShortcutComposerVisibility(); // 바로가기 추가 버튼들도 위젯 편집 모드일 때만 보이게
             if (homeSectionEditMode) renderHomeEditControls();
             else removeHomeWidgetEditBars();
         }
 
+        // 새 카테고리(섹션)를 맨 끝에 만든다. 이름은 나중에 카테고리 제목을 눌러 바로 바꿀 수 있다.
+        window.addHomeCategory = function() {
+            const name = prompt('새 카테고리 이름을 입력하세요.', '새 카테고리');
+            if (!name || !name.trim()) return;
+            const layout = loadHomeLayout();
+            const id = 'custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+            layout.push({ id, label: name.trim(), widgets: [] });
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            if (homeSectionEditMode) renderHomeEditControls();
+        };
+
+        // 기본 카테고리(DEFAULT_HOME_SECTION_IDS)는 앱 기능과 묶여 있어 삭제할 수 없다 - 위젯을 숨기는 것만 가능하다.
+        // 사용자가 만든 카테고리는 자유롭게 삭제할 수 있고, 안에 위젯이 남아있으면 함께 삭제할지 확인한다.
+        window.deleteHomeCategory = function(sectionId) {
+            if (DEFAULT_HOME_SECTION_IDS.includes(sectionId)) {
+                alert('기본 카테고리는 삭제할 수 없어요. 안에 있는 위젯을 숨기는 것만 가능해요.');
+                return;
+            }
+            const layout = loadHomeLayout();
+            const section = layout.find(s => s.id === sectionId);
+            if (!section) return;
+            const widgetCount = section.widgets.length;
+            const confirmMsg = widgetCount > 0
+                ? `"${section.label}" 카테고리를 삭제할까요? 안에 있는 위젯 ${widgetCount}개도 함께 삭제되고, 저장된 내용도 사라져요.`
+                : `"${section.label}" 카테고리를 삭제할까요?`;
+            if (!confirm(confirmMsg)) return;
+            section.widgets.slice().forEach(widgetId => {
+                const cardEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                if (cardEl) cardEl.remove();
+                try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
+                deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
+            });
+            const newLayout = layout.filter(s => s.id !== sectionId);
+            saveHomeLayout(newLayout);
+            const sectionEl = document.querySelector(`.home-section[data-section-id="${sectionId}"]`);
+            if (sectionEl) sectionEl.remove();
+            if (homeSectionEditMode) renderHomeEditControls();
+        };
+
         applyHomeLayout(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 레이아웃을 바로 적용
         applyHomeWidgetSizes(); // 저장된 위젯별 가로/세로 크기도 함께 적용
         applyHomeWidgetVisibility(); // 숨겨둔 위젯이 있으면 처음부터 숨긴 채로 시작
-        initHomeMemoWidget(); // 로그인 여부와 무관한 개인 메모 위젯도 바로 적용
+        initAllMemoWidgets(); // 로그인 여부와 무관한 개인 메모/사진 위젯도 바로 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
@@ -5624,13 +5737,22 @@
         }
 
         // =========================================================================
-        // 홈 위젯 - "나만의 메모" (개인 커스텀 전용, 반 전체와 공유되지 않음)
-        // - 텍스트는 localStorage에, 첨부 사진은 배경화면과 같은 방식으로 작은 전용 IndexedDB에 저장한다.
+        // 홈 위젯 - "나만의 메모"/"나만의 사진" (개인 커스텀 전용, 반 전체와 공유되지 않음)
+        // - 메모(텍스트)와 사진은 서로 다른 위젯이다 - 메모는 텍스트만, 사진은 사진 한 장만 담는다.
+        // - 텍스트는 localStorage에, 사진은 배경화면과 같은 방식으로 작은 전용 IndexedDB에 저장한다.
         // - Firebase에도, 외부 이미지 호스팅에도 올리지 않는다 - 이 브라우저에만 남는다.
+        // - 기본으로 하나씩(w-memo, w-photo) 주어지지만, 필요하면 각각 여러 개를 더 추가할 수 있다
+        //   (추가된 것들의 id는 "w-memo-<시각>-<난수>" / "w-photo-<시각>-<난수>" 형태 - id의 접두어로
+        //   위젯 종류를 구분하고, 기본 위젯(w-memo/w-photo)만 삭제할 수 없게 막는다).
         // =========================================================================
         const MEMO_TEXT_KEY = 'hanilgo_personal_memo_text';
         const MEMO_DB_NAME = 'personalMemoDB';
         const MEMO_DB_VERSION = 1;
+        function memoTextKey(widgetId){
+            return widgetId === 'w-memo' ? MEMO_TEXT_KEY : (MEMO_TEXT_KEY + '_' + widgetId);
+        }
+        function isMemoWidgetId(id){ return id === 'w-memo' || id.indexOf('w-memo-') === 0; }
+        function isPhotoWidgetId(id){ return id === 'w-photo' || id.indexOf('w-photo-') === 0; }
         function openMemoDB() {
             return new Promise((resolve, reject) => {
                 const req = indexedDB.open(MEMO_DB_NAME, MEMO_DB_VERSION);
@@ -5643,83 +5765,169 @@
                 req.onerror = () => reject(req.error);
             });
         }
-        async function saveMemoPhotoToIndexedDB(blob) {
+        // widgetId를 키로 써서 사진 위젯마다 각자 다른 사진을 저장한다 (지난 버전엔 'current' 키 하나뿐이었다).
+        async function saveMemoPhotoToIndexedDB(blob, widgetId) {
             const db2 = await openMemoDB();
             return new Promise((resolve, reject) => {
                 const tx = db2.transaction('photo', 'readwrite');
-                tx.objectStore('photo').put(blob, 'current');
+                tx.objectStore('photo').put(blob, widgetId);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             });
         }
-        async function getMemoPhotoFromIndexedDB() {
+        async function getMemoPhotoFromIndexedDB(widgetId) {
             const db2 = await openMemoDB();
             return new Promise((resolve, reject) => {
                 const tx = db2.transaction('photo', 'readonly');
-                const req = tx.objectStore('photo').get('current');
+                const req = tx.objectStore('photo').get(widgetId);
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = () => reject(req.error);
             });
         }
-        async function deleteMemoPhotoFromIndexedDB() {
+        async function deleteMemoPhotoFromIndexedDB(widgetId) {
             const db2 = await openMemoDB();
             return new Promise((resolve, reject) => {
                 const tx = db2.transaction('photo', 'readwrite');
-                tx.objectStore('photo').delete('current');
+                tx.objectStore('photo').delete(widgetId);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             });
         }
-        let homeMemoPhotoUrl = null;
-        let homeMemoSaveTimer = null;
-        async function renderHomeMemoPhoto() {
-            const wrap = document.getElementById('home-memo-photo-wrap');
-            const img = document.getElementById('home-memo-photo-preview');
+        // 지난 버전엔 메모와 사진이 한 위젯(w-memo)에 같이 있었고, 사진은 'current' 키 하나에만 저장했다.
+        // 이제 사진은 별도 위젯(w-photo)이므로, 예전에 저장해둔 사진이 있으면 그쪽으로 옮겨준다.
+        async function migrateLegacyMemoPhoto(){
+            try {
+                const [legacy, current] = await Promise.all([getMemoPhotoFromIndexedDB('current'), getMemoPhotoFromIndexedDB('w-photo')]);
+                if (legacy && !current) {
+                    await saveMemoPhotoToIndexedDB(legacy, 'w-photo');
+                    await deleteMemoPhotoFromIndexedDB('current');
+                }
+            } catch (e) {}
+        }
+        const homeMemoPhotoUrls = new Map();
+        async function renderHomeMemoPhotoInto(cardEl, widgetId) {
+            const wrap = cardEl.querySelector('.home-memo-photo-wrap');
+            const img = cardEl.querySelector('.home-memo-photo-preview');
             if (!wrap || !img) return;
             try {
-                const blob = await getMemoPhotoFromIndexedDB();
-                if (homeMemoPhotoUrl) { URL.revokeObjectURL(homeMemoPhotoUrl); homeMemoPhotoUrl = null; }
+                const blob = await getMemoPhotoFromIndexedDB(widgetId);
+                const prevUrl = homeMemoPhotoUrls.get(widgetId);
+                if (prevUrl) { URL.revokeObjectURL(prevUrl); homeMemoPhotoUrls.delete(widgetId); }
                 if (blob) {
-                    homeMemoPhotoUrl = URL.createObjectURL(blob);
-                    img.src = homeMemoPhotoUrl;
+                    const url = URL.createObjectURL(blob);
+                    homeMemoPhotoUrls.set(widgetId, url);
+                    img.src = url;
                     wrap.style.display = '';
                 } else {
                     wrap.style.display = 'none';
                 }
             } catch (e) {}
         }
-        function initHomeMemoWidget() {
-            const textEl = document.getElementById('home-memo-text');
-            if (!textEl) return;
-            try { textEl.value = localStorage.getItem(MEMO_TEXT_KEY) || ''; } catch (e) {}
-            textEl.addEventListener('input', () => {
-                const statusEl = document.getElementById('home-memo-save-status');
-                if (statusEl) statusEl.textContent = '저장 중...';
-                clearTimeout(homeMemoSaveTimer);
-                homeMemoSaveTimer = setTimeout(() => {
-                    try { localStorage.setItem(MEMO_TEXT_KEY, textEl.value); } catch (e) {}
-                    if (statusEl) statusEl.textContent = '저장됨';
-                }, 500);
-            });
-            renderHomeMemoPhoto();
-        }
-        window.handleHomeMemoPhotoSelected = async function(event) {
-            const file = event.target.files && event.target.files[0];
-            if (!file) return;
-            try {
-                await saveMemoPhotoToIndexedDB(file);
-                await renderHomeMemoPhoto();
-            } catch (e) {
-                alert('사진 저장에 실패했습니다: ' + e.message);
-            } finally {
-                event.target.value = '';
+        // widgetId가 가리키는 위젯 카드 안을 채운다 - isMemoWidgetId면 텍스트 메모, isPhotoWidgetId면 사진 위젯.
+        // canDelete면(기본으로 주어진 w-memo/w-photo가 아니면) 삭제 버튼도 함께 붙인다.
+        function renderPersonalWidgetInner(cardEl, widgetId) {
+            const canDelete = widgetId !== 'w-memo' && widgetId !== 'w-photo';
+            const deleteBtnHtml = canDelete ? `<button type="button" class="btn-sub home-memo-delete" style="font-size:11px; padding:4px 8px;">🗑 삭제</button>` : '';
+            if (isMemoWidgetId(widgetId)) {
+                cardEl.innerHTML = `
+                    <textarea class="home-memo-text" placeholder="여기에 메모를 남겨보세요 (이 브라우저에만 저장돼요)" style="width:100%; min-height:90px; resize:vertical; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:var(--input-bg, transparent); color:inherit;"></textarea>
+                    <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                        <span class="home-memo-save-status" style="font-size:11px; color:var(--text-muted); flex:1;"></span>
+                        ${deleteBtnHtml}
+                    </div>
+                `;
+                const textEl = cardEl.querySelector('.home-memo-text');
+                const statusEl = cardEl.querySelector('.home-memo-save-status');
+                try { textEl.value = localStorage.getItem(memoTextKey(widgetId)) || ''; } catch (e) {}
+                let saveTimer = null;
+                textEl.addEventListener('input', () => {
+                    if (statusEl) statusEl.textContent = '저장 중...';
+                    clearTimeout(saveTimer);
+                    saveTimer = setTimeout(() => {
+                        try { localStorage.setItem(memoTextKey(widgetId), textEl.value); } catch (e) {}
+                        if (statusEl) statusEl.textContent = '저장됨';
+                    }, 500);
+                });
+            } else if (isPhotoWidgetId(widgetId)) {
+                cardEl.innerHTML = `
+                    <div class="home-memo-photo-wrap" style="display:none; position:relative;">
+                        <img class="home-memo-photo-preview" style="width:100%; max-height:200px; object-fit:cover; border-radius:8px; display:block;">
+                        <button type="button" class="btn-sub home-memo-photo-remove" style="position:absolute; top:6px; right:6px; font-size:11px; padding:4px 8px;">✕ 사진 삭제</button>
+                    </div>
+                    <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                        <label class="btn-sub" style="font-size:12px; padding:6px 12px; cursor:pointer;">
+                            📷 사진 첨부
+                            <input type="file" accept="image/*" class="home-memo-photo-input" style="display:none;">
+                        </label>
+                        <span style="flex:1;"></span>
+                        ${deleteBtnHtml}
+                    </div>
+                `;
+                cardEl.querySelector('.home-memo-photo-input').addEventListener('change', async (event) => {
+                    const file = event.target.files && event.target.files[0];
+                    if (!file) return;
+                    try {
+                        await saveMemoPhotoToIndexedDB(file, widgetId);
+                        await renderHomeMemoPhotoInto(cardEl, widgetId);
+                    } catch (e) {
+                        alert('사진 저장에 실패했습니다: ' + e.message);
+                    } finally {
+                        event.target.value = '';
+                    }
+                });
+                cardEl.querySelector('.home-memo-photo-remove').addEventListener('click', async () => {
+                    try {
+                        await deleteMemoPhotoFromIndexedDB(widgetId);
+                        await renderHomeMemoPhotoInto(cardEl, widgetId);
+                    } catch (e) {}
+                });
+                renderHomeMemoPhotoInto(cardEl, widgetId);
+            } else {
+                return;
             }
+            const deleteBtn = cardEl.querySelector('.home-memo-delete');
+            if (deleteBtn) deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); window.deletePersonalWidget(widgetId); });
+        }
+        // 페이지에 이미 놓여 있는(정적 HTML이든, 새로 추가되어 만들어졌든) 메모/사진 위젯 카드들을 전부 찾아서
+        // 아직 초기화 안 된 것만 채운다 - applyHomeLayout()이 카드 뼈대(빈 div)를 만든 다음 호출된다.
+        async function initAllMemoWidgets() {
+            await migrateLegacyMemoPhoto();
+            document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(cardEl => {
+                const widgetId = cardEl.dataset.widgetId;
+                if (!cardEl.dataset.memoInit && (isMemoWidgetId(widgetId) || isPhotoWidgetId(widgetId))) {
+                    cardEl.dataset.memoInit = '1';
+                    renderPersonalWidgetInner(cardEl, widgetId);
+                }
+            });
+        }
+        // "+ 메모 추가"/"+ 사진 추가" - 지정된 섹션에 새 개인 위젯 인스턴스를 만든다.
+        window.addPersonalWidget = function(sectionId, type) {
+            const id = (type === 'photo' ? 'w-photo-' : 'w-memo-') + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+            const layout = loadHomeLayout();
+            const section = layout.find(s => s.id === sectionId) || layout[0];
+            if (!section) return;
+            section.widgets.push(id);
+            saveHomeLayout(layout);
+            applyHomeLayout();
+            initAllMemoWidgets();
+            applyHomeWidgetSizes();
+            applyHomeWidgetVisibility();
+            if (homeSectionEditMode) renderHomeEditControls();
         };
-        window.removeHomeMemoPhoto = async function() {
-            try {
-                await deleteMemoPhotoFromIndexedDB();
-                await renderHomeMemoPhoto();
-            } catch (e) {}
+        window.deletePersonalWidget = function(widgetId) {
+            if (widgetId === 'w-memo' || widgetId === 'w-photo') return; // 기본 위젯은 숨기기만 가능, 삭제는 불가
+            if (!confirm('이 위젯을 삭제할까요? 저장된 내용도 함께 삭제됩니다.')) return;
+            const layout = loadHomeLayout();
+            layout.forEach(s => { s.widgets = s.widgets.filter(id => id !== widgetId); });
+            saveHomeLayout(layout);
+            const cardEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+            if (cardEl) cardEl.remove();
+            try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
+            deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
+            saveHiddenHomeWidgets(loadHiddenHomeWidgets().filter(id => id !== widgetId));
+            const sizes = loadHomeWidgetSizes();
+            if (sizes[widgetId]) { delete sizes[widgetId]; saveHomeWidgetSizes(sizes); }
+            if (homeSectionEditMode) renderHomeEditControls();
         };
         // 지난 버전엔 'current' 키 하나에만 저장했다. 'light'/'dark' 슬롯이 아직 하나도 없고 'current'만
         // 있으면, 그 사진을 라이트 슬롯으로 옮겨서 계속 "공용(라이트 사진을 다크에도 그대로)"으로 동작하게 한다.
@@ -11663,6 +11871,7 @@
             const liked = likedIds && likedIds.has(t.id);
             const downloaded = downloadedIds && downloadedIds.has(t.id);
             const safeTitle = escapeNoticeText(t.title || '').replace(/'/g, "\\'");
+            const isOwner = !!(currentUser && t.uploader_id && currentUser.uid === t.uploader_id);
             return `
                 <div class="music-track-card">
                     <div class="music-track-top">
@@ -11671,6 +11880,7 @@
                             <div class="music-track-title">${escapeNoticeText(t.title || '제목 없음')}</div>
                             <div class="music-track-artist">${escapeNoticeText(t.artist || '아티스트 미상')}</div>
                         </div>
+                        ${isOwner ? `<span onclick="deleteSharedMusicTrack('${t.id}')" title="이 곡 삭제" style="cursor:pointer; color:var(--text-muted); font-size:16px; flex-shrink:0;">🗑</span>` : ''}
                     </div>
                     <div class="music-track-actions">
                         ${t.storage_path ? `<span onclick="playSharedTrackNow('${t.id}', '${safeTitle}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>` : ''}
@@ -11678,7 +11888,6 @@
                             ? `<span style="color:var(--text-muted);">✓ 내 음악에 있음</span>`
                             : `<span onclick="downloadSharedTrack('${t.id}')">⬇ 내 음악에 저장</span>`}
                         <span id="music-like-${t.id}" class="${liked ? 'liked' : ''}" onclick="toggleMusicLike('${t.id}')">${liked ? '❤️' : '🤍'} ${t.like_count || 0}</span>
-                        <span>▶ ${t.play_count || 0}</span>
                     </div>
                 </div>
             `;
@@ -12102,6 +12311,30 @@
             } catch (e) {
                 console.error('음악 다운로드 오류:', e);
                 alert("다운로드에 실패했습니다.\n잠시 후 다시 시도해주세요.");
+            }
+        };
+
+        // 본인이 공유한 곡만 삭제할 수 있다 - 소유권은 music-delete Edge Function이 uploader_id로 서버에서
+        // 다시 확인한다(클라이언트의 uploader_id === currentUser.uid 체크는 버튼 노출용일 뿐, 신뢰하지 않는다).
+        window.deleteSharedMusicTrack = async function(trackId) {
+            if (!currentUser) return showLoginScreen(() => deleteSharedMusicTrack(trackId));
+            const track = sharedMusicCache[trackId];
+            if (!confirm(`"${track ? track.title || '이 곡' : '이 곡'}"을(를) 삭제할까요? 공유된 곡이 사라지고 되돌릴 수 없습니다.`)) return;
+            try {
+                const idToken = await currentUser.getIdToken();
+                const res = await fetch(MUSIC_DELETE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_MUSIC_KEY}` },
+                    body: JSON.stringify({ trackId, firebaseIdToken: idToken })
+                });
+                const result = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(result.error || '삭제에 실패했습니다.');
+                delete sharedMusicCache[trackId];
+                renderSharedMusicList();
+                renderMusicHome();
+            } catch (e) {
+                console.error('공유 음악 삭제 오류:', e);
+                alert(e.message || '삭제에 실패했습니다.\n잠시 후 다시 시도해주세요.');
             }
         };
 
@@ -12790,10 +13023,13 @@
             }).join('');
         }
 
-        // canManageShortcuts가 바뀔 때마다 "+ 바로가기 추가" 버튼과 각 버튼의 ⚙️ 편집 아이콘 노출을 함께 갱신한다.
+        // canManageShortcuts/편집 모드가 바뀔 때마다 "바로가기 추가" 버튼들과 각 버튼의 ⚙️ 편집 아이콘 노출을 함께 갱신한다.
+        // "위젯 편집" 모드일 때만 추가 버튼이 나오게 해서 평소엔 바로가기 영역이 깔끔하게 보이도록 한다.
         function updateShortcutComposerVisibility() {
             const btn = document.getElementById('btn-add-shortcut');
-            if (btn) btn.style.display = canManageShortcuts ? 'inline-flex' : 'none';
+            if (btn) btn.style.display = (homeSectionEditMode && canManageShortcuts) ? 'inline-flex' : 'none';
+            const personalBtn = document.getElementById('btn-add-shortcut-personal');
+            if (personalBtn) personalBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
             renderShortcuts();
         }
 
