@@ -1446,6 +1446,44 @@
     background: var(--amber-dim);
   }
   .mixtape-app ul.tracks li.dragging{ opacity: 0.4; }
+  .mixtape-app ul.tracks li.track-gap{
+    padding: 0;
+    height: 6px;
+    min-height: 6px;
+    border-bottom: none;
+    cursor: default;
+    justify-content: center;
+    overflow: hidden;
+    transition: height 0.18s ease, min-height 0.18s ease;
+  }
+  .mixtape-app ul.tracks li.track-gap.open{
+    height: 34px;
+    min-height: 34px;
+  }
+  .mixtape-app ul.tracks li.track-gap .track-gap-add{
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--line-dark);
+    background: var(--card-bg);
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .mixtape-app ul.tracks li.track-gap.open .track-gap-add{
+    opacity: 1;
+    transform: scale(1);
+  }
+  .mixtape-app ul.tracks li.track-gap .track-gap-add:hover{
+    background: var(--amber-dim);
+    color: var(--text-main);
+  }
   .mixtape-app .track-select-checkbox{
     width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--amber);
   }
@@ -2145,8 +2183,9 @@
                 </div>
                 <div class="dashboard-grid" data-section-grid>
                     <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 6;">
-                        <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
-                            <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null)">+ 바로가기 추가</button>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
+                            <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'shared')">+ 바로가기 추가</button>
+                            <button class="btn-sub" style="font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'personal')">👤 내 바로가기 추가</button>
                         </div>
                         <div id="shortcuts-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;"></div>
                         <style>
@@ -2256,6 +2295,33 @@
                     <div class="card clickable" data-widget-id="w-community" id="home-community-card" onclick="switchTab('community')" style="grid-column: span 4;">
                         <div class="card-title">입만사니 인기글 (최근 1주) 🔥</div>
                         <div id="home-popular-posts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="home-section" data-section-id="personal">
+                <div class="home-section-header">
+                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="📝 나만의 공간 (개인)">
+                    <span class="home-section-arrows"></span>
+                </div>
+                <div class="dashboard-grid" data-section-grid>
+                    <div class="card" data-widget-id="w-memo" style="grid-column: span 3;">
+                        <div class="card-title">
+                            <span>📝 나만의 메모</span>
+                            <span style="font-size:11px; font-weight:400; color:var(--text-muted);">나에게만 보여요</span>
+                        </div>
+                        <textarea id="home-memo-text" placeholder="여기에 메모를 남겨보세요 (이 브라우저에만 저장돼요)" style="width:100%; min-height:90px; resize:vertical; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:var(--input-bg, transparent); color:inherit;"></textarea>
+                        <div id="home-memo-photo-wrap" style="margin-top:8px; display:none; position:relative;">
+                            <img id="home-memo-photo-preview" style="width:100%; max-height:160px; object-fit:cover; border-radius:8px; display:block;">
+                            <button type="button" class="btn-sub" onclick="removeHomeMemoPhoto()" style="position:absolute; top:6px; right:6px; font-size:11px; padding:4px 8px;">✕ 사진 삭제</button>
+                        </div>
+                        <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                            <label class="btn-sub" style="font-size:12px; padding:6px 12px; cursor:pointer;">
+                                📷 사진 첨부
+                                <input type="file" accept="image/*" onchange="handleHomeMemoPhotoSelected(event)" style="display:none;">
+                            </label>
+                            <span id="home-memo-save-status" style="font-size:11px; color:var(--text-muted);"></span>
+                        </div>
                     </div>
                 </div>
                 </div>
@@ -3604,7 +3670,8 @@
         // RTDB의 runTransaction과 이름이 겹치므로 Firestore 쪽은 fsRunTransaction으로 별칭을 준다.
         // Firestore 인스턴스는 "(default)" 데이터베이스를 쓰며 getFirestore(app, "community") 같은 지정을 하지 않는다.
         import {
-            getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
+            getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+            collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
             query, where, orderBy, onSnapshot, runTransaction as fsRunTransaction
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -3656,7 +3723,19 @@
         const MAX_SHARED_MUSIC_SIZE = 30 * 1024 * 1024; // 30MB, 정확히 30MB까지는 허용, 초과분만 거부
         // fdb = Firestore. 기존 코드 전체가 RTDB를 "db"로 부르고 있어서(수천 곳), 그 이름을 그대로 유지하고
         // Firestore는 별도 변수명(fdb)을 쓴다 - 두 저장소를 이름으로도 명확히 구분하기 위함이다.
-        const fdb = getFirestore(app);
+        // 오프라인에서도 예전에 온라인 상태에서 이미 불러온 적 있는 게시글/공지/설문 등을 그대로 볼 수
+        // 있도록 IndexedDB 기반 로컬 캐시를 켠다(플래너/뮤직이 IndexedDB를 쓰는 것과 같은 방식). 여러 탭을
+        // 동시에 열어도 충돌 없이 캐시를 공유하도록 persistentMultipleTabManager를 쓴다. 사파리 시크릿
+        // 모드 등 지원하지 않는 환경에서는 실패할 수 있으니, 그럴 땐 캐시 없이(메모리 캐시로) 그대로 켠다.
+        let fdb;
+        try {
+            fdb = initializeFirestore(app, {
+                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+            });
+        } catch (e) {
+            console.warn('Firestore 오프라인 캐시를 켜지 못했습니다 (온라인 상태에서는 정상 동작합니다):', e);
+            fdb = getFirestore(app);
+        }
         // Firestore QuerySnapshot을 기존 RTDB onValue(snap.val())와 같은 { id: data } 모양으로 바꿔주는 헬퍼.
         // 기존 코드 대부분이 Object.entries(posts) 형태로 순회하므로, 이 헬퍼로 감싸면 그 아래 로직을
         // 거의 그대로 재사용할 수 있다(불필요한 대규모 리팩터링을 피하기 위함).
@@ -4227,7 +4306,8 @@
             { id: 'priority-strip', label: '⏱ 우선순위 (날씨·미션·지금 학교는)', widgets: ['w-weather', 'w-missions', 'w-period'] },
             { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
             { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
-            { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] }
+            { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] },
+            { id: 'personal', label: '📝 나만의 공간 (개인)', widgets: ['w-memo'] }
         ];
         const DEFAULT_HOME_SECTION_IDS = DEFAULT_HOME_LAYOUT.map(s => s.id);
         const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
@@ -4412,7 +4492,8 @@
             'w-period': '🕒 지금 우리 학교는', 'w-meal': '🍱 오늘의 급식', 'w-timetable': '🗓️ 오늘의 시간표',
             'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위',
             'w-calendar': '📅 일정', 'w-planner-time': '📖 오늘의 공부', 'w-planner-tasks': '📋 오늘 할 일',
-            'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글'
+            'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글',
+            'w-memo': '📝 나만의 메모'
         };
         function loadHiddenHomeWidgets() {
             try {
@@ -4592,6 +4673,7 @@
         applyHomeLayout(); // 로그인 여부와 무관하게, 페이지 로드 시 저장된 개인 레이아웃을 바로 적용
         applyHomeWidgetSizes(); // 저장된 위젯별 가로/세로 크기도 함께 적용
         applyHomeWidgetVisibility(); // 숨겨둔 위젯이 있으면 처음부터 숨긴 채로 시작
+        initHomeMemoWidget(); // 로그인 여부와 무관한 개인 메모 위젯도 바로 적용
 
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
@@ -5540,6 +5622,105 @@
                 tx.onerror = () => reject(tx.error);
             });
         }
+
+        // =========================================================================
+        // 홈 위젯 - "나만의 메모" (개인 커스텀 전용, 반 전체와 공유되지 않음)
+        // - 텍스트는 localStorage에, 첨부 사진은 배경화면과 같은 방식으로 작은 전용 IndexedDB에 저장한다.
+        // - Firebase에도, 외부 이미지 호스팅에도 올리지 않는다 - 이 브라우저에만 남는다.
+        // =========================================================================
+        const MEMO_TEXT_KEY = 'hanilgo_personal_memo_text';
+        const MEMO_DB_NAME = 'personalMemoDB';
+        const MEMO_DB_VERSION = 1;
+        function openMemoDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(MEMO_DB_NAME, MEMO_DB_VERSION);
+                req.onupgradeneeded = () => {
+                    if (!req.result.objectStoreNames.contains('photo')) {
+                        req.result.createObjectStore('photo');
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function saveMemoPhotoToIndexedDB(blob) {
+            const db2 = await openMemoDB();
+            return new Promise((resolve, reject) => {
+                const tx = db2.transaction('photo', 'readwrite');
+                tx.objectStore('photo').put(blob, 'current');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+        async function getMemoPhotoFromIndexedDB() {
+            const db2 = await openMemoDB();
+            return new Promise((resolve, reject) => {
+                const tx = db2.transaction('photo', 'readonly');
+                const req = tx.objectStore('photo').get('current');
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function deleteMemoPhotoFromIndexedDB() {
+            const db2 = await openMemoDB();
+            return new Promise((resolve, reject) => {
+                const tx = db2.transaction('photo', 'readwrite');
+                tx.objectStore('photo').delete('current');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+        let homeMemoPhotoUrl = null;
+        let homeMemoSaveTimer = null;
+        async function renderHomeMemoPhoto() {
+            const wrap = document.getElementById('home-memo-photo-wrap');
+            const img = document.getElementById('home-memo-photo-preview');
+            if (!wrap || !img) return;
+            try {
+                const blob = await getMemoPhotoFromIndexedDB();
+                if (homeMemoPhotoUrl) { URL.revokeObjectURL(homeMemoPhotoUrl); homeMemoPhotoUrl = null; }
+                if (blob) {
+                    homeMemoPhotoUrl = URL.createObjectURL(blob);
+                    img.src = homeMemoPhotoUrl;
+                    wrap.style.display = '';
+                } else {
+                    wrap.style.display = 'none';
+                }
+            } catch (e) {}
+        }
+        function initHomeMemoWidget() {
+            const textEl = document.getElementById('home-memo-text');
+            if (!textEl) return;
+            try { textEl.value = localStorage.getItem(MEMO_TEXT_KEY) || ''; } catch (e) {}
+            textEl.addEventListener('input', () => {
+                const statusEl = document.getElementById('home-memo-save-status');
+                if (statusEl) statusEl.textContent = '저장 중...';
+                clearTimeout(homeMemoSaveTimer);
+                homeMemoSaveTimer = setTimeout(() => {
+                    try { localStorage.setItem(MEMO_TEXT_KEY, textEl.value); } catch (e) {}
+                    if (statusEl) statusEl.textContent = '저장됨';
+                }, 500);
+            });
+            renderHomeMemoPhoto();
+        }
+        window.handleHomeMemoPhotoSelected = async function(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            try {
+                await saveMemoPhotoToIndexedDB(file);
+                await renderHomeMemoPhoto();
+            } catch (e) {
+                alert('사진 저장에 실패했습니다: ' + e.message);
+            } finally {
+                event.target.value = '';
+            }
+        };
+        window.removeHomeMemoPhoto = async function() {
+            try {
+                await deleteMemoPhotoFromIndexedDB();
+                await renderHomeMemoPhoto();
+            } catch (e) {}
+        };
         // 지난 버전엔 'current' 키 하나에만 저장했다. 'light'/'dark' 슬롯이 아직 하나도 없고 'current'만
         // 있으면, 그 사진을 라이트 슬롯으로 옮겨서 계속 "공용(라이트 사진을 다크에도 그대로)"으로 동작하게 한다.
         async function migrateLegacyCustomBackground() {
@@ -12560,7 +12741,21 @@
         };
         let shortcutsCache = {};
         let editingShortcutId = null;
+        let editingShortcutScope = 'shared'; // 'shared'(반 공용, RTDB) | 'personal'(이 브라우저에만, localStorage)
         let shortcutsSeedAttempted = false;
+
+        // 개인 바로가기: 반 공용 바로가기(dashboard/shortcuts, RTDB)와 달리 누구나(관리자 아니어도)
+        // 추가할 수 있고, 이 브라우저에만 저장된다 (다른 기기/브라우저에는 안 보임).
+        const PERSONAL_SHORTCUTS_KEY = 'hanilgo_personal_shortcuts';
+        function loadPersonalShortcuts() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(PERSONAL_SHORTCUTS_KEY) || '{}');
+                return (saved && typeof saved === 'object' && !Array.isArray(saved)) ? saved : {};
+            } catch (e) { return {}; }
+        }
+        function savePersonalShortcuts(map) {
+            try { localStorage.setItem(PERSONAL_SHORTCUTS_KEY, JSON.stringify(map)); } catch (e) {}
+        }
 
         function listenToShortcuts() {
             onValue(ref(db, 'dashboard/shortcuts'), (snap) => {
@@ -12577,12 +12772,19 @@
         function renderShortcuts() {
             const grid = document.getElementById('shortcuts-grid');
             if (!grid) return;
-            const entries = Object.entries(shortcutsCache).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
-            grid.innerHTML = entries.map(([id, sc]) => {
+            const personalShortcuts = loadPersonalShortcuts();
+            const entries = [
+                ...Object.entries(shortcutsCache).map(([id, sc]) => ({ id, sc, personal: false })),
+                ...Object.entries(personalShortcuts).map(([id, sc]) => ({ id, sc, personal: true }))
+            ].sort((a, b) => (a.sc.order || 0) - (b.sc.order || 0));
+            grid.innerHTML = entries.map(({ id, sc, personal }) => {
                 const safeUrl = (sc.url || '').replace(/'/g, "\\'");
-                const editBtn = canManageShortcuts ? `<span onclick="event.stopPropagation(); openShortcutModal('${id}')" style="position:absolute; top:-6px; right:-6px; cursor:pointer; font-size:14px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">⚙️</span>` : '';
+                // 개인 바로가기는 관리자 권한과 무관하게 항상 본인이 수정/삭제할 수 있다.
+                const canEditThis = personal || canManageShortcuts;
+                const editBtn = canEditThis ? `<span onclick="event.stopPropagation(); openShortcutModal('${id}', '${personal ? 'personal' : 'shared'}')" style="position:absolute; top:-6px; right:-6px; cursor:pointer; font-size:14px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">⚙️</span>` : '';
+                const personalBadge = personal ? `<span title="나만 보이는 개인 바로가기" style="position:absolute; top:-6px; left:-6px; font-size:11px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">👤</span>` : '';
                 return `<div style="position:relative;">
-                    ${editBtn}
+                    ${editBtn}${personalBadge}
                     <button class="auth-btn" style="width: 100%; margin-top: 0; padding: 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" onclick="window.open('${safeUrl}', '_blank', 'noopener,noreferrer')">${sc.label}</button>
                 </div>`;
             }).join('');
@@ -12595,14 +12797,18 @@
             renderShortcuts();
         }
 
-        window.openShortcutModal = function(id) {
-            if (!canManageShortcuts) return;
+        window.openShortcutModal = function(id, scope) {
+            scope = scope === 'personal' ? 'personal' : 'shared';
+            if (scope === 'shared' && !canManageShortcuts) return;
             editingShortcutId = id || null;
-            const sc = id ? shortcutsCache[id] : null;
-            document.getElementById('shortcut-modal-title').innerText = id ? '바로가기 수정' : '바로가기 추가';
+            editingShortcutScope = scope;
+            const store = scope === 'personal' ? loadPersonalShortcuts() : shortcutsCache;
+            const sc = id ? store[id] : null;
+            const scopeLabel = scope === 'personal' ? '내 바로가기' : '바로가기';
+            document.getElementById('shortcut-modal-title').innerText = id ? `${scopeLabel} 수정` : `${scopeLabel} 추가`;
             document.getElementById('shortcut-input-label').value = sc ? sc.label : '';
             document.getElementById('shortcut-input-url').value = sc ? (sc.url || '') : '';
-            document.getElementById('shortcut-input-order').value = sc ? (sc.order || 0) : Object.keys(shortcutsCache).length;
+            document.getElementById('shortcut-input-order').value = sc ? (sc.order || 0) : Object.keys(store).length;
             document.getElementById('shortcut-delete-btn').style.display = id ? 'block' : 'none';
             document.getElementById('shortcut-modal').style.display = 'flex';
         }
@@ -12613,11 +12819,20 @@
         }
 
         window.saveShortcut = async function() {
-            if (!canManageShortcuts) return;
             const label = document.getElementById('shortcut-input-label').value.trim();
             const url = document.getElementById('shortcut-input-url').value.trim();
             const order = parseInt(document.getElementById('shortcut-input-order').value) || 0;
             if (!label || !url) return alert('이름과 URL을 입력해주세요.');
+            if (editingShortcutScope === 'personal') {
+                const personalShortcuts = loadPersonalShortcuts();
+                const id = editingShortcutId || `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                personalShortcuts[id] = { label, url, order };
+                savePersonalShortcuts(personalShortcuts);
+                closeShortcutModal();
+                renderShortcuts();
+                return;
+            }
+            if (!canManageShortcuts) return;
             try {
                 if (editingShortcutId) await update(ref(db, `dashboard/shortcuts/${editingShortcutId}`), { label, url, order });
                 else await push(ref(db, 'dashboard/shortcuts'), { label, url, order, createdAt: Date.now() });
@@ -12626,7 +12841,17 @@
         }
 
         window.deleteShortcutFromModal = async function() {
-            if (!canManageShortcuts || !editingShortcutId) return;
+            if (!editingShortcutId) return;
+            if (editingShortcutScope === 'personal') {
+                if (!confirm('이 바로가기를 삭제하시겠습니까?')) return;
+                const personalShortcuts = loadPersonalShortcuts();
+                delete personalShortcuts[editingShortcutId];
+                savePersonalShortcuts(personalShortcuts);
+                closeShortcutModal();
+                renderShortcuts();
+                return;
+            }
+            if (!canManageShortcuts) return;
             if (confirm('이 바로가기를 삭제하시겠습니까?')) {
                 try { await remove(ref(db, `dashboard/shortcuts/${editingShortcutId}`)); closeShortcutModal(); }
                 catch (e) { alert('삭제 중 오류가 발생했습니다.'); }
@@ -13948,6 +14173,7 @@
   let repeatMode = 0; // 0 off, 1 repeat-all, 2 repeat-one
   let dragSrcIndex = null;
   let dbReady = false;
+  let pendingInsertIndex = null; // 트랙 사이 "+" 버튼으로 곡을 추가할 때, 그 위치를 fileInput의 change 핸들러까지 전달하기 위한 값
 
   const audio = new Audio();
   audio.preload = "metadata";
@@ -14743,6 +14969,43 @@
     statusText.textContent = `${playlist.length}곡 준비됨`;
   }
 
+  // 트랙과 트랙 사이의 "+" 버튼으로 추가할 때: addFiles와 달리 끝이 아니라 지정된 위치(insertIndex)에 끼워 넣는다.
+  // dbAddTrack은 항상 trackIds 끝에 참조를 붙이므로, 실제 삽입 위치를 DB에도 반영하려면 매번 persistOrder()로
+  // 지금 메모리상 playlist 순서를 다시 저장해줘야 한다.
+  async function addFilesAtIndex(fileList, insertIndex){
+    const files = Array.from(fileList).filter(f => f.type.startsWith("audio/") || /\.(mp3|m4a|wav|ogg|flac|aac)$/i.test(f.name));
+    if(files.length === 0) return;
+    let idx = Math.max(0, Math.min(insertIndex, playlist.length));
+    for(const file of files){
+      const name = stripExt(file.name);
+      const url = URL.createObjectURL(file);
+      const entry = { id: null, blob: file, url, name, duration: null, order: idx };
+      playlist.splice(idx, 0, entry);
+      if(currentIndex >= idx) currentIndex++; // 삽입 지점보다 뒤(또는 그 자리)에 있던 재생 중인 곡의 인덱스가 밀린다
+      renderList();
+      probeDuration(entry);
+      if(currentPlaylistId != null){
+        try{
+          const id = await dbAddTrack({ playlistId: currentPlaylistId, name, blob: file, order: idx });
+          entry.id = id;
+          dbReady = true;
+          await persistOrder();
+        }catch(err){
+          console.warn("파일을 저장하지 못했어요 (이 세션에서만 재생됩니다):", err);
+        }
+      }
+      idx++;
+    }
+    renderList();
+    statusText.textContent = `${playlist.length}곡 준비됨`;
+  }
+
+  function triggerInsertAt(insertIndex){
+    if(selectModeActive) return;
+    pendingInsertIndex = insertIndex;
+    fileInput.click();
+  }
+
   function renderTrackPreview(){
     if(!trackPreviewEl) return;
     trackPreviewEl.innerHTML = "";
@@ -14775,6 +15038,7 @@
       return;
     }
     trackListEl.innerHTML = "";
+    if(!selectModeActive) trackListEl.appendChild(createGapLi(0)); // 첫 곡 위에도 끼워 넣을 수 있게
     playlist.forEach((track, i) => {
       const li = document.createElement("li");
       li.draggable = !selectModeActive; // 선택 모드에서는 드래그 정렬 대신 체크에 집중
@@ -14880,8 +15144,35 @@
       });
 
       trackListEl.appendChild(li);
+      if(!selectModeActive) trackListEl.appendChild(createGapLi(i + 1)); // 이 곡과 다음 곡 사이
     });
     renderTrackPreview();
+  }
+
+  // 트랙과 트랙 사이(또는 맨 위)에 마우스를 잠시 올려두면 벌어지면서 "+" 버튼이 나타나는 얇은 삽입 지점.
+  // 클릭하면 정확히 그 위치(insertIndex)에 곡을 끼워 넣는다 (addFilesAtIndex 참고).
+  function createGapLi(insertIndex){
+    const gap = document.createElement("li");
+    gap.className = "track-gap";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "track-gap-add";
+    btn.textContent = "+";
+    btn.title = "여기에 곡 추가";
+    gap.appendChild(btn);
+    let hoverTimer = null;
+    gap.addEventListener("mouseenter", () => {
+      hoverTimer = setTimeout(() => gap.classList.add("open"), 350);
+    });
+    gap.addEventListener("mouseleave", () => {
+      clearTimeout(hoverTimer);
+      gap.classList.remove("open");
+    });
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      triggerInsertAt(insertIndex);
+    });
+    return gap;
   }
 
   function removeTrack(i){
@@ -15011,7 +15302,13 @@
 
   // ---- events ----
   fileInput.addEventListener("change", (e) => {
-    addFiles(e.target.files);
+    if(pendingInsertIndex != null){
+      const idx = pendingInsertIndex;
+      pendingInsertIndex = null;
+      addFilesAtIndex(e.target.files, idx);
+    } else {
+      addFiles(e.target.files);
+    }
     fileInput.value = "";
   });
 
