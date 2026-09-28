@@ -14106,7 +14106,7 @@
       const subSelect = document.getElementById('mark-subject-select');
       const editBtn = document.getElementById('btn-edit-grid');
       if (isMarkMode) {
-        btn.innerHTML = '<span>✓</span> 표시 중'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow';
+        btn.innerHTML = '<span>✓</span> 표시'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow';
         if (!markSubjectId || !state.subjects.some(s => s.id === markSubjectId)) markSubjectId = state.subjects[0] && state.subjects[0].id;
         if (subSelect) { subSelect.value = markSubjectId; subSelect.classList.remove('hidden'); }
         if (editBtn) editBtn.classList.add('hidden');
