@@ -2624,6 +2624,26 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 📎 자료 수정 (제목/카테고리/설명만 - 파일 자체를 바꾸려면 삭제 후 다시 등록) -->
+                <div id="material-edit-modal" class="modal-overlay" style="display:none;">
+                    <div class="modal-card" style="max-width: 440px;">
+                        <span class="close-btn" onclick="closeMaterialEditModal()">&times;</span>
+                        <div class="card-title" style="margin-bottom: 14px;">✏️ 자료 수정</div>
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">자료 제목</label>
+                        <input type="text" id="material-edit-title" class="auth-input" style="margin-bottom: 12px; padding: 10px 14px;">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">카테고리</label>
+                        <input type="text" id="material-edit-category" class="auth-input" style="margin-bottom: 12px; padding: 10px 14px;">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display:block; margin-bottom:4px;">설명 (선택)</label>
+                        <textarea id="material-edit-desc" class="auth-input" style="height: 60px; resize: none; margin-bottom: 12px; padding: 12px; font-family: inherit;"></textarea>
+                        <div class="archive-cloud-note">파일 자체는 바꿀 수 없어요. 파일을 바꾸려면 이 자료를 삭제하고 새로 등록해주세요.</div>
+                        <div id="material-edit-status" style="display:none; font-size:12px; color:var(--primary); font-weight:600; margin-top:8px;"></div>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                            <button class="btn-sub" onclick="closeMaterialEditModal()">취소</button>
+                            <button class="auth-btn" id="material-edit-submit-btn" style="width:auto; margin-top:0; padding:10px 20px;" onclick="submitMaterialEdit()">저장</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 🎵 음악 공유 모달 (최대 10곡 제한) -->
@@ -3696,6 +3716,10 @@
         // service_role로 처리)을 통해서만 이루어진다. anon 키에는 write 권한을 아예 주지 않는다.
         const MATERIALS_UPLOAD_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/upload-material`;
         const MATERIALS_DELETE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-delete-material`;
+        // 자료 수정(제목/카테고리/설명)도 삭제와 같은 이유로 별도 Edge Function을 쓴다 - upload-material/
+        // verify-delete-material 소스를 갖고 있지 않은 채로 그 함수들을 건드리면 이미 잘 동작 중인
+        // 업로드/삭제 기능을 실수로 깨뜨릴 위험이 있어서, 수정 전용 함수(edit-material)로 완전히 분리했다.
+        const MATERIALS_EDIT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/edit-material`;
         // freeimage.host는 브라우저에서 직접 fetch하면 CORS로 100% 차단된다(콘솔에서 확인됨) - 이 Edge
         // Function이 서버에서 대신 업로드해준다(서버끼리는 CORS 제약이 없음). 반드시 별도로 배포해야 동작한다.
         const FREEIMAGE_UPLOAD_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/upload-freeimage`;
@@ -10786,6 +10810,85 @@
             if (confirm("이 자료를 정말 삭제하시겠습니까?")) await deleteDoc(doc(fdb, collectionName, docId));
         };
 
+        // 자료 수정: 제목/카테고리/설명만 고칠 수 있다(파일 자체를 바꾸려면 삭제 후 재등록해야 한다 -
+        // 업로드 당시의 storage_path/서명 URL 발급 로직을 다시 타야 해서 수정만으로는 안전하게 처리하기 어렵다).
+        // source: 'supabase'(신규 업로드, Edge Function 경유) | 'legacy'(archiveStudy/archiveEtc, Firestore 직접 수정)
+        let materialEditTarget = null; // { source, id, collectionName? }
+        window.openMaterialEditModal = function(source, id, collectionName) {
+            if (!currentUser) return showLoginScreen(() => openMaterialEditModal(source, id, collectionName));
+            let title, category, desc, canEdit;
+            if (source === 'supabase') {
+                const row = supabaseMaterialsCache[id];
+                if (!row) return;
+                canEdit = currentUser.uid === row.owner_uid;
+                title = row.title || ''; category = row.category || ''; desc = row.description || '';
+            } else {
+                const cache = collectionName === 'archiveEtc' ? materialsEtcCache : materialsStudyCache;
+                const item = cache[id];
+                if (!item) return;
+                canEdit = currentUser.uid === item.authorId || isAdmin || isSubAdmin;
+                title = item.title || ''; category = item.category || ''; desc = item.desc || '';
+            }
+            if (!canEdit) return alert("본인이 등록한 자료만 수정할 수 있습니다.");
+            materialEditTarget = { source, id, collectionName };
+            document.getElementById('material-edit-title').value = title;
+            document.getElementById('material-edit-category').value = category;
+            document.getElementById('material-edit-desc').value = desc;
+            const statusEl = document.getElementById('material-edit-status');
+            if (statusEl) statusEl.style.display = 'none';
+            document.getElementById('material-edit-modal').style.display = 'flex';
+        };
+        window.closeMaterialEditModal = function() {
+            document.getElementById('material-edit-modal').style.display = 'none';
+            materialEditTarget = null;
+        };
+        window.submitMaterialEdit = async function() {
+            if (!materialEditTarget) return;
+            const titleInput = document.getElementById('material-edit-title');
+            const categoryInput = document.getElementById('material-edit-category');
+            const descInput = document.getElementById('material-edit-desc');
+            const statusEl = document.getElementById('material-edit-status');
+            const submitBtn = document.getElementById('material-edit-submit-btn');
+            if (!titleInput.value.trim()) return alert("제목을 입력해주세요.");
+            const title = titleInput.value.trim();
+            const category = categoryInput.value.trim() || '기타';
+            const description = descInput.value;
+
+            const originalText = submitBtn ? submitBtn.textContent : '';
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '저장 중...'; }
+            if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '저장 중...'; }
+            try {
+                const { source, id, collectionName } = materialEditTarget;
+                if (source === 'supabase') {
+                    const idToken = await currentUser.getIdToken();
+                    const res = await fetch(MATERIALS_EDIT_FUNCTION_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}` },
+                        body: JSON.stringify({ materialId: id, title, category, description, firebaseIdToken: idToken })
+                    });
+                    const result = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        if (result.error) throw new Error(result.error);
+                        if (res.status === 401) throw new Error("로그인 정보가 유효하지 않습니다.\n다시 로그인해주세요.");
+                        throw new Error("자료 수정에 실패했습니다.\n잠시 후 다시 시도해주세요.");
+                    }
+                    const row = supabaseMaterialsCache[id];
+                    if (row) { row.title = title; row.category = category; row.description = description; }
+                    renderMergedMaterials();
+                } else {
+                    // 레거시(archiveStudy/archiveEtc)는 Firestore 규칙상 본인 글이면 클라이언트에서 직접 수정할 수 있다(삭제와 동일한 권한 구조).
+                    await updateDoc(doc(fdb, collectionName, id), { title, category, desc: description });
+                }
+                closeMaterialEditModal();
+            } catch (e) {
+                console.error("자료 수정 오류:", e);
+                alert(e.message || "자료 수정에 실패했습니다.\n잠시 후 다시 시도해주세요.");
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+                if (statusEl) statusEl.style.display = 'none';
+            }
+        };
+
         // --- 자료실 병합 렌더링: 기존 Firestore(archiveStudy/archiveEtc, 과거 데이터만) + 신규 Supabase(실제 파일)를 하나의 목록으로 합친다 ---
         let materialsStudyCache = {};
         let materialsEtcCache = {};
@@ -12586,6 +12689,9 @@
                 const showAdminPendingNote = m.source === 'supabase' && !isOwner && (isAdmin || isSubAdmin);
                 const canDelete = m.source === 'supabase' ? isOwner : canDeleteLegacy;
                 const deleteAction = m.source === 'supabase' ? `deleteSupabaseMaterial('${m.id}')` : `deleteArchiveFile('${m.collectionName}', '${m.id}', '${m.authorId}')`;
+                // 수정 가능 여부는 삭제와 같은 권한 구조를 따른다 (본인 글 + 레거시는 관리자도).
+                const canEdit = canDelete;
+                const editAction = m.source === 'supabase' ? `openMaterialEditModal('supabase', '${m.id}')` : `openMaterialEditModal('legacy', '${m.id}', '${m.collectionName}')`;
                 const ext = (m.fileName || '').split('.').pop().toLowerCase();
                 const canPreview = m.source === 'supabase' && PREVIEWABLE_EXT.includes(ext);
                 return `
@@ -12610,8 +12716,11 @@
                         ` : ''}
                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 6px;">
                             <span>✍️ ${escapeNoticeText(m.authorDisplay)} · ${formatPostTimeOrDash(m.createdAtMs)}</span>
-                            ${canDelete ? `<span onclick="${deleteAction}" style="color: #ef4444; cursor: pointer; font-weight: 600;">삭제</span>` : ''}
-                            ${showAdminPendingNote ? `<span style="color: var(--text-muted); font-style: italic;">관리자 삭제 준비 중</span>` : ''}
+                            <span style="display:flex; gap:10px;">
+                                ${canEdit ? `<span onclick="${editAction}" style="color: var(--primary); cursor: pointer; font-weight: 600;">수정</span>` : ''}
+                                ${canDelete ? `<span onclick="${deleteAction}" style="color: #ef4444; cursor: pointer; font-weight: 600;">삭제</span>` : ''}
+                                ${showAdminPendingNote ? `<span style="color: var(--text-muted); font-style: italic;">관리자 삭제 준비 중</span>` : ''}
+                            </span>
                         </div>
                     </div>
                 `;
