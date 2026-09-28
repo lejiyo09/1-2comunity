@@ -3509,10 +3509,11 @@
             <button id="mymusic-delete-selected-btn" class="btn-sub" style="display:none; color:#ef4444; border-color:#ef4444;" onclick="deleteSelectedMyMusicTracks()">선택 삭제</button>
         </div>
         <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap;">
-            <input type="text" id="mymusic-search" class="auth-input" placeholder="🔍 내 음악 검색" style="max-width:220px; margin-bottom:0; padding:8px 12px; font-size:13px;" oninput="renderMyMusicList()">
+            <input type="text" id="mymusic-search" class="auth-input" placeholder="🔍 제목·가수 검색" style="max-width:220px; margin-bottom:0; padding:8px 12px; font-size:13px;" oninput="renderMyMusicList()">
             <select id="mymusic-sort" class="auth-select" style="margin-bottom:0; padding:8px 10px; font-size:13px; width:auto;" onchange="renderMyMusicList()">
                 <option value="latest">최신순</option>
                 <option value="title">제목순</option>
+                <option value="artist">가수별</option>
             </select>
             <select id="mymusic-columns" class="auth-select" style="margin-bottom:0; padding:8px 10px; font-size:13px; width:auto;" onchange="setMyMusicColumns(this.value)">
                 <option value="1">한 줄에 1곡</option>
@@ -10994,8 +10995,15 @@
         // 화면으로 바로 이동한다. 홈 위젯("현재 재생")과 인라인 미니 위젯 둘 다 이 함수를 쓴다.
         window.goToNowPlayingPlaylist = function() {
             window.switchTab('mixtape');
-            window.switchMusicSection('library');
             const nowPlaying = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
+            // "내 음악"에서 재생 중(다음 곡 랜덤 재생 포함)이면 플레이리스트 목록이 아니라
+            // 내 음악 탭으로 바로 이동한다 - 애초에 플레이리스트가 아니라 내 음악 라이브러리에서
+            // 재생 중인 곡이므로, 거길 눌러도 "재생 중인 걸 볼 수 있는 곳"이 아니면 의미가 없다.
+            if (nowPlaying && nowPlaying.isMyMusicAutoNext) {
+                window.switchMusicSection('mymusic');
+                return;
+            }
+            window.switchMusicSection('library');
             const currentId = window.MixTapeApp && window.MixTapeApp.getCurrentPlaylistId ? window.MixTapeApp.getCurrentPlaylistId() : null;
             // 임시 재생(공유 음악 등을 바로 듣는 것)은 특정 플레이리스트에 속하지 않으므로
             // (getNowPlaying().index === -1) 이때는 목록 화면까지만 이동한다.
@@ -11665,6 +11673,11 @@
                 let filtered = withDisplay;
                 if (q) filtered = filtered.filter(t => t._title.toLowerCase().includes(q) || t._artist.toLowerCase().includes(q));
                 if (sort === 'title') filtered.sort((a, b) => a._title.localeCompare(b._title, 'ko'));
+                else if (sort === 'artist') filtered.sort((a, b) => {
+                    // 가수 정보가 없는(미상) 곡은 목록 맨 뒤로 - 앞쪽에서 실제 가수 이름끼리 먼저 깔끔하게 묶여 보이도록.
+                    const artA = a._artist || '￿', artB = b._artist || '￿';
+                    return artA.localeCompare(artB, 'ko') || a._title.localeCompare(b._title, 'ko');
+                });
                 else filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
                 if (filtered.length === 0) {
@@ -16161,7 +16174,10 @@
           total: playlist.length,
           isShuffle: isShuffle,
           repeatMode: repeatMode,
-          playlistName: getCurrentPlaylistName()
+          playlistName: getCurrentPlaylistName(),
+          // "내 음악"에서 재생해서 다음 곡을 랜덤으로 이어가는 중인지 - PiP/인라인 위젯을 클릭했을 때
+          // 어디로 이동시킬지(플레이리스트 목록이 아니라 내 음악 탭으로) 판단하는 데 쓰인다.
+          isMyMusicAutoNext: !!adHocAutoNextProvider
         };
       }
       const hasTrack = currentIndex >= 0 && playlist[currentIndex];
@@ -16175,7 +16191,8 @@
         total: playlist.length,
         isShuffle: isShuffle,
         repeatMode: repeatMode,
-        playlistName: getCurrentPlaylistName()
+        playlistName: getCurrentPlaylistName(),
+        isMyMusicAutoNext: false
       };
     },
     togglePlay: togglePlay,
@@ -16511,7 +16528,7 @@
         }
         .gmw-pip-card.gmw-pip-both .gmw-pip-focus{ border-bottom: 1px solid rgba(255,255,255,0.08); }
         .gmw-pip-row.gmw-pip-focus{ background: transparent; }
-        .gmw-pip-row.gmw-pip-mixtape{ background: transparent; }
+        .gmw-pip-row.gmw-pip-mixtape{ background: transparent; cursor: pointer; }
 
         .gmw-pip-ring-wrap{ position: relative; width: 46px; height: 46px; flex-shrink: 0; }
         .gmw-pip-ring{ width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
@@ -17108,6 +17125,12 @@
             if (pipMixNext) pipMixNext.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.nextTrack(); });
             if (pipMixShuffle) pipMixShuffle.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.toggleShuffle(); });
             if (pipMixRepeat) pipMixRepeat.addEventListener('click', (e) => { stop(e); if (window.MixTapeApp) window.MixTapeApp.cycleRepeat(); });
+            // PiP의 MixTape 줄 자체를 누르면 인라인 미니 위젯과 똑같이 지금 재생 중인 곳으로 이동한다
+            // (버튼들은 위에서 이미 stop(e)로 전파를 막아뒀으니 이 핸들러까지 올라오지 않는다).
+            if (pipMixRow) pipMixRow.addEventListener('click', () => {
+                if (window.goToNowPlayingPlaylist) window.goToNowPlayingPlaylist();
+                else window.switchTab('mixtape');
+            });
 
             document.body.classList.toggle('gmw-pip-disabled', !isPiPEnabled());
             render();
