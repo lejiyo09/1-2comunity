@@ -563,6 +563,7 @@
         
         /* 위젯 텍스트 */
         .widget-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; padding: 4px 0; }
+        .info-offline-badge { margin-top: 6px; font-size: 10.5px; font-weight: 700; color: var(--text-muted); }
         .widget-date { font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 4px; display: inline-block;}
         .current-week-info { background-color: var(--primary-soft); color: var(--primary); padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; font-weight: 600; }
         .badge { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; display: inline-block; }
@@ -4800,6 +4801,57 @@
         applyHomeWidgetVisibility(); // 숨겨둔 위젯이 있으면 처음부터 숨긴 채로 시작
         initAllMemoWidgets(); // 로그인 여부와 무관한 개인 메모/사진 위젯도 바로 적용
 
+        // =========================================================================
+        // 오프라인 정보 캐시 - Firestore로 가져오는 정보(게시글/시험범위/수행평가 일정 등)는 이미
+        // persistentLocalCache(위 fdb 초기화 부분 참고)가 자동으로 오프라인 캐싱을 해준다. 하지만
+        // Realtime Database(반 공용/개인 일정, 청소 1인1역, 자리배치)와 외부 API(날씨, 급식)는
+        // 그런 오프라인 캐시 기능이 브라우저 SDK 자체에 없어서, 여기서 직접 마지막 성공 결과를
+        // localStorage에 저장해뒀다가 오프라인이거나 요청이 실패했을 때 대신 보여준다.
+        // (수정은 여전히 온라인에서만 가능하지만, "확인"만큼은 오프라인에서도 할 수 있게 된다 -
+        // 온라인으로 돌아오면 실시간 리스너/재요청이 알아서 최신 정보로 덮어쓴다.)
+        // =========================================================================
+        const INFO_CACHE_PREFIX = 'hanilgo_info_cache_';
+        function saveInfoCache(key, data) {
+            try { localStorage.setItem(INFO_CACHE_PREFIX + key, JSON.stringify({ data, updatedAt: Date.now() })); } catch (e) {}
+        }
+        function loadInfoCache(key) {
+            try {
+                const raw = localStorage.getItem(INFO_CACHE_PREFIX + key);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                return (parsed && typeof parsed === 'object' && typeof parsed.updatedAt === 'number' && 'data' in parsed) ? parsed : null;
+            } catch (e) { return null; }
+        }
+        function formatInfoCacheAge(updatedAt) {
+            const mins = Math.floor((Date.now() - updatedAt) / 60000);
+            if (mins < 1) return '방금 전';
+            if (mins < 60) return `${mins}분 전`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours}시간 전`;
+            return `${Math.floor(hours / 24)}일 전`;
+        }
+        function infoOfflineBadgeHtml(updatedAt) {
+            return `<div class="info-offline-badge">📶 오프라인 · ${formatInfoCacheAge(updatedAt)} 기준 저장된 정보</div>`;
+        }
+
+        // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개 - 홈 위젯 전용 요약.
+        function renderHomeCalendarSummary(events, fromCache) {
+            const el = document.getElementById('home-calendar-summary');
+            if (!el) return;
+            const todayKey = getScheduleDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+            const upcoming = Object.values(events || {})
+                .filter(ev => ev && ev.date && ev.title && (ev.endDate || ev.date) >= todayKey)
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .slice(0, 5);
+            el.innerHTML = upcoming.map(ev => {
+                const c = scheduleTagColor((ev.tags || [])[0]);
+                const dateLabel = ev.endDate && ev.endDate !== ev.date ? `${ev.date} ~ ${ev.endDate}` : ev.date;
+                const dday = scheduleDDayLabel(ev.date);
+                return `<div style="font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><span class="widget-date">[${dateLabel}]</span> <span style="color:${c}; font-weight:700;">${escapeNoticeText(ev.title)}</span><span style="margin-left:auto; flex-shrink:0; font-size:11px; font-weight:800; color:${c}; background:${c}18; padding:1px 7px; border-radius:6px;">${dday}</span></div>`;
+            }).join('') || '<div class="widget-text">일정 없음</div>';
+            if (fromCache && !navigator.onLine) el.innerHTML += infoOfflineBadgeHtml(fromCache);
+        }
+
         // --- 홈 대시보드 위젯 통합 동기화 ---
         function listenToHomeWidgets() {
             // 커뮤니티 인기글 (1주, 4개) - Firestore posts
@@ -4818,20 +4870,14 @@
                 const targets = ['국어', '영어', '수학', '통합사회', '통합과학'];
                 document.getElementById('home-exam-summary').innerHTML = targets.map(sub => `<div style="margin-bottom:8px; font-size:13px;"><strong style="color:var(--primary); display:block; margin-bottom:2px;">${sub}</strong><span style="color:var(--text-main); word-break:break-word; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis;">${notes[sub] || '미등록'}</span></div>`).join('');
             });
-            // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개
+            // 반 공용 일정: RTDB는 브라우저 SDK에 오프라인 캐시가 없으므로, 리스너를 걸기 전에 마지막으로
+            // 저장해둔 정보를 먼저 보여준다(오프라인이면 그 상태로 유지, 온라인이면 곧바로 최신으로 교체된다).
+            const cachedSchedule = loadInfoCache('home_calendar');
+            if (cachedSchedule) renderHomeCalendarSummary(cachedSchedule.data, cachedSchedule.updatedAt);
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
                 const events = snap.val() || {};
-                const todayKey = getScheduleDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-                const upcoming = Object.values(events)
-                    .filter(ev => ev && ev.date && ev.title && (ev.endDate || ev.date) >= todayKey)
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .slice(0, 5);
-                document.getElementById('home-calendar-summary').innerHTML = upcoming.map(ev => {
-                    const c = scheduleTagColor((ev.tags || [])[0]);
-                    const dateLabel = ev.endDate && ev.endDate !== ev.date ? `${ev.date} ~ ${ev.endDate}` : ev.date;
-                    const dday = scheduleDDayLabel(ev.date);
-                    return `<div style="font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><span class="widget-date">[${dateLabel}]</span> <span style="color:${c}; font-weight:700;">${escapeNoticeText(ev.title)}</span><span style="margin-left:auto; flex-shrink:0; font-size:11px; font-weight:800; color:${c}; background:${c}18; padding:1px 7px; border-radius:6px;">${dday}</span></div>`;
-                }).join('') || '<div class="widget-text">일정 없음</div>';
+                saveInfoCache('home_calendar', events);
+                renderHomeCalendarSummary(events, null);
             });
         }
 
@@ -4849,6 +4895,8 @@
             { id: 'lights',  area: '🚪 문·창·전등 관리',   count: '1명', cycle: '특별실 이동 시 전등 전부 끄기', students: '1224', days: '1,2,3,4,5' }
         ];
         let cleaningDutyOverrides = {};
+        // RTDB는 오프라인 캐시가 없어서, 리스너가 값을 받아오기 전까지 쓸 마지막 저장값을 먼저 채워둔다.
+        (function hydrateCleaningDutyCache(){ const c = loadInfoCache('cleaningDuties'); if (c) cleaningDutyOverrides = c.data; })();
 
         function renderCleaningDutyTable() {
             const tbody = document.getElementById('cleaning-duty-tbody');
@@ -4906,7 +4954,8 @@
 
         onValue(ref(db, 'dashboard/cleaningDuties'), (snap) => {
             cleaningDutyOverrides = snap.val() || {};
-            renderCleaningDutyTable();
+            saveInfoCache('cleaningDuties', cleaningDutyOverrides);
+            renderCurrentDuty(); // 내부에서 renderCleaningDutyTable()도 함께 호출하므로 홈 위젯/탭 표가 모두 최신화된다
         });
 
         function renderCurrentDuty() {
@@ -4934,6 +4983,10 @@
                             <span style="color:var(--text-muted); text-align:right;">${duty.students}</span>
                         </div>
                     `).join('');
+                }
+                if (!navigator.onLine) {
+                    const cached = loadInfoCache('cleaningDuties');
+                    if (cached) homeEl.innerHTML += infoOfflineBadgeHtml(cached.updatedAt);
                 }
             }
         }
@@ -5142,10 +5195,17 @@
         }
 
         async function fetchWeather() {
-            const WEATHER_API_KEY = 'f8e293d6dfb6429995273008260707'; 
-            const lat = 36.4555; 
+            const WEATHER_API_KEY = 'f8e293d6dfb6429995273008260707';
+            const lat = 36.4555;
             const lon = 127.1264;
-        
+
+            // 외부 API라 브라우저 자체 오프라인 캐시가 없다 - 요청을 보내기 전에 마지막으로 성공한 날씨를 먼저 보여준다.
+            const cachedWeather = loadInfoCache('weather');
+            const weatherEl0 = document.getElementById('weather-widget');
+            if (cachedWeather && weatherEl0) {
+                weatherEl0.innerHTML = cachedWeather.data + (navigator.onLine ? '' : infoOfflineBadgeHtml(cachedWeather.updatedAt));
+            }
+
             try {
                 const url = `https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${lat},${lon}&days=1&aqi=yes&lang=ko`;
                 const res = await fetch(url);
@@ -5167,7 +5227,7 @@
                 const pm25Status = getPm25Status(pm25);
                 const getColor = (status) => status === '좋음' ? '#16a34a' : status === '보통' ? '#d97706' : '#dc2626';
             
-                document.getElementById('weather-widget').innerHTML = `
+                const weatherHtml = `
                     <div class="weather-icon"><img src="${iconUrl}" alt="날씨 아이콘" style="width: 80px;"></div>
                     <div class="weather-temp" style="text-align: left; font-weight: 800; margin-bottom: 12px; color: var(--text-main); font-size: 20px;">공주시 ${temp}°C</div>
                     <div class="weather-desc" style="text-align: left; padding: 14px;">
@@ -5176,14 +5236,20 @@
                             <div>☂️ 강수확률: <strong>${pop}%</strong></div>
                             <div>💧 습도: <strong>${humidity}%</strong></div>
                             <div>💨 풍속: <strong>${windSpeed} m/s</strong></div>
-                            <div>&nbsp;</div> 
+                            <div>&nbsp;</div>
                             <div style="grid-column: span 2;">😷 미세먼지: <strong>${pm10} ㎍/㎥</strong> <small style="color:${getColor(pm10Status)}; font-weight:bold;">(${pm10Status})</small></div>
                             <div style="grid-column: span 2;">🌫️ 초미세먼지: <strong>${pm25} ㎍/㎥</strong> <small style="color:${getColor(pm25Status)}; font-weight:bold;">(${pm25Status})</small></div>
                         </div>
                     </div>
                 `;
+                document.getElementById('weather-widget').innerHTML = weatherHtml;
+                saveInfoCache('weather', weatherHtml);
             } catch (error) {
                 console.log("날씨 정보를 불러올 수 없습니다:", error);
+                // 요청이 실패했으면(오프라인 등) 마지막으로 저장해둔 날씨라도 계속 보여준다.
+                const weatherEl = document.getElementById('weather-widget');
+                const cached = loadInfoCache('weather');
+                if (weatherEl && cached) weatherEl.innerHTML = cached.data + infoOfflineBadgeHtml(cached.updatedAt);
             }
         }
         fetchWeather();
@@ -5200,7 +5266,9 @@
 
         async function fetchMealsForDate(dateObj) {
             const dateStr = `${dateObj.getFullYear()}${String(dateObj.getMonth()+1).padStart(2,'0')}${String(dateObj.getDate()).padStart(2,'0')}`;
+            const cacheKey = 'meal_' + dateStr;
             let mealsHtml = { '조식': '<span>이 날짜에는 등록된 급식 정보가 없습니다.</span>', '중식': '<span>이 날짜에는 등록된 급식 정보가 없습니다.</span>', '석식': '<span>이 날짜에는 등록된 급식 정보가 없습니다.</span>' };
+            let fromCacheAt = null;
             try {
                 const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=N10&SD_SCHUL_CODE=8140107&MLSV_YMD=${dateStr}`);
                 const data = await res.json();
@@ -5210,7 +5278,14 @@
                         mealsHtml[m.MMEAL_SC_NM] = menuList.map(i => `<span class="meal-menu-item">• ${i}</span>`).join('');
                     });
                 }
-            } catch (e) {}
+                // 이 날짜(dateStr)의 급식 정보를 저장해둔다 - 외부 API라 브라우저 자체 오프라인 캐시가 없다.
+                saveInfoCache(cacheKey, mealsHtml);
+            } catch (e) {
+                // 요청이 실패했으면(오프라인 등) 이 날짜에 저장해둔 마지막 급식 정보로 대신한다.
+                const cached = loadInfoCache(cacheKey);
+                if (cached) { mealsHtml = cached.data; fromCacheAt = cached.updatedAt; }
+            }
+            Object.defineProperty(mealsHtml, '__fromCacheAt', { value: fromCacheAt, enumerable: false });
             return mealsHtml;
         }
 
@@ -5224,6 +5299,7 @@
                 const map = ['조식', '중식', '석식'];
                 if(document.getElementById(`meal-${meal}`)) document.getElementById(`meal-${meal}`).innerHTML = mealsHtml[map[idx]];
             });
+            if (mealsHtml.__fromCacheAt && label) label.innerHTML += infoOfflineBadgeHtml(mealsHtml.__fromCacheAt);
         }
 
         async function updateHomeMealWidget() {
@@ -5234,7 +5310,10 @@
             const homeMealTitle = document.getElementById('home-meal-title'); const homeMealSummary = document.getElementById('home-lunch-summary');
             const mealColors = { '조식': '#2563eb', '중식': '#d97706', '석식': '#16a34a' };
             if (homeMealTitle) homeMealTitle.innerHTML = `오늘의 급식 🍱 <span style="color: ${mealColors[currentMealType]}; font-size:15px;">(${currentMealType})</span>`;
-            if (homeMealSummary) homeMealSummary.innerHTML = mealsHtml[currentMealType];
+            if (homeMealSummary) {
+                homeMealSummary.innerHTML = mealsHtml[currentMealType];
+                if (mealsHtml.__fromCacheAt) homeMealSummary.innerHTML += infoOfflineBadgeHtml(mealsHtml.__fromCacheAt);
+            }
         }
 
         async function fetchMeals() {
@@ -8268,8 +8347,13 @@
         }
 
         function listenToSharedSchedule() {
+            // RTDB는 오프라인 캐시가 없어서, 리스너가 값을 받기 전까지는 마지막으로 저장해둔 반 공용
+            // 일정을 먼저 보여준다(반 전체가 함께 보는 정보라 uid와 무관하게 하나의 키로 캐싱한다).
+            const cached = loadInfoCache('shared_schedule');
+            if (cached) { sharedScheduleData = cached.data; rebuildScheduleCache(); }
             onValue(ref(db, 'dashboard/shared_schedule'), (snap) => {
                 sharedScheduleData = snap.val() || {};
+                saveInfoCache('shared_schedule', sharedScheduleData);
                 rebuildScheduleCache();
             });
         }
@@ -8278,8 +8362,14 @@
         // users/{uid} 아래에 저장한다 (users/$uid의 .read/.write가 auth.uid === $uid로 이미 제한돼 있음).
         function listenToPersonalSchedule() {
             if (!currentUser) { personalScheduleData = {}; rebuildScheduleCache(); return; }
+            // 같은 브라우저를 여러 명이 쓸 수 있으므로(반 공용 기기 등), uid별로 캐시 키를 분리해서
+            // 다른 사람의 개인 일정이 잘못 보이는 일이 없게 한다.
+            const cacheKey = 'personal_schedule_' + currentUser.uid;
+            const cached = loadInfoCache(cacheKey);
+            if (cached) { personalScheduleData = cached.data; rebuildScheduleCache(); }
             onValue(ref(db, `users/${currentUser.uid}/personal_schedule`), (snap) => {
                 personalScheduleData = snap.val() || {};
+                saveInfoCache(cacheKey, personalScheduleData);
                 rebuildScheduleCache();
             });
         }
@@ -12908,8 +12998,12 @@
         const seatStructure = [[1,5,9,14,19,23],[2,6,10,15,20,24],[3,7,11,16,21,25],[4,8,12,17,22,26],[0,0,13,18,0,0]];
         let seatingDataCache = {};
         function listenToSeating() {
+            // RTDB는 오프라인 캐시가 없어서, 리스너가 값을 받기 전까지는 마지막으로 저장해둔 자리배치를 먼저 보여준다.
+            const cached = loadInfoCache('seating');
+            if (cached) { seatingDataCache = cached.data; renderSeatingGrid(); }
             onValue(ref(db, 'dashboard/seating'), (snap) => {
                 seatingDataCache = snap.val() || {};
+                saveInfoCache('seating', seatingDataCache);
                 renderSeatingGrid();
             });
         }
