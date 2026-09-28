@@ -2218,12 +2218,10 @@
                             <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'shared')">+ 바로가기 추가</button>
                             <button id="btn-add-shortcut-personal" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'personal')">👤 내 바로가기 추가</button>
                         </div>
-                        <div id="shortcuts-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;"></div>
-                        <style>
-                            @media (max-width: 640px){
-                                #shortcuts-grid { grid-template-columns: repeat(2, 1fr) !important; }
-                            }
-                        </style>
+                        <!-- auto-fit + minmax: 뷰포트 폭이 아니라 이 위젯 자체가 실제로 차지한 너비를 기준으로
+                             알아서 줄 수를 조절한다(위젯을 손잡이로 좁게 늘려도, 사이드바 상태가 바뀌어도
+                             그때그때 맞게 재배치됨) - 그래서 고정 컬럼 수 + 미디어쿼리 방식보다 훨씬 안전하다. -->
+                        <div id="shortcuts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;"></div>
                     </div>
                 </div>
                 </div>
