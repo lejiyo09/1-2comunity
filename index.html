@@ -2688,6 +2688,24 @@
                 </div>
             </div>
 
+            <!-- 재생 화면 트랙 사이 "+" 버튼 전용: 지금 열려 있는 플레이리스트의 정확히 그 위치에 "내 음악"에서 곡을 골라 끼워 넣는다. -->
+            <div id="insert-track-modal" class="modal-overlay" style="display:none;">
+                <div class="modal-card" style="max-width: 440px;">
+                    <span class="close-btn" onclick="closeInsertTrackModal()">&times;</span>
+                    <div class="card-title" style="margin-bottom: 10px;">내 음악에서 추가</div>
+                    <input type="text" id="insert-track-search" class="auth-input" placeholder="🔍 내 음악 검색" style="margin-bottom: 8px; padding: 9px 14px; font-size:13px;" oninput="renderInsertTrackList()">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--text-muted); margin-bottom:6px; cursor:pointer;">
+                        <input type="checkbox" id="insert-track-select-all" onchange="toggleSelectAllInsertTrack(this.checked)"> 전체 선택
+                    </label>
+                    <div id="insert-track-list" style="max-height: 260px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 6px;"></div>
+                    <div class="archive-cloud-note">체크한 곡이 이 위치에 순서대로 추가돼요.</div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                        <button class="btn-sub" onclick="closeInsertTrackModal()">취소</button>
+                        <button class="auth-btn" style="width:auto; margin-top:0; padding:10px 20px;" onclick="confirmInsertFromLibrary()">추가하기</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- 🎵 내 음악에 MP3 추가 (파일명 자동 반영이 아니라 제목/가수를 직접 입력) -->
             <div id="mymusic-add-modal" class="modal-overlay" style="display:none;">
                 <div class="modal-card" style="max-width: 420px;">
@@ -11860,6 +11878,66 @@
             }
         };
 
+        // 재생 화면의 트랙 사이 "+" 버튼 전용 - 새 파일을 올리는 게 아니라 "내 음악"에서 곡을 골라
+        // 그 정확한 위치(insertIndex)에 끼워 넣는다. add-from-library-modal과 달리 대상 플레이리스트를
+        // 고를 필요가 없다(지금 열려 있는 플레이리스트가 곧 대상이다).
+        let insertTrackModalIndex = null;
+        let insertFromLibraryTracks = [];
+        window.openInsertFromLibraryModal = async function(insertIndex) {
+            insertTrackModalIndex = insertIndex;
+            const listEl = document.getElementById('insert-track-list');
+            const searchInput = document.getElementById('insert-track-search');
+            if (searchInput) searchInput.value = '';
+            listEl.innerHTML = '불러오는 중...';
+            document.getElementById('insert-track-modal').style.display = 'flex';
+            try {
+                insertFromLibraryTracks = await musicDbGetAllTracks();
+                renderInsertTrackList();
+            } catch (e) {
+                console.error('내 음악 목록 로딩 오류:', e);
+                listEl.innerHTML = '<div style="padding:10px; color:var(--text-muted); font-size:13px;">내 음악을 불러오지 못했습니다.</div>';
+            }
+        };
+        window.closeInsertTrackModal = function() {
+            document.getElementById('insert-track-modal').style.display = 'none';
+            insertTrackModalIndex = null;
+        };
+        window.renderInsertTrackList = function() {
+            const listEl = document.getElementById('insert-track-list');
+            const selectAllEl = document.getElementById('insert-track-select-all');
+            if (selectAllEl) selectAllEl.checked = false;
+            const q = (document.getElementById('insert-track-search')?.value || '').trim().toLowerCase();
+            let tracks = insertFromLibraryTracks;
+            if (q) tracks = tracks.filter(t => (t.name || '').toLowerCase().includes(q));
+            if (tracks.length === 0) {
+                listEl.innerHTML = `<div style="padding:10px; color:var(--text-muted); font-size:13px;">${insertFromLibraryTracks.length === 0 ? '내 음악이 없습니다.' : '검색 결과가 없습니다.'}</div>`;
+                return;
+            }
+            listEl.innerHTML = tracks.map(t => `
+                <label style="display:flex; align-items:center; gap:8px; padding:7px 6px; font-size:13.5px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                    <input type="checkbox" value="${t.id}" class="insert-track-check">
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeNoticeText(t.name || '제목 없음')}</span>
+                </label>
+            `).join('');
+        };
+        // 지금 화면에 보이는(검색으로 필터된) 곡들만 대상으로 전체 선택/해제한다.
+        window.toggleSelectAllInsertTrack = function(checked) {
+            document.querySelectorAll('.insert-track-check').forEach(cb => { cb.checked = checked; });
+        };
+        window.confirmInsertFromLibrary = async function() {
+            const checked = Array.from(document.querySelectorAll('.insert-track-check:checked')).map(el => parseInt(el.value, 10));
+            if (checked.length === 0) return alert('추가할 곡을 선택해주세요.');
+            if (!window.MixTapeApp || !window.MixTapeApp.insertLibraryTracksAtIndex) return;
+            try {
+                const tracks = checked.map(id => insertFromLibraryTracks.find(t => t.id === id)).filter(Boolean);
+                await window.MixTapeApp.insertLibraryTracksAtIndex(tracks, insertTrackModalIndex);
+                window.closeInsertTrackModal();
+            } catch (e) {
+                console.error('트랙 삽입 오류:', e);
+                alert('추가에 실패했습니다.\n잠시 후 다시 시도해주세요.');
+            }
+        };
+
         function musicTrackIcon() { return '🎵'; }
 
         function renderMusicTrackRow(tracks, likedIds, downloadedIds) {
@@ -14409,7 +14487,6 @@
   let repeatMode = 0; // 0 off, 1 repeat-all, 2 repeat-one
   let dragSrcIndex = null;
   let dbReady = false;
-  let pendingInsertIndex = null; // 트랙 사이 "+" 버튼으로 곡을 추가할 때, 그 위치를 fileInput의 change 핸들러까지 전달하기 위한 값
 
   const audio = new Audio();
   audio.preload = "metadata";
@@ -15205,29 +15282,28 @@
     statusText.textContent = `${playlist.length}곡 준비됨`;
   }
 
-  // 트랙과 트랙 사이의 "+" 버튼으로 추가할 때: addFiles와 달리 끝이 아니라 지정된 위치(insertIndex)에 끼워 넣는다.
-  // dbAddTrack은 항상 trackIds 끝에 참조를 붙이므로, 실제 삽입 위치를 DB에도 반영하려면 매번 persistOrder()로
-  // 지금 메모리상 playlist 순서를 다시 저장해줘야 한다.
-  async function addFilesAtIndex(fileList, insertIndex){
-    const files = Array.from(fileList).filter(f => f.type.startsWith("audio/") || /\.(mp3|m4a|wav|ogg|flac|aac)$/i.test(f.name));
-    if(files.length === 0) return;
+  // 트랙과 트랙 사이의 "+" 버튼으로 추가할 때는 새 파일을 올리는 게 아니라 "내 음악"(이미 tracks
+  // 스토어에 있는 곡)에서 골라 지정된 위치(insertIndex)에 참조로 끼워 넣는다. dbAddTrackRefToPlaylist는
+  // 항상 trackIds 끝에 참조를 붙이므로, 실제 삽입 위치를 DB에도 반영하려면 매번 persistOrder()로 지금
+  // 메모리상 playlist 순서를 다시 저장해줘야 한다. tracks는 {id, name, blob, ...} 레코드 배열(musicDbGetAllTracks
+  // 결과)이고, 이미 이 플레이리스트에 있는 곡은 조용히 건너뛴다(중복 추가 방지).
+  async function insertLibraryTracksAtIndex(tracks, insertIndex){
+    if(!tracks || tracks.length === 0) return;
     let idx = Math.max(0, Math.min(insertIndex, playlist.length));
-    for(const file of files){
-      const name = stripExt(file.name);
-      const url = URL.createObjectURL(file);
-      const entry = { id: null, blob: file, url, name, duration: null, order: idx };
+    for(const rec of tracks){
+      if(playlist.some(t => t.id === rec.id)) continue;
+      const url = URL.createObjectURL(rec.blob);
+      const entry = { id: rec.id, blob: rec.blob, url, name: rec.name, duration: null, order: idx, artwork: rec.artwork || null };
       playlist.splice(idx, 0, entry);
       if(currentIndex >= idx) currentIndex++; // 삽입 지점보다 뒤(또는 그 자리)에 있던 재생 중인 곡의 인덱스가 밀린다
       renderList();
       probeDuration(entry);
       if(currentPlaylistId != null){
         try{
-          const id = await dbAddTrack({ playlistId: currentPlaylistId, name, blob: file, order: idx });
-          entry.id = id;
-          dbReady = true;
+          await dbAddTrackRefToPlaylist(currentPlaylistId, rec.id);
           await persistOrder();
         }catch(err){
-          console.warn("파일을 저장하지 못했어요 (이 세션에서만 재생됩니다):", err);
+          console.warn("곡을 추가하지 못했어요:", err);
         }
       }
       idx++;
@@ -15238,8 +15314,7 @@
 
   function triggerInsertAt(insertIndex){
     if(selectModeActive) return;
-    pendingInsertIndex = insertIndex;
-    fileInput.click();
+    if(window.openInsertFromLibraryModal) window.openInsertFromLibraryModal(insertIndex);
   }
 
   function renderTrackPreview(){
@@ -15386,7 +15461,7 @@
   }
 
   // 트랙과 트랙 사이(또는 맨 위)에 마우스를 잠시 올려두면 벌어지면서 "+" 버튼이 나타나는 얇은 삽입 지점.
-  // 클릭하면 정확히 그 위치(insertIndex)에 곡을 끼워 넣는다 (addFilesAtIndex 참고).
+  // 클릭하면 "내 음악"에서 골라 정확히 그 위치(insertIndex)에 끼워 넣는다 (insertLibraryTracksAtIndex 참고).
   function createGapLi(insertIndex){
     const gap = document.createElement("li");
     gap.className = "track-gap";
@@ -15538,13 +15613,7 @@
 
   // ---- events ----
   fileInput.addEventListener("change", (e) => {
-    if(pendingInsertIndex != null){
-      const idx = pendingInsertIndex;
-      pendingInsertIndex = null;
-      addFilesAtIndex(e.target.files, idx);
-    } else {
-      addFiles(e.target.files);
-    }
+    addFiles(e.target.files);
     fileInput.value = "";
   });
 
@@ -15751,6 +15820,9 @@
     getTracksForPlaylist: function(id){ return dbGetTracksByPlaylist(id); },
     reorderPlaylistTracks: function(id, orderedTrackIds){ return dbUpdateTrackOrderForPlaylist(id, orderedTrackIds); },
     removeTrackFromPlaylist: function(id, trackId){ return dbRemoveTrackRefFromPlaylist(id, trackId); },
+    // 지금 열려 있는(재생 화면의) 플레이리스트의 트랙 사이 "+" 버튼 전용 - "내 음악" 트랙 레코드들을
+    // 지정된 위치에 참조로 끼워 넣는다.
+    insertLibraryTracksAtIndex: function(tracks, insertIndex){ return insertLibraryTracksAtIndex(tracks, insertIndex); },
     // 데이터 가져오기(백업 파일 복원) 전용: 프롬프트 없이 이름을 지정해서 바로 플레이리스트를 만든다.
     createPlaylistNamed: function(name){ return dbAddPlaylist(name || '가져온 플레이리스트'); },
     // 1-2 Music: 선택 모드 제어 - 별도 화면을 새로 만들지 않고 기존 트랙리스트에 체크박스만 켠다.
