@@ -258,6 +258,16 @@
         .music-track-actions { display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--text-muted); }
         .music-track-actions span { cursor: pointer; }
         .music-track-actions span.liked { color: #ef4444; }
+        /* 내 음악(mymusic-card)만: 평소에는 재생/플레이리스트/수정/삭제 버튼 줄을 감춰서 한 줄로
+           깔끔하게 보이다가, 카드에 마우스를 올리면(또는 키보드 포커스가 들어오면) 나타난다.
+           공유 음악 등 이 클래스를 안 쓰는 다른 카드에는 영향 없다. */
+        .mymusic-card .music-track-actions {
+            max-height: 0; opacity: 0; overflow: hidden; margin-top: 0; pointer-events: none;
+            transition: max-height 0.15s ease, opacity 0.15s ease, margin-top 0.15s ease;
+        }
+        .mymusic-card:hover .music-track-actions, .mymusic-card:focus-within .music-track-actions {
+            max-height: 60px; opacity: 1; margin-top: 2px; pointer-events: auto;
+        }
         /* 내 음악: 한 줄에 3곡/4곡씩 보기 (기본은 한 줄에 1곡, 세로로 쌓는 목록형) */
         /* minmax(0, 1fr): 그냥 1fr만 쓰면 grid 칸이 안의 내용(재생/수정/삭제 버튼 줄 등)의 최소 너비보다
            작아지지 못해서 칸 전체가 넘치고 가로 스크롤이 생긴다 - 0을 최소값으로 줘서 실제로 1/n로 줄어들게 한다. */
@@ -11545,8 +11555,11 @@
             const checkboxHtml = selectable
                 ? `<input type="checkbox" class="mymusic-select-checkbox" data-track-id="${t.id}" ${myMusicSelectedIds.has(t.id) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleMyMusicTrackSelected(${t.id}, this.checked)" style="width:18px; height:18px; flex-shrink:0; cursor:pointer;">`
                 : '';
+            // 선택(다중 삭제) 모드에서는 카드 아무 곳이나 눌렀을 때 실수로 재생이 시작되면 안 되므로
+            // (체크박스 토글하려던 걸 방해함), 그때만 카드 전체 클릭 재생을 꺼둔다.
+            const cardClickAttr = selectable ? '' : ` onclick="playMyMusicTrack(${t.id}, '${safeName}')"`;
             return `
-                <div class="music-track-card" style="margin-bottom:8px;">
+                <div class="music-track-card mymusic-card"${cardClickAttr} style="margin-bottom:8px; ${selectable ? '' : 'cursor:pointer;'}">
                     <div class="music-track-top">
                         ${checkboxHtml}
                         <div class="music-track-art">${artHtml}</div>
@@ -11556,10 +11569,10 @@
                         </div>
                     </div>
                     <div class="music-track-actions">
-                        <span onclick="playMyMusicTrack(${t.id}, '${safeName}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>
-                        <span onclick="openAddSingleTrackModal(${t.id})">＋ 플레이리스트</span>
-                        <span onclick="openMyMusicRenameModal(${t.id}, '${safeName}', '${safeArtist}')">✏️ 수정</span>
-                        <span onclick="deleteMyMusicTrack(${t.id})" style="color:#ef4444;">삭제</span>
+                        <span onclick="event.stopPropagation(); playMyMusicTrack(${t.id}, '${safeName}')" style="color:var(--primary); font-weight:700;">▶ 재생</span>
+                        <span onclick="event.stopPropagation(); openAddSingleTrackModal(${t.id})">＋ 플레이리스트</span>
+                        <span onclick="event.stopPropagation(); openMyMusicRenameModal(${t.id}, '${safeName}', '${safeArtist}')">✏️ 수정</span>
+                        <span onclick="event.stopPropagation(); deleteMyMusicTrack(${t.id})" style="color:#ef4444;">삭제</span>
                     </div>
                 </div>
             `;
