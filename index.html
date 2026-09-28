@@ -525,7 +525,6 @@
         .home-section-arrows { display: none; gap: 4px; flex-shrink: 0; }
         #home-sections-container.editing-sections .home-section-arrows { display: flex; }
         .home-section-arrows button { padding: 2px 8px; font-size: 11px; }
-        .home-section-add-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
         #tab-home .home-section .card[data-widget-id] { position: relative; }
         /* 위젯을 손으로 잡아서 옮기는 드래그 앤 드롭. 편집 모드에서만 카드 전체가 draggable이 되고,
            왼쪽 위 "⠿" 손잡이는 드래그 가능하다는 시각적 힌트일 뿐 클릭 동작은 없다. */
@@ -2173,6 +2172,8 @@
                 <div id="home-layout-edit-toolbar">
                     <button id="btn-edit-home-layout" class="btn-sub" onclick="toggleHomeSectionEditMode()">🧩 위젯 순서 편집</button>
                     <button id="btn-add-home-category" class="btn-sub" style="display:none;" onclick="addHomeCategory()">+ 새 카테고리</button>
+                    <button id="btn-add-home-memo" class="btn-sub" style="display:none;" onclick="addPersonalWidgetToFirstSection('memo')">+ 📝 메모</button>
+                    <button id="btn-add-home-photo" class="btn-sub" style="display:none;" onclick="addPersonalWidgetToFirstSection('photo')">+ 🖼 사진</button>
                     <button id="btn-reset-home-layout" class="btn-sub" style="display:none;" onclick="resetHomeLayout()">↺ 초기화</button>
                 </div>
                 <div id="home-hidden-widgets-panel" style="display:none; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;"></div>
@@ -4406,17 +4407,14 @@
         function loadHomeLayout() {
             try {
                 const saved = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
-                if (Array.isArray(saved) && saved.every(s => s && typeof s.id === 'string' && typeof s.label === 'string' && Array.isArray(s.widgets))) {
-                    // 예전엔 "저장된 구성이 지금 기본 구성과 정확히 같아야만" 신뢰했다(기본 위젯이 추가/삭제되면
-                    // 사용자의 커스텀 배치를 통째로 버리고 초기화했다). 이제는 사용자가 직접 만든 카테고리나
-                    // 메모/사진 위젯을 계속 보존해야 하므로, "기본 섹션/위젯이 빠짐없이 들어있기만 하면"
-                    // (그 외에 더 있는 건 상관없이) 신뢰하도록 완화했다.
-                    const savedSectionIds = saved.map(s => s.id);
+                if (Array.isArray(saved) && saved.length > 0 && saved.every(s => s && typeof s.id === 'string' && typeof s.label === 'string' && Array.isArray(s.widgets))) {
+                    // 카테고리(섹션)는 기본이든 사용자가 만든 것이든 자유롭게 삭제할 수 있다 - 그래서 더 이상
+                    // "기본 섹션이 전부 남아있어야" 신뢰하지 않는다. 다만 기본 위젯(앱 기능 자체)은 삭제되지
+                    // 않고 다른 카테고리로 옮겨지기만 하므로, 위젯만큼은 빠짐없이 어딘가에 있어야 신뢰한다.
                     const savedWidgetIds = saved.flatMap(s => s.widgets);
-                    const hasAllDefaultSections = DEFAULT_HOME_SECTION_IDS.every(id => savedSectionIds.includes(id));
                     const hasAllDefaultWidgets = ALL_HOME_WIDGET_IDS.every(id => savedWidgetIds.includes(id));
                     const noDuplicateWidgets = new Set(savedWidgetIds).size === savedWidgetIds.length;
-                    if (hasAllDefaultSections && hasAllDefaultWidgets && noDuplicateWidgets) {
+                    if (hasAllDefaultWidgets && noDuplicateWidgets) {
                         return saved.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
                     }
                 }
@@ -4486,24 +4484,14 @@
                 if (!sectionEl) return;
                 const arrows = sectionEl.querySelector('.home-section-arrows');
                 if (arrows) {
-                    const canDeleteSection = !DEFAULT_HOME_SECTION_IDS.includes(section.id);
+                    // 카테고리는 기본이든 사용자가 만든 것이든 자유롭게 삭제할 수 있다(deleteHomeCategory가
+                    // 마지막 하나 남은 카테고리 삭제만 막고, 기본 위젯은 삭제 대신 다른 카테고리로 옮긴다).
                     arrows.innerHTML = `
                         ${sIdx > 0 ? `<button onclick="moveHomeSection('${section.id}', -1)" class="btn-sub">▲</button>` : ''}
                         ${sIdx < layout.length - 1 ? `<button onclick="moveHomeSection('${section.id}', 1)" class="btn-sub">▼</button>` : ''}
-                        ${canDeleteSection ? `<button onclick="deleteHomeCategory('${section.id}')" class="btn-sub" title="카테고리 삭제">🗑</button>` : ''}
+                        <button onclick="deleteHomeCategory('${section.id}')" class="btn-sub" title="카테고리 삭제">🗑</button>
                     `;
                 }
-                // 이 섹션에 "+ 메모 추가"/"+ 사진 추가"를 붙일 수 있는 자리(위젯을 담는 grid 바로 뒤)
-                let addRow = sectionEl.querySelector(':scope > .home-section-add-row');
-                if (!addRow) {
-                    addRow = document.createElement('div');
-                    addRow.className = 'home-section-add-row';
-                    sectionEl.appendChild(addRow);
-                }
-                addRow.innerHTML = `
-                    <button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="addPersonalWidget('${section.id}', 'memo')">+ 📝 메모 추가</button>
-                    <button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="addPersonalWidget('${section.id}', 'photo')">+ 🖼 사진 추가</button>
-                `;
                 section.widgets.forEach(widgetId => {
                     const widgetEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
                     if (!widgetEl) return;
@@ -4538,7 +4526,6 @@
         function removeHomeWidgetEditBars() {
             document.querySelectorAll('#home-sections-container .widget-edit-bar').forEach(el => el.remove());
             document.querySelectorAll('#home-sections-container .widget-resize-handle').forEach(el => el.remove());
-            document.querySelectorAll('#home-sections-container .home-section-add-row').forEach(el => el.remove());
             document.querySelectorAll('#home-sections-container .home-section-arrows').forEach(el => { el.innerHTML = ''; });
             document.querySelectorAll('#home-sections-container .card[data-widget-id]').forEach(el => { el.draggable = false; });
             renderHomeHiddenWidgetPicker();
@@ -4638,17 +4625,22 @@
             // 먼저 정리한다 - 그냥 saveHomeLayout(기본값)만 하면 그 커스텀 요소들이 화면에 그대로 남아있게 된다.
             const currentLayout = loadHomeLayout();
             currentLayout.forEach(section => {
+                const sectionEl = document.querySelector(`.home-section[data-section-id="${section.id}"]`);
+                const isCustomSection = !DEFAULT_HOME_SECTION_IDS.includes(section.id);
                 section.widgets.forEach(widgetId => {
-                    if (ALL_HOME_WIDGET_IDS.includes(widgetId)) return;
                     const cardEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+                    if (ALL_HOME_WIDGET_IDS.includes(widgetId)) {
+                        // 기본 위젯(앱 기능)은 삭제하지 않는다 - 곧 지워질 커스텀 섹션의 자식으로 남아있으면
+                        // 섹션째로 지워질 때 같이 사라지므로, 먼저 컨테이너 밖으로 안전하게 빼둔다.
+                        // applyHomeLayout()이 잠시 후 이 카드를 기본 섹션으로 다시 옮겨 붙인다.
+                        if (isCustomSection && cardEl) document.body.appendChild(cardEl);
+                        return;
+                    }
                     if (cardEl) cardEl.remove();
                     try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
                     deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
                 });
-                if (!DEFAULT_HOME_SECTION_IDS.includes(section.id)) {
-                    const sectionEl = document.querySelector(`.home-section[data-section-id="${section.id}"]`);
-                    if (sectionEl) sectionEl.remove();
-                }
+                if (isCustomSection && sectionEl) sectionEl.remove();
             });
             saveHomeLayout(DEFAULT_HOME_LAYOUT.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() })));
             try { localStorage.removeItem(HOME_WIDGET_SIZE_KEY); localStorage.removeItem(HOME_WIDGET_HIDDEN_KEY); } catch (e) {}
@@ -4756,6 +4748,10 @@
             if (resetBtn) resetBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
             const addCategoryBtn = document.getElementById('btn-add-home-category');
             if (addCategoryBtn) addCategoryBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
+            const addMemoBtn = document.getElementById('btn-add-home-memo');
+            if (addMemoBtn) addMemoBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
+            const addPhotoBtn = document.getElementById('btn-add-home-photo');
+            if (addPhotoBtn) addPhotoBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
             updateShortcutComposerVisibility(); // 바로가기 추가 버튼들도 위젯 편집 모드일 때만 보이게
             if (homeSectionEditMode) renderHomeEditControls();
             else removeHomeWidgetEditBars();
@@ -4773,31 +4769,42 @@
             if (homeSectionEditMode) renderHomeEditControls();
         };
 
-        // 기본 카테고리(DEFAULT_HOME_SECTION_IDS)는 앱 기능과 묶여 있어 삭제할 수 없다 - 위젯을 숨기는 것만 가능하다.
-        // 사용자가 만든 카테고리는 자유롭게 삭제할 수 있고, 안에 위젯이 남아있으면 함께 삭제할지 확인한다.
+        // 카테고리는 기본이든 사용자가 만든 것이든 자유롭게 삭제할 수 있다. 다만 위젯 자체(앱 기능)까지
+        // 사라지면 안 되므로: 메모/사진 같은 개인 위젯은 저장된 내용과 함께 정말로 삭제되지만, 기본 위젯은
+        // 삭제되지 않고 남은 카테고리 중 첫 번째로 옮겨진다. 마지막 하나 남은 카테고리는 삭제할 수 없다
+        // (위젯을 놓아둘 곳이 없어지기 때문).
         window.deleteHomeCategory = function(sectionId) {
-            if (DEFAULT_HOME_SECTION_IDS.includes(sectionId)) {
-                alert('기본 카테고리는 삭제할 수 없어요. 안에 있는 위젯을 숨기는 것만 가능해요.');
-                return;
-            }
             const layout = loadHomeLayout();
             const section = layout.find(s => s.id === sectionId);
             if (!section) return;
+            if (layout.length <= 1) {
+                alert('마지막 남은 카테고리는 삭제할 수 없어요.');
+                return;
+            }
             const widgetCount = section.widgets.length;
             const confirmMsg = widgetCount > 0
-                ? `"${section.label}" 카테고리를 삭제할까요? 안에 있는 위젯 ${widgetCount}개도 함께 삭제되고, 저장된 내용도 사라져요.`
+                ? `"${section.label}" 카테고리를 삭제할까요? 메모/사진 위젯은 함께 삭제되고, 그 외 위젯은 다른 카테고리로 옮겨져요.`
                 : `"${section.label}" 카테고리를 삭제할까요?`;
             if (!confirm(confirmMsg)) return;
-            section.widgets.slice().forEach(widgetId => {
+
+            const remainingLayout = layout.filter(s => s.id !== sectionId);
+            const fallbackSection = remainingLayout[0];
+            section.widgets.forEach(widgetId => {
                 const cardEl = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
-                if (cardEl) cardEl.remove();
-                try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
-                deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
+                if (ALL_HOME_WIDGET_IDS.includes(widgetId)) {
+                    // 이 섹션의 DOM이 곧 통째로 지워지므로, 먼저 컨테이너 밖으로 빼둬야 카드가 같이 사라지지 않는다.
+                    if (cardEl) document.body.appendChild(cardEl);
+                    fallbackSection.widgets.push(widgetId);
+                } else {
+                    if (cardEl) cardEl.remove();
+                    try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
+                    deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
+                }
             });
-            const newLayout = layout.filter(s => s.id !== sectionId);
-            saveHomeLayout(newLayout);
+            saveHomeLayout(remainingLayout);
             const sectionEl = document.querySelector(`.home-section[data-section-id="${sectionId}"]`);
             if (sectionEl) sectionEl.remove();
+            applyHomeLayout(); // 옮겨진 기본 위젯들을 fallback 카테고리의 grid로 실제로 옮겨 붙인다
             if (homeSectionEditMode) renderHomeEditControls();
         };
 
@@ -5931,6 +5938,13 @@
             applyHomeWidgetSizes();
             applyHomeWidgetVisibility();
             if (homeSectionEditMode) renderHomeEditControls();
+        };
+        // 편집 툴바 맨 위의 "+ 메모"/"+ 사진" 버튼 전용 - 카테고리마다 따로 버튼을 두지 않고 여기 하나만
+        // 있으면 충분하다(일단 첫 번째 카테고리에 넣고, 원하면 드래그로 다른 카테고리에 옮기면 된다).
+        window.addPersonalWidgetToFirstSection = function(type) {
+            const layout = loadHomeLayout();
+            if (layout.length === 0) return;
+            window.addPersonalWidget(layout[0].id, type);
         };
         window.deletePersonalWidget = function(widgetId) {
             if (widgetId === 'w-memo' || widgetId === 'w-photo') return; // 기본 위젯은 숨기기만 가능, 삭제는 불가
