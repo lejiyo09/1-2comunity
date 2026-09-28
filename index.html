@@ -258,6 +258,16 @@
         .music-track-actions { display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--text-muted); }
         .music-track-actions span { cursor: pointer; }
         .music-track-actions span.liked { color: #ef4444; }
+        /* 내 음악: 한 줄에 3곡/4곡씩 보기 (기본은 한 줄에 1곡, 세로로 쌓는 목록형) */
+        #mymusic-list.mymusic-grid { display: grid; gap: 10px; }
+        #mymusic-list.mymusic-grid.mymusic-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        @media (max-width: 900px) {
+            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 560px) {
+            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: 1fr; }
+        }
 
         .notice-hub-tab { padding: 7px 16px; font-size: 13.5px; font-weight: 700; color: var(--text-muted); border: none; background: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s; }
         .notice-hub-tab.active { background: var(--card-bg); color: var(--primary); }
@@ -3474,6 +3484,11 @@
                 <option value="latest">최신순</option>
                 <option value="title">제목순</option>
             </select>
+            <select id="mymusic-columns" class="auth-select" style="margin-bottom:0; padding:8px 10px; font-size:13px; width:auto;" onchange="setMyMusicColumns(this.value)">
+                <option value="1">한 줄에 1곡</option>
+                <option value="3">한 줄에 3곡</option>
+                <option value="4">한 줄에 4곡</option>
+            </select>
         </div>
         <div id="mymusic-list"><div class="card" style="text-align:center; color:var(--text-muted);">불러오는 중...</div></div>
     </div>
@@ -4528,9 +4543,13 @@
                         bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
                         widgetEl.prepend(bar);
                     }
+                    // 사용자가 직접 추가한 메모/사진 위젯(기본 w-memo/w-photo 제외)은 숨기기뿐 아니라
+                    // 완전히 삭제도 할 수 있어야 하므로, 편집 바에 삭제 버튼을 함께 넣는다.
+                    const canDeleteWidget = (isMemoWidgetId(widgetId) || isPhotoWidgetId(widgetId)) && widgetId !== 'w-memo' && widgetId !== 'w-photo';
                     bar.innerHTML = `
                         <span class="widget-drag-handle" title="드래그해서 옮기기">⠿</span>
                         <button type="button" class="widget-size-btn" onclick="hideHomeWidget('${widgetId}')" title="이 위젯 숨기기">🙈</button>
+                        ${canDeleteWidget ? `<button type="button" class="widget-size-btn" onclick="deletePersonalWidget('${widgetId}')" title="이 위젯 삭제">🗑</button>` : ''}
                     `;
                     // 크기 조절 손잡이는 리렌더할 때마다 다시 만들지 않는다 - 이미 있으면 그대로 두고
                     // (드래그 중 재생성되면 진행 중인 드래그가 끊긴다), 처음 편집 모드로 들어갔을 때만 만든다.
@@ -4868,7 +4887,7 @@
             return `${Math.floor(hours / 24)}일 전`;
         }
         function infoOfflineBadgeHtml(updatedAt) {
-            return `<div class="info-offline-badge">📶 오프라인 · ${formatInfoCacheAge(updatedAt)} 기준 저장된 정보</div>`;
+            return `<div class="info-offline-badge">오프라인 · ${formatInfoCacheAge(updatedAt)} 기준 저장된 정보</div>`;
         }
 
         // 반 공용 일정(수행평가/지필평가/학교행사 등) 중 오늘 이후로 가장 가까운 5개 - 홈 위젯 전용 요약.
@@ -5952,28 +5971,19 @@
             } catch (e) {}
         }
         // widgetId가 가리키는 위젯 카드 안을 채운다 - isMemoWidgetId면 텍스트 메모, isPhotoWidgetId면 사진 위젯.
-        // canDelete면(기본으로 주어진 w-memo/w-photo가 아니면) 삭제 버튼도 함께 붙인다.
+        // 위젯 자체를 삭제하는 버튼은 카드 안이 아니라 편집 모드의 위젯 편집 바(🙈 숨기기 옆 🗑)에 있다.
         function renderPersonalWidgetInner(cardEl, widgetId) {
-            const canDelete = widgetId !== 'w-memo' && widgetId !== 'w-photo';
-            const deleteBtnHtml = canDelete ? `<button type="button" class="btn-sub home-memo-delete" style="font-size:11px; padding:4px 8px;">🗑 삭제</button>` : '';
             if (isMemoWidgetId(widgetId)) {
                 cardEl.innerHTML = `
                     <textarea class="home-memo-text" placeholder="여기에 메모를 남겨보세요 (이 브라우저에만 저장돼요)" style="width:100%; min-height:90px; resize:vertical; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:var(--input-bg, transparent); color:inherit;"></textarea>
-                    <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-                        <span class="home-memo-save-status" style="font-size:11px; color:var(--text-muted); flex:1;"></span>
-                        ${deleteBtnHtml}
-                    </div>
                 `;
                 const textEl = cardEl.querySelector('.home-memo-text');
-                const statusEl = cardEl.querySelector('.home-memo-save-status');
                 try { textEl.value = localStorage.getItem(memoTextKey(widgetId)) || ''; } catch (e) {}
                 let saveTimer = null;
                 textEl.addEventListener('input', () => {
-                    if (statusEl) statusEl.textContent = '저장 중...';
                     clearTimeout(saveTimer);
                     saveTimer = setTimeout(() => {
                         try { localStorage.setItem(memoTextKey(widgetId), textEl.value); } catch (e) {}
-                        if (statusEl) statusEl.textContent = '저장됨';
                     }, 500);
                 });
             } else if (isPhotoWidgetId(widgetId)) {
@@ -5987,8 +5997,6 @@
                             📷 사진 첨부
                             <input type="file" accept="image/*" class="home-memo-photo-input" style="display:none;">
                         </label>
-                        <span style="flex:1;"></span>
-                        ${deleteBtnHtml}
                     </div>
                 `;
                 cardEl.querySelector('.home-memo-photo-input').addEventListener('change', async (event) => {
@@ -6010,11 +6018,7 @@
                     } catch (e) {}
                 });
                 renderHomeMemoPhotoInto(cardEl, widgetId);
-            } else {
-                return;
             }
-            const deleteBtn = cardEl.querySelector('.home-memo-delete');
-            if (deleteBtn) deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); window.deletePersonalWidget(widgetId); });
         }
         // 페이지에 이미 놓여 있는(정적 HTML이든, 새로 추가되어 만들어졌든) 메모/사진 위젯 카드들을 전부 찾아서
         // 아직 초기화 안 된 것만 채운다 - applyHomeLayout()이 카드 뼈대(빈 div)를 만든 다음 호출된다.
@@ -11589,9 +11593,30 @@
         // 렌더링할 때마다 앨범아트용 object URL을 새로 만드므로, 이전 것들을 여기 모아뒀다가
         // 다음 렌더링 직전에 해제한다 (안 그러면 검색/정렬할 때마다 URL이 계속 쌓여서 샌다).
         let myMusicArtworkUrls = [];
+        // 한 줄에 몇 곡씩 보여줄지(1/3/4) - 개인 취향이라 이 브라우저에만 저장한다.
+        const MYMUSIC_COLUMNS_KEY = 'hanilgo_mymusic_columns';
+        function loadMyMusicColumns() {
+            const saved = localStorage.getItem(MYMUSIC_COLUMNS_KEY);
+            return (saved === '3' || saved === '4') ? saved : '1';
+        }
+        window.setMyMusicColumns = function(value) {
+            try { localStorage.setItem(MYMUSIC_COLUMNS_KEY, value); } catch (e) {}
+            applyMyMusicColumnsClass();
+        };
+        function applyMyMusicColumnsClass() {
+            const listEl = document.getElementById('mymusic-list');
+            const select = document.getElementById('mymusic-columns');
+            const cols = loadMyMusicColumns();
+            if (select) select.value = cols;
+            if (!listEl) return;
+            listEl.classList.toggle('mymusic-grid', cols !== '1');
+            listEl.classList.remove('mymusic-cols-3', 'mymusic-cols-4');
+            if (cols !== '1') listEl.classList.add(`mymusic-cols-${cols}`);
+        }
         window.renderMyMusicList = async function() {
             const listEl = document.getElementById('mymusic-list');
             if (!listEl) return;
+            applyMyMusicColumnsClass();
             updateMyMusicSelectModeUI();
             try {
                 const tracks = await musicDbGetAllTracks();
@@ -13551,7 +13576,7 @@
     };
 
     let todayStr = getLocalDateStr(new Date()); let currentDateStr = todayStr;
-    let timerState = { interval: null, isRunning: false, taskId: null, subjectId: null, lastTickTime: null, lastRenderedTimeKey: null };
+    let timerState = { interval: null, isRunning: false, taskId: null, subjectId: null, dateStr: null, lastTickTime: null, lastRenderedTimeKey: null };
     let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), tempStartTaskId = null;
     let isGridEditMode = false; let isTimeMachineUnlocked = false; 
 
@@ -13845,7 +13870,7 @@
     function renderTimetable() {
       const grid = document.getElementById('timetable-grid'); if (!grid) return; 
       const recordGrid = state.records[currentDateStr].grid || {}; grid.innerHTML = '';
-      const now = new Date(); const activeTimeKey = timerState.isRunning && currentDateStr === todayStr ? `${String(now.getHours()).padStart(2, '0')}:${String(Math.floor(now.getMinutes() / 10) * 10).padStart(2, '0')}` : null;
+      const now = new Date(); const activeTimeKey = timerState.isRunning && currentDateStr === timerState.dateStr ? `${String(now.getHours()).padStart(2, '0')}:${String(Math.floor(now.getMinutes() / 10) * 10).padStart(2, '0')}` : null;
       
       for (let i = 0; i < 18; i++) {
         let h = (7 + i) % 24; let row = document.createElement('div'); row.className = 'flex-1 grid grid-cols-[30px_repeat(6,1fr)] w-full min-h-0';
@@ -14051,10 +14076,14 @@
     }
     
     // ✨ 타이머 재시작 시, 컴퓨터가 새로운 조각(Segment)을 팔 준비를 하도록 틱타임 리셋
-    function confirmStartTask() { closeModal('modal-confirm'); const task = state.records[currentDateStr].tasks.find(t => t.id === tempStartTaskId); if(!task) return; timerState.taskId = task.id; timerState.subjectId = task.subjectId; resumeTimer(); if (window.completeDailyMission) window.completeDailyMission('planner', 50, '플래너 공부 시작'); }
+    function confirmStartTask() { closeModal('modal-confirm'); const task = state.records[currentDateStr].tasks.find(t => t.id === tempStartTaskId); if(!task) return; timerState.taskId = task.id; timerState.subjectId = task.subjectId; timerState.dateStr = currentDateStr; resumeTimer(); if (window.completeDailyMission) window.completeDailyMission('planner', 50, '플래너 공부 시작'); }
     function getFocusWidgetData() {
       if (!timerState.taskId) return null;
-      const tasks = (state.records[currentDateStr] && state.records[currentDateStr].tasks) || [];
+      // PiP/인라인 미니 위젯에 표시할 데이터이므로, 지금 열람 중인 날짜(currentDateStr)가 아니라
+      // 타이머가 실제로 돌고 있는 날짜(timerState.dateStr)의 과제 목록에서 찾아야 한다 -
+      // 그래야 이전 기록을 보는 동안에도 PiP에 타이머 정보가 계속 정상적으로 표시된다.
+      const focusDateStr = timerState.dateStr || currentDateStr;
+      const tasks = (state.records[focusDateStr] && state.records[focusDateStr].tasks) || [];
       const task = tasks.find(t => t.id === timerState.taskId);
       if (!task) return null;
       const sub = getSubject(task.subjectId);
@@ -14135,10 +14164,10 @@
     function resumeTimer() { if(timerState.isRunning) return; timerState.isRunning = true; timerState.lastTickTime = Date.now(); timerState.interval = setInterval(timerTick, 1000); renderTasks(); renderTimetable(); updateDashboard(); notifyMiniWidgetFocusGesture(); }
     
     function pauseTimer() { timerState.isRunning = false; if (timerState.interval) clearInterval(timerState.interval); timerState.interval = null; saveData(); renderTasks(); updateDashboard(); renderTimetable(); notifyMiniWidgetFocusGesture(); }
-    function stopTimer() { timerState.isRunning = false; if (timerState.interval) clearInterval(timerState.interval); timerState.interval = null; timerState.taskId = null; timerState.subjectId = null; saveData(); renderTasks(); updateDashboard(); renderTimetable(); notifyMiniWidgetFocusGesture(); }
+    function stopTimer() { timerState.isRunning = false; if (timerState.interval) clearInterval(timerState.interval); timerState.interval = null; timerState.taskId = null; timerState.subjectId = null; timerState.dateStr = null; saveData(); renderTasks(); updateDashboard(); renderTimetable(); notifyMiniWidgetFocusGesture(); }
 
     function updateLiveTimerUI(timeKey, task) {
-       const activeTimeKey = timerState.isRunning && currentDateStr === todayStr ? timeKey : null;
+       const activeTimeKey = timerState.isRunning && currentDateStr === timerState.dateStr ? timeKey : null;
        const tasks = state.records[currentDateStr].tasks || [];
        const targetSec = tasks.reduce((sum, t) => sum + ((t.targetMin || 0) * 60), 0);
        const totalSec = Object.values(state.records[currentDateStr].grid || {}).reduce((sum, cell) => sum + (cell.seconds || 0), 0);
@@ -14178,11 +14207,15 @@
       
       let t = timerState.lastTickTime;
       timerState.lastTickTime = currentMs;
-      
-      const task = state.records[currentDateStr].tasks.find(tk => tk.id === timerState.taskId);
+
+      // 타이머가 실제로 기록을 쌓아야 할 날짜는 항상 timerState.dateStr(시작할 때 고정된 날짜)이다.
+      // currentDateStr은 "지금 화면에 보이는 날짜"일 뿐이라, 타이머가 도는 동안 이전 기록을 열람해도
+      // 그 열람 중인 날짜의 grid가 아니라 타이머가 시작된 날짜의 grid에 계속 쌓여야 한다.
+      const tickDateStr = timerState.dateStr || currentDateStr;
+      const task = state.records[tickDateStr].tasks.find(tk => tk.id === timerState.taskId);
       if(!timerState.subjectId && task) timerState.subjectId = task.subjectId;
-      
-      let gridData = state.records[currentDateStr].grid;
+
+      let gridData = state.records[tickDateStr].grid;
       let secCount = 0;
       
       while (t < currentMs && secCount < diffSec) {
@@ -14368,14 +14401,19 @@
     function lockTimeMachineIfActive() { if(isTimeMachineUnlocked) { isTimeMachineUnlocked = false; updateViewingStatusUI(); } }
     function updateHeaderDate() { const days = ['일', '월', '화', '수', '목', '금', '토']; if(UI.currentDate) UI.currentDate.innerText = `${currentDateStr.replace(/-/g, '.')} (${days[new Date(currentDateStr).getDay()]})`; if(UI.btnToday) UI.btnToday.classList.toggle('hidden', currentDateStr === todayStr); if(UI.btnNextDate) UI.btnNextDate.disabled = (currentDateStr === todayStr); updateViewingStatusUI(); updateWorkspaceView(); }
     function returnToToday() { lockTimeMachineIfActive(); currentDateStr = todayStr; switchView('view-main'); }
+    // 타이머가 도는 중에 다른 날짜의 기록을 열람하러 이동할 때: 타이머를 멈추지 않고 그대로 두되,
+    // 지금 보고 있던 화면(타이머 위젯)이 사라지니 대신 PiP 미니 플레이어로 계속 보여준다.
+    function popOutFocusForHistoryView() {
+      if (window.GlobalMiniController) window.GlobalMiniController.popOut();
+    }
     // 달력 모달을 열지 않고도 하루씩 앞뒤로 넘겨보는 빠른 기록 열람 (오늘보다 미래로는 못 감)
     function changeCurrentDate(delta) {
       lockTimeMachineIfActive();
-      if (timerState.isRunning) stopTimer();
       const curr = new Date(currentDateStr);
       curr.setDate(curr.getDate() + delta);
       const newDateStr = getLocalDateStr(curr);
       if (newDateStr > todayStr) return;
+      if (timerState.isRunning && newDateStr !== timerState.dateStr) popOutFocusForHistoryView();
       currentDateStr = newDateStr;
       ensureDailyRecord(currentDateStr);
       switchView('view-main');
@@ -14399,7 +14437,7 @@
       }
     }
 
-    function selectCalendarDate(dateStr) { lockTimeMachineIfActive(); closeModal('modal-calendar'); if (timerState.isRunning) stopTimer(); currentDateStr = dateStr; ensureDailyRecord(dateStr); switchView('view-main'); }
+    function selectCalendarDate(dateStr) { lockTimeMachineIfActive(); closeModal('modal-calendar'); if (timerState.isRunning && dateStr !== timerState.dateStr) popOutFocusForHistoryView(); currentDateStr = dateStr; ensureDailyRecord(dateStr); switchView('view-main'); }
     function openSettingsModal() { document.getElementById('modal-settings').classList.remove('hidden'); }
     function handleAddSubject(e) { e.preventDefault(); state.subjects.push({ id: 's_'+Date.now(), name: document.getElementById('input-sub-name').value, color: document.getElementById('input-sub-color').value }); saveData(); renderSubjects(); document.getElementById('form-add-subject').reset(); }
     function deleteSubject(id) { if(state.subjects.length <= 1) { uiAlert('최소 1개의 과목은 존재해야 합니다.'); return; } state.subjects = state.subjects.filter(s => s.id !== id); saveData(); renderSubjects(); }
