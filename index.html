@@ -266,10 +266,10 @@
         #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         /* 칸이 좁아지면 재생/플레이리스트/수정/삭제 버튼 줄도 필요하면 두 줄로 접히게 한다 */
         #mymusic-list.mymusic-grid .music-track-actions { flex-wrap: wrap; row-gap: 6px; }
-        @media (max-width: 900px) {
-            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        @media (max-width: 560px) {
+        /* minmax(0,1fr) 덕분에 900px 정도 너비에서도 3/4칸이 충분히 좁아져서 문제없이 들어간다 -
+           그래서 900px 구간에서 임의로 2칸으로 줄이던 규칙은 없앴다(선택한 곡 수와 실제로 다르게
+           보이는 원인이었음). 진짜 좁은 화면(휴대폰 폭)에서만 1칸으로 접는다. */
+        @media (max-width: 480px) {
             #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: minmax(0, 1fr); }
         }
 
