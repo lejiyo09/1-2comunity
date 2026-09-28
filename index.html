@@ -275,9 +275,12 @@
             align-items: center;
             gap: 14px;
         }
+        /* 제목 영역이 카드 끝까지 늘어나 버튼이 맨 오른쪽 끝으로 밀려나지 않도록, 너비를 적당히
+           제한해서 제목이 그 안에서 말줄임(...)되고 버튼은 바로 그 뒤에 붙어 나오게 한다. */
         #mymusic-list:not(.mymusic-grid) .mymusic-card > .music-track-top {
-            flex: 1;
+            flex: 0 1 auto;
             min-width: 0;
+            max-width: 60%;
         }
         #mymusic-list:not(.mymusic-grid) .mymusic-card > .music-track-actions {
             max-height: none;
