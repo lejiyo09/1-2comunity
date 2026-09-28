@@ -14079,10 +14079,10 @@
       if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 타임테이블은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정 가능합니다.'); return; }
       if (isMarkMode) { uiAlert('표시 기능을 먼저 끈 뒤에 편집 모드를 사용해주세요.'); return; }
       if (!isGridEditMode) {
-        uiConfirm("타임테이블을 수동으로 편집하시겠습니까?", () => { isGridEditMode = true; document.getElementById('manual-subject-select').classList.remove('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>✓</span> 완료'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; renderTimetable(); }, {icon:'✏️', title:'편집 모드'});
+        uiConfirm("타임테이블을 수동으로 편집하시겠습니까?", () => { isGridEditMode = true; document.getElementById('manual-subject-select').classList.remove('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>✓</span> 완료'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.add('hidden'); renderTimetable(); }, {icon:'✏️', title:'편집 모드'});
       } else resetEditMode();
     }
-    function resetEditMode() { isGridEditMode = false; document.getElementById('manual-subject-select').classList.add('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>🔒</span> 편집'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; renderTimetable(); }
+    function resetEditMode() { isGridEditMode = false; document.getElementById('manual-subject-select').classList.add('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>🔒</span> 편집'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.remove('hidden'); renderTimetable(); }
 
     // 타임테이블 임시 마킹(반투명): 실제 기록 수정 모드(편집)와 동시에 켜면 드래그 동작이
     // 서로 헷갈리므로, 편집 모드일 때는 마킹 모드로 들어갈 수 없게 막는다.
@@ -14091,13 +14091,16 @@
       isMarkMode = !isMarkMode;
       const btn = document.getElementById('btn-mark-grid');
       const subSelect = document.getElementById('mark-subject-select');
+      const editBtn = document.getElementById('btn-edit-grid');
       if (isMarkMode) {
         btn.innerHTML = '<span>✓</span> 표시 중'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow';
         if (!markSubjectId || !state.subjects.some(s => s.id === markSubjectId)) markSubjectId = state.subjects[0] && state.subjects[0].id;
         if (subSelect) { subSelect.value = markSubjectId; subSelect.classList.remove('hidden'); }
+        if (editBtn) editBtn.classList.add('hidden');
       } else {
         btn.innerHTML = '<span>🖍</span> 표시'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600';
         if (subSelect) subSelect.classList.add('hidden');
+        if (editBtn) editBtn.classList.remove('hidden');
       }
       renderTimetable();
     }
