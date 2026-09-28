@@ -918,10 +918,11 @@
     .planner-app .time-box.unlocked:hover::after { content: ''; position: absolute; inset: 0; background-color: rgba(15, 23, 42, 0.08); z-index: 10; }
     .planner-app .active-slot { box-shadow: inset 0 0 0 2px #818cf8, inset 0 0 10px rgba(99, 102, 241, 0.25); z-index: 5; }
     /* 타임테이블 임시 마킹(반투명 하이라이트) - 실제 공부 기록(배경 그라데이션)과 겹쳐 보이도록
-       빗금 패턴을 얹는다. 실제 기록 색과 헷갈리지 않게 뚜렷한 호박색 계열을 쓴다. */
+       빗금 패턴을 얹는다. 과목별로 다른 색(--mark-color, JS에서 칸마다 지정)을 쓰되, 실제 기록
+       색과 헷갈리지 않도록 충분히 연하게(반투명하게) 얹는다. */
     .planner-app .time-box.marked::before {
       content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-      background: repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.38) 0 6px, rgba(245, 158, 11, 0.16) 6px 12px);
+      background: repeating-linear-gradient(45deg, var(--mark-color, rgba(245, 158, 11, 0.28)) 0 6px, transparent 6px 12px);
     }
 
     /* 타임테이블 칸 위에 마우스를 올렸을 때 "어떤 할 일이었는지" 보여주는 플로팅 툴팁 (document.body에 붙는다) */
@@ -3306,6 +3307,7 @@
           <h2 class="text-sm font-bold text-slate-200"><span class="mr-1.5">▦</span>TIMETABLE</h2>
           <div class="flex items-center gap-1">
             <select id="manual-subject-select" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]"></select>
+            <select id="mark-subject-select" onchange="PlannerApp.setMarkSubject(this.value)" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]" title="이 과목 색으로 표시해요"></select>
             <button id="btn-clear-marks" onclick="PlannerApp.clearMarks()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600 hidden" title="이 날짜의 표시를 모두 지워요 (실제 공부 기록에는 영향 없어요)">지우기</button>
             <button id="btn-mark-grid" onclick="PlannerApp.toggleMarkMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600" title="드래그해서 반투명 표시를 남겨요 (실제 공부 기록과는 별개예요)"><span>🖍</span> 표시</button>
             <button id="btn-edit-grid" onclick="PlannerApp.toggleGridEditMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow"><span>🔒</span> 편집</button>
@@ -13624,14 +13626,21 @@
     let isMarkMode = false;
     let markDragActive = false;
     let markDragAdding = true; // 드래그를 시작한 첫 칸이 "칠하기"였는지 "지우기"였는지를 드래그 내내 유지한다
+    let markSubjectId = null; // 표시 모드에서 지금 선택된 과목 - 이 과목 색으로 칠한다
+    // 날짜별 { timeKey: subId } - 어떤 칸을 어떤 과목 색으로 표시해뒀는지. (예전 버전은 과목 구분 없이
+    // timeKey 배열만 저장했었다 - 아래 함수들이 그 예전 형태도 그대로 읽을 수 있게 호환 처리한다.)
     let plannerMarks = safeJSONParse('planner_marks', {});
     function savePlannerMarks() { try { localStorage.setItem('planner_marks', JSON.stringify(plannerMarks)); } catch (e) {} }
-    function isCellMarked(dateStr, timeKey) { return !!(plannerMarks[dateStr] && plannerMarks[dateStr].includes(timeKey)); }
-    function setCellMarked(dateStr, timeKey, marked) {
-      if (!plannerMarks[dateStr]) plannerMarks[dateStr] = [];
-      const idx = plannerMarks[dateStr].indexOf(timeKey);
-      if (marked && idx === -1) plannerMarks[dateStr].push(timeKey);
-      else if (!marked && idx !== -1) plannerMarks[dateStr].splice(idx, 1);
+    function getCellMarkSubject(dateStr, timeKey) {
+      const rec = plannerMarks[dateStr];
+      if (!rec) return null;
+      if (Array.isArray(rec)) return rec.includes(timeKey) ? (state.subjects[0] && state.subjects[0].id) : null; // 구버전 호환
+      return rec[timeKey] || null;
+    }
+    function setCellMark(dateStr, timeKey, subId) {
+      if (!plannerMarks[dateStr] || Array.isArray(plannerMarks[dateStr])) plannerMarks[dateStr] = {};
+      if (subId) plannerMarks[dateStr][timeKey] = subId;
+      else delete plannerMarks[dateStr][timeKey];
     }
 
     let editTaskId = null; 
@@ -13830,7 +13839,7 @@
     function getSubject(id) { if (!state.subjects || state.subjects.length === 0) sanitizeState(); return state.subjects.find(s => s && s.id === id) || state.subjects[0] || defaultSubjects[0]; }
     function renderSubjects() {
       const ops = state.subjects.map(sub => sub && sub.name && sub.id ? `<option value="${sub.id}">${sub.name}</option>` : '').join('');
-      ['setup-task-subject', 'main-task-subject', 'manual-subject-select'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = ops; });
+      ['setup-task-subject', 'main-task-subject', 'manual-subject-select', 'mark-subject-select'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = ops; });
       document.getElementById('settings-subject-list').innerHTML = state.subjects.map(sub => sub ? `<div class="flex justify-between items-center bg-slate-900 p-2 rounded border border-slate-700"><div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full" style="background-color: ${sub.color}"></div><span class="text-xs font-bold text-slate-200">${sub.name}</span></div><button onclick="PlannerApp.deleteSubject('${sub.id}')" class="text-slate-500 hover:text-red-400 text-[10px]"><span>🗑️</span></button></div>` : '').join('');
     }
 
@@ -13965,8 +13974,10 @@
           let box = document.createElement('div');
 
           box.id = 'cell-' + timeKey.replace(':', '-');
-          const marked = isCellMarked(currentDateStr, timeKey);
-          box.className = `time-box relative overflow-hidden group border-b border-r border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${marked ? 'marked' : ''} ${isMarkMode ? 'cursor-pointer' : (isGridEditMode ? 'unlocked cursor-pointer' : 'locked')}`;
+          const markSubId = getCellMarkSubject(currentDateStr, timeKey);
+          box.className = `time-box relative overflow-hidden group border-b border-r border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${markSubId ? 'marked' : ''} ${isMarkMode ? 'cursor-pointer' : (isGridEditMode ? 'unlocked cursor-pointer' : 'locked')}`;
+          // 표시(마킹)는 과목별 색을 쓰되, 실제 공부 기록 색과 헷갈리지 않도록 훨씬 연하게(반투명하게) 얹는다.
+          if (markSubId) box.style.setProperty('--mark-color', hexToRgba(getSubject(markSubId).color, 0.28) || 'rgba(245, 158, 11, 0.28)');
 
           // ✨ V49: 복잡한 수학 공식을 getCellGradient() 함수 하나로 깔끔하게 처리!
           box.style.background = getCellGradient(cellData);
@@ -14065,29 +14076,43 @@
       isMarkMode = !isMarkMode;
       const btn = document.getElementById('btn-mark-grid');
       const clearBtn = document.getElementById('btn-clear-marks');
-      if (isMarkMode) { btn.innerHTML = '<span>✓</span> 표시 중'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; }
-      else { btn.innerHTML = '<span>🖍</span> 표시'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; }
+      const subSelect = document.getElementById('mark-subject-select');
+      if (isMarkMode) {
+        btn.innerHTML = '<span>✓</span> 표시 중'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow';
+        if (!markSubjectId || !state.subjects.some(s => s.id === markSubjectId)) markSubjectId = state.subjects[0] && state.subjects[0].id;
+        if (subSelect) { subSelect.value = markSubjectId; subSelect.classList.remove('hidden'); }
+      } else {
+        btn.innerHTML = '<span>🖍</span> 표시'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600';
+        if (subSelect) subSelect.classList.add('hidden');
+      }
       if (clearBtn) clearBtn.classList.toggle('hidden', !isMarkMode);
       renderTimetable();
     }
+    function setMarkSubject(subId) { markSubjectId = subId; }
+    function hasAnyMarks(dateStr) {
+      const rec = plannerMarks[dateStr];
+      if (!rec) return false;
+      return Array.isArray(rec) ? rec.length > 0 : Object.keys(rec).length > 0;
+    }
     function clearMarks() {
-      if (!plannerMarks[currentDateStr] || plannerMarks[currentDateStr].length === 0) return;
+      if (!hasAnyMarks(currentDateStr)) return;
       uiConfirm('이 날짜의 표시를 모두 지울까요? (실제 공부 기록에는 영향 없어요)', () => {
-        plannerMarks[currentDateStr] = [];
+        plannerMarks[currentDateStr] = {};
         savePlannerMarks();
         renderTimetable();
       }, {icon:'🧹', title:'표시 지우기'});
     }
-    // 드래그로 여러 칸을 한 번에 칠하거나 지운다 - 첫 칸을 누른 순간의 상태를 뒤집은 방향으로
-    // 드래그 내내 유지해서(칠하던 중이면 계속 칠하고, 지우던 중이면 계속 지움) 자연스럽게 동작한다.
+    // 드래그로 여러 칸을 한 번에 칠하거나 지운다 - 첫 칸을 누른 순간의 상태(지금 선택된 과목으로
+    // 이미 칠해져 있는지)를 뒤집은 방향으로 드래그 내내 유지해서(칠하던 중이면 계속 칠하고,
+    // 지우던 중이면 계속 지움) 자연스럽게 동작한다.
     function startMarkDrag(timeKey) {
       markDragActive = true;
-      markDragAdding = !isCellMarked(currentDateStr, timeKey);
+      markDragAdding = getCellMarkSubject(currentDateStr, timeKey) !== markSubjectId;
       applyMarkDrag(timeKey);
     }
     function applyMarkDrag(timeKey) {
       if (!markDragActive) return;
-      setCellMarked(currentDateStr, timeKey, markDragAdding);
+      setCellMark(currentDateStr, timeKey, markDragAdding ? markSubjectId : null);
       savePlannerMarks();
       renderTimetable();
     }
@@ -14773,6 +14798,7 @@
       timerTick,
       toggleGridEditMode,
       toggleMarkMode,
+      setMarkSubject,
       clearMarks,
       toggleMenuDropdown,
       toggleTaskComplete,
