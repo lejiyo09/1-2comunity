@@ -15991,7 +15991,24 @@
     if (window.GlobalMiniController) window.GlobalMiniController.handleGesture();
   }
 
+  // 1-2 Music: "내 음악" 다음 곡 랜덤 재생 체인에서 실제로 다음 곡을 고르고 이어 재생한다.
+  // audio의 'ended' 이벤트뿐 아니라 nextTrack()에서도 반드시 이 경로를 타야 한다 - 그렇지 않으면
+  // (예: PiP/인라인 위젯의 "다음 곡" 버튼, 키보드/시스템 미디어키의 다음곡) 곧바로 일반 재생목록
+  // 로직으로 빠져서, 예전에 열어봤던 플레이리스트가 메모리에 남아있으면 갑자기 그 플레이리스트
+  // 순서로 재생이 바뀌어버리는 버그가 생긴다.
+  function advanceMyMusicAutoNext(){
+    const provider = adHocAutoNextProvider;
+    if (!provider) return;
+    Promise.resolve(provider()).then(next => {
+      if(adHocAutoNextProvider !== provider) return; // 그 사이 다른 곡/모드로 바뀌었으면 무시
+      if(next) startAdHocPlayback(next.url, next.name, next.artwork, provider);
+      else { isAdHocPlaying = false; setPlayingState(false); }
+    }).catch(e => { console.warn('내 음악 다음 곡(랜덤) 재생 실패:', e); isAdHocPlaying = false; setPlayingState(false); });
+  }
+
   function nextTrack(auto){
+    // "내 음악" 랜덤 재생 중이면 일반 재생목록으로 새지 않고 그 체인 안에서 계속 다음 곡을 고른다.
+    if(isAdHocPlaying && adHocAutoNextProvider){ advanceMyMusicAutoNext(); return; }
     if(isAdHocPlaying){ isAdHocPlaying = false; adHocAutoNextProvider = null; } // 임시재생 중 '다음곡'을 누르면 정상 재생목록으로 복귀
     if(playlist.length === 0) return;
     if(isShuffle && playlist.length > 1){
@@ -16009,6 +16026,10 @@
   }
 
   function prevTrack(){
+    // "내 음악" 랜덤 재생은 히스토리가 없으므로, '이전 곡'은 지금 곡을 처음부터 다시 재생하는 걸로
+    // 대신한다(재생목록의 기존 "3초 넘었으면 처음부터 다시" 동작과 같은 감각) - 절대 일반
+    // 재생목록으로 새지 않는다.
+    if(isAdHocPlaying && adHocAutoNextProvider){ audio.currentTime = 0; return; }
     if(isAdHocPlaying){ isAdHocPlaying = false; adHocAutoNextProvider = null; }
     if(playlist.length === 0) return;
     if(audio.currentTime > 3){
@@ -16124,15 +16145,7 @@
     }
     // "내 음악"에서 재생한 곡이 끝났을 때는(등록된 provider가 있으면) 그 provider가 골라주는
     // 다음 곡(랜덤)을 이어서 재생한다 - 기존 재생목록(playlist/currentIndex)과는 무관하다.
-    if(isAdHocPlaying && adHocAutoNextProvider){
-      const provider = adHocAutoNextProvider;
-      Promise.resolve(provider()).then(next => {
-        if(adHocAutoNextProvider !== provider) return; // 그 사이 다른 곡/모드로 바뀌었으면 무시
-        if(next) startAdHocPlayback(next.url, next.name, next.artwork, provider);
-        else { isAdHocPlaying = false; setPlayingState(false); }
-      }).catch(e => { console.warn('내 음악 다음 곡(랜덤) 재생 실패:', e); isAdHocPlaying = false; setPlayingState(false); });
-      return;
-    }
+    if(isAdHocPlaying && adHocAutoNextProvider){ advanceMyMusicAutoNext(); return; }
     nextTrack(true);
   });
   audio.addEventListener("play", () => setPlayingState(true));
