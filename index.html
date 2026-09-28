@@ -3308,8 +3308,7 @@
           <div class="flex items-center gap-1">
             <select id="manual-subject-select" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]"></select>
             <select id="mark-subject-select" onchange="PlannerApp.setMarkSubject(this.value)" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]" title="이 과목 색으로 표시해요"></select>
-            <button id="btn-clear-marks" onclick="PlannerApp.clearMarks()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600 hidden" title="이 날짜의 표시를 모두 지워요 (실제 공부 기록에는 영향 없어요)">지우기</button>
-            <button id="btn-mark-grid" onclick="PlannerApp.toggleMarkMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600" title="드래그해서 반투명 표시를 남겨요 (실제 공부 기록과는 별개예요)"><span>🖍</span> 표시</button>
+            <button id="btn-mark-grid" onclick="PlannerApp.toggleMarkMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600" title="드래그해서 반투명 표시를 남기거나 지워요 (같은 과목으로 다시 칠하면 지워져요, 실제 공부 기록과는 별개예요)"><span>🖍</span> 표시</button>
             <button id="btn-edit-grid" onclick="PlannerApp.toggleGridEditMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow"><span>🔒</span> 편집</button>
           </div>
         </div>
@@ -13607,6 +13606,22 @@
     ];
     function safeJSONParse(key, fallback) { try { const item = localStorage.getItem(key); return item && item !== "undefined" && item !== "null" ? JSON.parse(item) : JSON.parse(JSON.stringify(fallback)); } catch (e) { return JSON.parse(JSON.stringify(fallback)); } }
 
+    // 이 플래너는 <script type="module"> 블록(hexToRgba/escapeNoticeText가 있는 곳)과는 완전히
+    // 분리된 별도 스코프(이 IIFE)라서, 그 안의 함수를 이름만으로는 절대 호출할 수 없다(모듈은
+    // 독립된 스코프라 전역에 안 보임 - 호출하면 ReferenceError로 렌더링 전체가 멈춰버린다).
+    // 그래서 이 플래너 스코프 안에 똑같은 아주 작은 버전을 따로 둔다.
+    function plannerHexToRgba(hex, alpha) {
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+      if (!m) return null;
+      const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    function plannerEscapeText(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     // xp는 로그인/Firebase 동기화 전까지 잠깐 보여줄 값일 뿐이며, 로그인 후에는 곧바로
     // setXPFromCloud()로 Firebase(users/{uid}/xp) 값으로 교체된다. 이 localStorage 값은
     // (신규 XP 시스템 도입 이전부터 남아있었다면) 최초 1회 마이그레이션 소스로도 쓰인다.
@@ -13949,7 +13964,7 @@
         tooltipEl.className = 'planner-segment-tooltip';
         document.body.appendChild(tooltipEl);
       }
-      tooltipEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sub.color};margin-right:5px;vertical-align:middle;"></span>${escapeNoticeText(taskLabel)} · ${escapeNoticeText(sub.name)}`;
+      tooltipEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sub.color};margin-right:5px;vertical-align:middle;"></span>${plannerEscapeText(taskLabel)} · ${plannerEscapeText(sub.name)}`;
       tooltipEl.style.display = 'block';
       tooltipEl.style.left = (e.clientX + 14) + 'px';
       tooltipEl.style.top = (e.clientY + 16) + 'px';
@@ -13977,7 +13992,7 @@
           const markSubId = getCellMarkSubject(currentDateStr, timeKey);
           box.className = `time-box relative overflow-hidden group border-b border-r border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${markSubId ? 'marked' : ''} ${isMarkMode ? 'cursor-pointer' : (isGridEditMode ? 'unlocked cursor-pointer' : 'locked')}`;
           // 표시(마킹)는 과목별 색을 쓰되, 실제 공부 기록 색과 헷갈리지 않도록 훨씬 연하게(반투명하게) 얹는다.
-          if (markSubId) box.style.setProperty('--mark-color', hexToRgba(getSubject(markSubId).color, 0.28) || 'rgba(245, 158, 11, 0.28)');
+          if (markSubId) box.style.setProperty('--mark-color', plannerHexToRgba(getSubject(markSubId).color, 0.28) || 'rgba(245, 158, 11, 0.28)');
 
           // ✨ V49: 복잡한 수학 공식을 getCellGradient() 함수 하나로 깔끔하게 처리!
           box.style.background = getCellGradient(cellData);
@@ -14075,7 +14090,6 @@
       if (isGridEditMode) { uiAlert('편집 모드를 먼저 끈 뒤에 표시 기능을 사용해주세요.'); return; }
       isMarkMode = !isMarkMode;
       const btn = document.getElementById('btn-mark-grid');
-      const clearBtn = document.getElementById('btn-clear-marks');
       const subSelect = document.getElementById('mark-subject-select');
       if (isMarkMode) {
         btn.innerHTML = '<span>✓</span> 표시 중'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow';
@@ -14085,23 +14099,9 @@
         btn.innerHTML = '<span>🖍</span> 표시'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600';
         if (subSelect) subSelect.classList.add('hidden');
       }
-      if (clearBtn) clearBtn.classList.toggle('hidden', !isMarkMode);
       renderTimetable();
     }
     function setMarkSubject(subId) { markSubjectId = subId; }
-    function hasAnyMarks(dateStr) {
-      const rec = plannerMarks[dateStr];
-      if (!rec) return false;
-      return Array.isArray(rec) ? rec.length > 0 : Object.keys(rec).length > 0;
-    }
-    function clearMarks() {
-      if (!hasAnyMarks(currentDateStr)) return;
-      uiConfirm('이 날짜의 표시를 모두 지울까요? (실제 공부 기록에는 영향 없어요)', () => {
-        plannerMarks[currentDateStr] = {};
-        savePlannerMarks();
-        renderTimetable();
-      }, {icon:'🧹', title:'표시 지우기'});
-    }
     // 드래그로 여러 칸을 한 번에 칠하거나 지운다 - 첫 칸을 누른 순간의 상태(지금 선택된 과목으로
     // 이미 칠해져 있는지)를 뒤집은 방향으로 드래그 내내 유지해서(칠하던 중이면 계속 칠하고,
     // 지우던 중이면 계속 지움) 자연스럽게 동작한다.
@@ -14799,7 +14799,6 @@
       toggleGridEditMode,
       toggleMarkMode,
       setMarkSubject,
-      clearMarks,
       toggleMenuDropdown,
       toggleTaskComplete,
       toggleTimeMachine,
