@@ -259,14 +259,18 @@
         .music-track-actions span { cursor: pointer; }
         .music-track-actions span.liked { color: #ef4444; }
         /* 내 음악: 한 줄에 3곡/4곡씩 보기 (기본은 한 줄에 1곡, 세로로 쌓는 목록형) */
+        /* minmax(0, 1fr): 그냥 1fr만 쓰면 grid 칸이 안의 내용(재생/수정/삭제 버튼 줄 등)의 최소 너비보다
+           작아지지 못해서 칸 전체가 넘치고 가로 스크롤이 생긴다 - 0을 최소값으로 줘서 실제로 1/n로 줄어들게 한다. */
         #mymusic-list.mymusic-grid { display: grid; gap: 10px; }
-        #mymusic-list.mymusic-grid.mymusic-cols-3 { grid-template-columns: repeat(3, 1fr); }
-        #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        #mymusic-list.mymusic-grid.mymusic-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        /* 칸이 좁아지면 재생/플레이리스트/수정/삭제 버튼 줄도 필요하면 두 줄로 접히게 한다 */
+        #mymusic-list.mymusic-grid .music-track-actions { flex-wrap: wrap; row-gap: 6px; }
         @media (max-width: 900px) {
-            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(2, 1fr); }
+            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 560px) {
-            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: 1fr; }
+            #mymusic-list.mymusic-grid.mymusic-cols-3, #mymusic-list.mymusic-grid.mymusic-cols-4 { grid-template-columns: minmax(0, 1fr); }
         }
 
         .notice-hub-tab { padding: 7px 16px; font-size: 13.5px; font-weight: 700; color: var(--text-muted); border: none; background: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s; }
@@ -913,6 +917,21 @@
     .planner-app .time-box.locked:hover::after { content: none; }
     .planner-app .time-box.unlocked:hover::after { content: ''; position: absolute; inset: 0; background-color: rgba(15, 23, 42, 0.08); z-index: 10; }
     .planner-app .active-slot { box-shadow: inset 0 0 0 2px #818cf8, inset 0 0 10px rgba(99, 102, 241, 0.25); z-index: 5; }
+    /* 타임테이블 임시 마킹(반투명 하이라이트) - 실제 공부 기록(배경 그라데이션)과 겹쳐 보이도록
+       빗금 패턴을 얹는다. 실제 기록 색과 헷갈리지 않게 뚜렷한 호박색 계열을 쓴다. */
+    .planner-app .time-box.marked::before {
+      content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+      background: repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.38) 0 6px, rgba(245, 158, 11, 0.16) 6px 12px);
+    }
+
+    /* 타임테이블 칸 위에 마우스를 올렸을 때 "어떤 할 일이었는지" 보여주는 플로팅 툴팁 (document.body에 붙는다) */
+    .planner-segment-tooltip {
+      display: none; position: fixed; z-index: 9999; pointer-events: none;
+      background: #111827; color: #f2f3f5; font-size: 12px; font-weight: 600; line-height: 1.4;
+      padding: 6px 10px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'Pretendard', sans-serif;
+    }
 
     .planner-app input[type="checkbox"].task-check {
       appearance: none; width: 1.15rem; height: 1.15rem; border: 2px solid #cbd5e1; border-radius: 0.25rem;
@@ -3287,6 +3306,8 @@
           <h2 class="text-sm font-bold text-slate-200"><span class="mr-1.5">▦</span>TIMETABLE</h2>
           <div class="flex items-center gap-1">
             <select id="manual-subject-select" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]"></select>
+            <button id="btn-clear-marks" onclick="PlannerApp.clearMarks()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600 hidden" title="이 날짜의 표시를 모두 지워요 (실제 공부 기록에는 영향 없어요)">지우기</button>
+            <button id="btn-mark-grid" onclick="PlannerApp.toggleMarkMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600" title="드래그해서 반투명 표시를 남겨요 (실제 공부 기록과는 별개예요)"><span>🖍</span> 표시</button>
             <button id="btn-edit-grid" onclick="PlannerApp.toggleGridEditMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow"><span>🔒</span> 편집</button>
           </div>
         </div>
@@ -11648,7 +11669,7 @@
         };
 
         window.playMyMusicTrack = async function(trackId, name) {
-            if (!window.MixTapeApp || !window.MixTapeApp.playAdHoc) return alert("재생 엔진을 불러오지 못했습니다.");
+            if (!window.MixTapeApp || !window.MixTapeApp.playAdHocWithAutoNext) return alert("재생 엔진을 불러오지 못했습니다.");
             try {
                 const db = await openMusicDB();
                 const rec = await new Promise((resolve, reject) => {
@@ -11659,12 +11680,26 @@
                 if (!rec) return alert("곡을 찾을 수 없습니다.");
                 const url = URL.createObjectURL(rec.blob);
                 const playName = name || rec.title || rec.name;
-                window.MixTapeApp.playAdHoc(url, playName, rec.artwork || null);
+                myMusicLastAutoPlayedId = trackId;
+                window.MixTapeApp.playAdHocWithAutoNext(url, playName, rec.artwork || null, myMusicPickRandomNext);
             } catch (e) {
                 console.error('내 음악 재생 오류:', e);
                 alert("재생에 실패했습니다.");
             }
         };
+
+        // "내 음악"에서 재생 중이던 곡이 끝났을 때 다음 곡을 랜덤으로 골라준다 - 매번 최신 전체
+        // 곡 목록에서 고르므로 재생 중에 곡이 추가/삭제돼도 자연스럽게 반영되고, 곡이 2개 이상이면
+        // 방금 들은 곡이 바로 다시 나오지는 않는다.
+        let myMusicLastAutoPlayedId = null;
+        async function myMusicPickRandomNext() {
+            const tracks = await musicDbGetAllTracks();
+            if (!tracks || tracks.length === 0) return null;
+            const pool = tracks.length > 1 ? tracks.filter(t => t.id !== myMusicLastAutoPlayedId) : tracks;
+            const next = pool[Math.floor(Math.random() * pool.length)];
+            myMusicLastAutoPlayedId = next.id;
+            return { url: URL.createObjectURL(next.blob), name: next.title || next.name, artwork: next.artwork || null };
+        }
 
         // 문서 §7: 참조 중인 플레이리스트가 있으면 사용자에게 명확히 안내한 뒤 진행 (고아 참조 방지)
         window.deleteMyMusicTrack = async function(trackId) {
@@ -13582,7 +13617,22 @@
     let todayStr = getLocalDateStr(new Date()); let currentDateStr = todayStr;
     let timerState = { interval: null, isRunning: false, taskId: null, subjectId: null, dateStr: null, lastTickTime: null, lastRenderedTimeKey: null };
     let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), tempStartTaskId = null;
-    let isGridEditMode = false; let isTimeMachineUnlocked = false; 
+    let isGridEditMode = false; let isTimeMachineUnlocked = false;
+    // 타임테이블 임시 마킹(반투명 하이라이트): 실제 공부 기록과는 완전히 별개로, 드래그해서
+    // "이 시간에 뭘 할지" 같은 걸 표시만 해두는 기능이다. planner_records(state)에는 안 남기고
+    // 날짜별로 따로 저장한다 - 실수로 실제 학습 데이터와 섞이면 안 되기 때문.
+    let isMarkMode = false;
+    let markDragActive = false;
+    let markDragAdding = true; // 드래그를 시작한 첫 칸이 "칠하기"였는지 "지우기"였는지를 드래그 내내 유지한다
+    let plannerMarks = safeJSONParse('planner_marks', {});
+    function savePlannerMarks() { try { localStorage.setItem('planner_marks', JSON.stringify(plannerMarks)); } catch (e) {} }
+    function isCellMarked(dateStr, timeKey) { return !!(plannerMarks[dateStr] && plannerMarks[dateStr].includes(timeKey)); }
+    function setCellMarked(dateStr, timeKey, marked) {
+      if (!plannerMarks[dateStr]) plannerMarks[dateStr] = [];
+      const idx = plannerMarks[dateStr].indexOf(timeKey);
+      if (marked && idx === -1) plannerMarks[dateStr].push(timeKey);
+      else if (!marked && idx !== -1) plannerMarks[dateStr].splice(idx, 1);
+    }
 
     let editTaskId = null; 
     const UI = {}; let saveTickCounter = 0;
@@ -13871,8 +13921,37 @@
         return `linear-gradient(to right, ${gradParts.join(', ')})`;
     }
 
+    // 타임테이블 칸 위에서 마우스를 움직이면, 그 x좌표가 가리키는 정확한 세그먼트(조각)를 찾아
+    // "할일 이름 · 과목" 플로팅 툴팁으로 보여준다. 할일이 나중에 삭제됐으면 그 사실도 알려준다.
+    function showSegmentTooltip(e, box, segments) {
+      const rect = box.getBoundingClientRect();
+      if (rect.width === 0) { hideSegmentTooltip(); return; }
+      const relX = e.clientX - rect.left;
+      const offsetSec = Math.max(0, Math.min(599, (relX / rect.width) * 600));
+      const seg = segments.find(s => offsetSec >= s.startOffset && offsetSec < s.startOffset + s.seconds);
+      if (!seg) { hideSegmentTooltip(); return; }
+      const task = seg.taskId ? (state.records[currentDateStr].tasks || []).find(t => t.id === seg.taskId) : null;
+      const taskLabel = task ? task.title : (seg.taskId ? '삭제된 할 일' : '알 수 없음');
+      const sub = getSubject(seg.subId);
+      let tooltipEl = document.getElementById('planner-segment-tooltip');
+      if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'planner-segment-tooltip';
+        tooltipEl.className = 'planner-segment-tooltip';
+        document.body.appendChild(tooltipEl);
+      }
+      tooltipEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sub.color};margin-right:5px;vertical-align:middle;"></span>${escapeNoticeText(taskLabel)} · ${escapeNoticeText(sub.name)}`;
+      tooltipEl.style.display = 'block';
+      tooltipEl.style.left = (e.clientX + 14) + 'px';
+      tooltipEl.style.top = (e.clientY + 16) + 'px';
+    }
+    function hideSegmentTooltip() {
+      const el = document.getElementById('planner-segment-tooltip');
+      if (el) el.style.display = 'none';
+    }
+
     function renderTimetable() {
-      const grid = document.getElementById('timetable-grid'); if (!grid) return; 
+      const grid = document.getElementById('timetable-grid'); if (!grid) return;
       const recordGrid = state.records[currentDateStr].grid || {}; grid.innerHTML = '';
       const now = new Date(); const activeTimeKey = timerState.isRunning && currentDateStr === timerState.dateStr ? `${String(now.getHours()).padStart(2, '0')}:${String(Math.floor(now.getMinutes() / 10) * 10).padStart(2, '0')}` : null;
       
@@ -13884,13 +13963,27 @@
           let timeKey = `${String(h).padStart(2, '0')}:${String(m * 10).padStart(2, '0')}`;
           let cellData = recordGrid[timeKey] || { seconds: 0, passed: false, parts: {} };
           let box = document.createElement('div');
-          
+
           box.id = 'cell-' + timeKey.replace(':', '-');
-          box.className = `time-box relative overflow-hidden group border-b border-r border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${isGridEditMode ? 'unlocked cursor-pointer' : 'locked'}`;
+          const marked = isCellMarked(currentDateStr, timeKey);
+          box.className = `time-box relative overflow-hidden group border-b border-r border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${marked ? 'marked' : ''} ${isMarkMode ? 'cursor-pointer' : (isGridEditMode ? 'unlocked cursor-pointer' : 'locked')}`;
 
           // ✨ V49: 복잡한 수학 공식을 getCellGradient() 함수 하나로 깔끔하게 처리!
           box.style.background = getCellGradient(cellData);
-          box.onclick = () => handleManualOverride(timeKey); row.appendChild(box);
+          if (isMarkMode) {
+            // 표시(마킹) 모드에서는 실제 기록을 건드리는 클릭 대신 드래그로 반투명 표시를 칠하거나 지운다.
+            box.onmousedown = (e) => { e.preventDefault(); startMarkDrag(timeKey); };
+            box.onmouseenter = () => applyMarkDrag(timeKey);
+            box.ontouchstart = (e) => { e.preventDefault(); startMarkDrag(timeKey); };
+          } else {
+            box.onclick = () => handleManualOverride(timeKey);
+          }
+          // 채워진 부분(세그먼트) 위에 마우스를 올리면 그 부분이 어떤 할 일이었는지 플로팅으로 보여준다.
+          if (cellData.segments && cellData.segments.length > 0) {
+            box.onmousemove = (e) => showSegmentTooltip(e, box, cellData.segments);
+            box.onmouseleave = hideSegmentTooltip;
+          }
+          row.appendChild(box);
         }
         grid.appendChild(row);
       }
@@ -13958,11 +14051,49 @@
 
     function toggleGridEditMode() {
       if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 타임테이블은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정 가능합니다.'); return; }
-      if (!isGridEditMode) { 
+      if (isMarkMode) { uiAlert('표시 기능을 먼저 끈 뒤에 편집 모드를 사용해주세요.'); return; }
+      if (!isGridEditMode) {
         uiConfirm("타임테이블을 수동으로 편집하시겠습니까?", () => { isGridEditMode = true; document.getElementById('manual-subject-select').classList.remove('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>✓</span> 완료'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; renderTimetable(); }, {icon:'✏️', title:'편집 모드'});
       } else resetEditMode();
     }
     function resetEditMode() { isGridEditMode = false; document.getElementById('manual-subject-select').classList.add('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>🔒</span> 편집'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; renderTimetable(); }
+
+    // 타임테이블 임시 마킹(반투명): 실제 기록 수정 모드(편집)와 동시에 켜면 드래그 동작이
+    // 서로 헷갈리므로, 편집 모드일 때는 마킹 모드로 들어갈 수 없게 막는다.
+    function toggleMarkMode() {
+      if (isGridEditMode) { uiAlert('편집 모드를 먼저 끈 뒤에 표시 기능을 사용해주세요.'); return; }
+      isMarkMode = !isMarkMode;
+      const btn = document.getElementById('btn-mark-grid');
+      const clearBtn = document.getElementById('btn-clear-marks');
+      if (isMarkMode) { btn.innerHTML = '<span>✓</span> 표시 중'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; }
+      else { btn.innerHTML = '<span>🖍</span> 표시'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; }
+      if (clearBtn) clearBtn.classList.toggle('hidden', !isMarkMode);
+      renderTimetable();
+    }
+    function clearMarks() {
+      if (!plannerMarks[currentDateStr] || plannerMarks[currentDateStr].length === 0) return;
+      uiConfirm('이 날짜의 표시를 모두 지울까요? (실제 공부 기록에는 영향 없어요)', () => {
+        plannerMarks[currentDateStr] = [];
+        savePlannerMarks();
+        renderTimetable();
+      }, {icon:'🧹', title:'표시 지우기'});
+    }
+    // 드래그로 여러 칸을 한 번에 칠하거나 지운다 - 첫 칸을 누른 순간의 상태를 뒤집은 방향으로
+    // 드래그 내내 유지해서(칠하던 중이면 계속 칠하고, 지우던 중이면 계속 지움) 자연스럽게 동작한다.
+    function startMarkDrag(timeKey) {
+      markDragActive = true;
+      markDragAdding = !isCellMarked(currentDateStr, timeKey);
+      applyMarkDrag(timeKey);
+    }
+    function applyMarkDrag(timeKey) {
+      if (!markDragActive) return;
+      setCellMarked(currentDateStr, timeKey, markDragAdding);
+      savePlannerMarks();
+      renderTimetable();
+    }
+    function endMarkDrag() { markDragActive = false; }
+    document.addEventListener('mouseup', endMarkDrag);
+    document.addEventListener('touchend', endMarkDrag);
 
     function handleManualOverride(timeKey) {
       if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록은 타임머신 모드에서만 수정할 수 있습니다.'); return; }
@@ -14232,13 +14363,14 @@
           
           // 방금 전까지 공부하던 마지막 조각(Segment)을 확인
           let lastSeg = gridData[tk].segments[gridData[tk].segments.length - 1];
-          
-          // 만약 과목이 같고, 쉬지 않고 이어서 공부 중이라면 그 조각의 길이를 +1초 늘림
-          if (lastSeg && lastSeg.subId === timerState.subjectId && (lastSeg.startOffset + lastSeg.seconds === secOffset)) {
+
+          // 만약 과목과 할 일이 같고, 쉬지 않고 이어서 공부 중이라면 그 조각의 길이를 +1초 늘림
+          if (lastSeg && lastSeg.subId === timerState.subjectId && lastSeg.taskId === timerState.taskId && (lastSeg.startOffset + lastSeg.seconds === secOffset)) {
               lastSeg.seconds += 1;
           } else {
-              // 과목이 바뀌었거나, 중간에 1초라도 쉬었다가 다시 켰다면 아예 새로운 조각을 만들어버림! (빈틈을 메우지 않음)
-              gridData[tk].segments.push({ subId: timerState.subjectId, startOffset: secOffset, seconds: 1 });
+              // 과목/할 일이 바뀌었거나, 중간에 1초라도 쉬었다가 다시 켰다면 아예 새로운 조각을 만들어버림! (빈틈을 메우지 않음)
+              // taskId를 함께 남겨서, 나중에 타임테이블 위에 마우스를 올렸을 때 "어떤 할 일이었는지"를 보여줄 수 있다.
+              gridData[tk].segments.push({ subId: timerState.subjectId, taskId: timerState.taskId, startOffset: secOffset, seconds: 1 });
           }
           
           if (!gridData[tk].parts[timerState.subjectId]) gridData[tk].parts[timerState.subjectId] = 0;
@@ -14640,6 +14772,8 @@
       taskDrop,
       timerTick,
       toggleGridEditMode,
+      toggleMarkMode,
+      clearMarks,
       toggleMenuDropdown,
       toggleTaskComplete,
       toggleTimeMachine,
@@ -14683,6 +14817,9 @@
   let isAdHocPlaying = false;
   let adHocName = null;
   let adHocArtwork = null;
+  // 1-2 Music: "내 음악"에서 재생한 곡이 끝났을 때 다음 곡(랜덤 등)을 골라주는 함수.
+  // playAdHoc(공유 음악 등 다른 임시재생)에서는 쓰지 않으므로, playAdHoc을 부르면 항상 초기화된다.
+  let adHocAutoNextProvider = null;
   let isShuffle = false;
   let repeatMode = 0; // 0 off, 1 repeat-all, 2 repeat-one
   let dragSrcIndex = null;
@@ -15723,9 +15860,29 @@
     persistOrder();
   }
 
+  // 1-2 Music: playAdHoc/playAdHocWithAutoNext가 공유하는 실제 재생 로직.
+  // nextProviderFn이 있으면(=내 음악에서 재생), 곡이 끝났을 때 그 provider로 다음 곡을 이어 재생한다.
+  function startAdHocPlayback(url, name, artwork, nextProviderFn){
+    try {
+      audio.pause();
+      audio.src = url;
+      audio.currentTime = 0;
+      audio.play();
+      isAdHocPlaying = true;
+      adHocName = name || null;
+      adHocArtwork = artwork || null;
+      adHocAutoNextProvider = nextProviderFn || null;
+      if (mixtapeRoot) mixtapeRoot.classList.add('playing');
+      updateMediaSessionMetadata();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+      notifyMiniWidgetMixtape();
+    } catch (e) { console.warn('1-2 Music 임시 재생 실패:', e); }
+  }
+
   function playTrack(i){
     if(i < 0 || i >= playlist.length) return;
     isAdHocPlaying = false; // 실제 재생목록 곡을 선택했으니 임시재생 모드는 해제한다
+    adHocAutoNextProvider = null;
     currentIndex = i;
     const track = playlist[i];
     audio.src = track.url;
@@ -15783,7 +15940,7 @@
   }
 
   function nextTrack(auto){
-    if(isAdHocPlaying){ isAdHocPlaying = false; } // 임시재생 중 '다음곡'을 누르면 정상 재생목록으로 복귀
+    if(isAdHocPlaying){ isAdHocPlaying = false; adHocAutoNextProvider = null; } // 임시재생 중 '다음곡'을 누르면 정상 재생목록으로 복귀
     if(playlist.length === 0) return;
     if(isShuffle && playlist.length > 1){
       let r;
@@ -15800,7 +15957,7 @@
   }
 
   function prevTrack(){
-    if(isAdHocPlaying){ isAdHocPlaying = false; }
+    if(isAdHocPlaying){ isAdHocPlaying = false; adHocAutoNextProvider = null; }
     if(playlist.length === 0) return;
     if(audio.currentTime > 3){
       audio.currentTime = 0;
@@ -15913,6 +16070,17 @@
       audio.play();
       return;
     }
+    // "내 음악"에서 재생한 곡이 끝났을 때는(등록된 provider가 있으면) 그 provider가 골라주는
+    // 다음 곡(랜덤)을 이어서 재생한다 - 기존 재생목록(playlist/currentIndex)과는 무관하다.
+    if(isAdHocPlaying && adHocAutoNextProvider){
+      const provider = adHocAutoNextProvider;
+      Promise.resolve(provider()).then(next => {
+        if(adHocAutoNextProvider !== provider) return; // 그 사이 다른 곡/모드로 바뀌었으면 무시
+        if(next) startAdHocPlayback(next.url, next.name, next.artwork, provider);
+        else { isAdHocPlaying = false; setPlayingState(false); }
+      }).catch(e => { console.warn('내 음악 다음 곡(랜덤) 재생 실패:', e); isAdHocPlaying = false; setPlayingState(false); });
+      return;
+    }
     nextTrack(true);
   });
   audio.addEventListener("play", () => setPlayingState(true));
@@ -15988,21 +16156,10 @@
     },
     // 1-2 Music: 기존 playlist/currentIndex를 건드리지 않고, 같은 audio 엘리먼트로 곡을 하나 바로 재생한다.
     // (SoundCloud처럼 "클릭하면 바로 재생"을 위한 최소 확장 - 기존 재생 목록 탐색과는 독립적으로 동작한다)
-    playAdHoc: function(url, name, artwork){
-      try {
-        audio.pause();
-        audio.src = url;
-        audio.currentTime = 0;
-        audio.play();
-        isAdHocPlaying = true;
-        adHocName = name || null;
-        adHocArtwork = artwork || null;
-        if (mixtapeRoot) mixtapeRoot.classList.add('playing');
-        updateMediaSessionMetadata();
-        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        notifyMiniWidgetMixtape();
-      } catch (e) { console.warn('1-2 Music 임시 재생 실패:', e); }
-    },
+    playAdHoc: function(url, name, artwork){ startAdHocPlayback(url, name, artwork, null); },
+    // "내 음악"에서 곡이 끝났을 때 다음 곡을 골라줄 provider(예: 랜덤으로 다른 곡 하나 반환)를 함께
+    // 등록한다 - provider는 { url, name, artwork } 또는 null(더 재생할 곡이 없음)을 반환해야 한다.
+    playAdHocWithAutoNext: function(url, name, artwork, nextProviderFn){ startAdHocPlayback(url, name, artwork, nextProviderFn || null); },
     // 1-2 Music: 플레이리스트 "이름 목록" 화면에서 특정 플레이리스트를 열 때 쓴다.
     // 기존 함수를 그대로 재사용 - 이미 같은 플레이리스트가 열려있으면 다시 로드하지 않는 기존 보호
     // 로직도 그대로 적용된다 (재생 중인 곡이 처음부터 다시 시작되지 않음).
