@@ -268,6 +268,22 @@
         .mymusic-card:hover .music-track-actions, .mymusic-card:focus-within .music-track-actions {
             max-height: 60px; opacity: 1; margin-top: 2px; pointer-events: auto;
         }
+        /* 한 줄에 1곡(그리드 아님)일 때는 버튼 줄을 아래로 접었다 펴는 대신, 아트워크/제목/아티스트와
+           같은 한 줄에서 오른쪽으로 나란히 붙여서 보여준다 - 공간이 넉넉하므로 더 자연스럽다. */
+        #mymusic-list:not(.mymusic-grid) .mymusic-card {
+            flex-direction: row;
+            align-items: center;
+            gap: 14px;
+        }
+        #mymusic-list:not(.mymusic-grid) .mymusic-card > .music-track-top {
+            flex: 1;
+            min-width: 0;
+        }
+        #mymusic-list:not(.mymusic-grid) .mymusic-card > .music-track-actions {
+            max-height: none;
+            margin-top: 0;
+            flex-shrink: 0;
+        }
         /* 내 음악: 한 줄에 3곡/4곡씩 보기 (기본은 한 줄에 1곡, 세로로 쌓는 목록형) */
         /* minmax(0, 1fr): 그냥 1fr만 쓰면 grid 칸이 안의 내용(재생/수정/삭제 버튼 줄 등)의 최소 너비보다
            작아지지 못해서 칸 전체가 넘치고 가로 스크롤이 생긴다 - 0을 최소값으로 줘서 실제로 1/n로 줄어들게 한다. */
