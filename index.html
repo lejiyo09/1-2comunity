@@ -268,6 +268,22 @@
         .mymusic-card:hover .music-track-actions, .mymusic-card:focus-within .music-track-actions {
             max-height: 60px; opacity: 1; margin-top: 2px; pointer-events: auto;
         }
+        /* 한 줄에 1곡(그리드 아님)일 때는 버튼 줄을 아래로 접었다 펴는 대신, 아트워크/제목/아티스트와
+           같은 한 줄에서 오른쪽으로 나란히 붙여서 보여준다 - 공간이 넉넉하므로 더 자연스럽다. */
+        #mymusic-list:not(.mymusic-grid) .mymusic-card {
+            flex-direction: row;
+            align-items: center;
+            gap: 14px;
+        }
+        #mymusic-list:not(.mymusic-grid) .mymusic-card > .music-track-top {
+            flex: 1;
+            min-width: 0;
+        }
+        #mymusic-list:not(.mymusic-grid) .mymusic-card > .music-track-actions {
+            max-height: none;
+            margin-top: 0;
+            flex-shrink: 0;
+        }
         /* 내 음악: 한 줄에 3곡/4곡씩 보기 (기본은 한 줄에 1곡, 세로로 쌓는 목록형) */
         /* minmax(0, 1fr): 그냥 1fr만 쓰면 grid 칸이 안의 내용(재생/수정/삭제 버튼 줄 등)의 최소 너비보다
            작아지지 못해서 칸 전체가 넘치고 가로 스크롤이 생긴다 - 0을 최소값으로 줘서 실제로 1/n로 줄어들게 한다. */
@@ -14589,10 +14605,15 @@
     function lockTimeMachineIfActive() { if(isTimeMachineUnlocked) { isTimeMachineUnlocked = false; updateViewingStatusUI(); } }
     function updateHeaderDate() { const days = ['일', '월', '화', '수', '목', '금', '토']; if(UI.currentDate) UI.currentDate.innerText = `${currentDateStr.replace(/-/g, '.')} (${days[new Date(currentDateStr).getDay()]})`; if(UI.btnToday) UI.btnToday.classList.toggle('hidden', currentDateStr === todayStr); if(UI.btnNextDate) UI.btnNextDate.disabled = (currentDateStr === todayStr); updateViewingStatusUI(); updateWorkspaceView(); }
     function returnToToday() { lockTimeMachineIfActive(); currentDateStr = todayStr; switchView('view-main'); }
-    // 타이머가 도는 중에 다른 날짜의 기록을 열람하러 이동할 때: 타이머를 멈추지 않고 그대로 두되,
-    // 지금 보고 있던 화면(타이머 위젯)이 사라지니 대신 PiP 미니 플레이어로 계속 보여준다.
-    function popOutFocusForHistoryView() {
-      if (window.GlobalMiniController) window.GlobalMiniController.popOut();
+    // 지금 보고 있는 날짜가 타이머가 실제로 도는 날짜와 같은지 - GlobalMiniController가 이 값을 보고
+    // "인라인 미니 위젯을 굳이 또 띄울 필요가 있는지"(=지금 화면에 이미 타이머가 보이고 있는지)를
+    // 판단한다. 다른 날짜(이전 기록)를 보는 중이면 화면에 타이머가 안 보이니 인라인 위젯을 띄워야 한다.
+    function isViewingLiveFocusDate() { return currentDateStr === (timerState.dateStr || todayStr); }
+    // 타이머가 도는 중에 다른 날짜의 기록을 열람하러 이동할 때: 타이머는 멈추지 않고 그대로 두고,
+    // 화면에서 타이머 위젯이 사라진 만큼 사이트 안의 인라인 미니 위젯(커뮤니티 내장 PiP)으로
+    // 대신 보여준다. 사이트를 벗어난 게 아니므로 굳이 브라우저의 진짜(전역) PiP 창을 띄울 필요는 없다.
+    function notifyFocusVisibilityChanged() {
+      if (window.GlobalMiniController) window.GlobalMiniController.handleGesture();
     }
     // 달력 모달을 열지 않고도 하루씩 앞뒤로 넘겨보는 빠른 기록 열람 (오늘보다 미래로는 못 감)
     function changeCurrentDate(delta) {
@@ -14601,10 +14622,10 @@
       curr.setDate(curr.getDate() + delta);
       const newDateStr = getLocalDateStr(curr);
       if (newDateStr > todayStr) return;
-      if (timerState.isRunning && newDateStr !== timerState.dateStr) popOutFocusForHistoryView();
       currentDateStr = newDateStr;
       ensureDailyRecord(currentDateStr);
       switchView('view-main');
+      if (timerState.isRunning) notifyFocusVisibilityChanged();
     }
 
     function openCalendarModal() { renderCalendar(); document.getElementById('modal-calendar').classList.remove('hidden'); }
@@ -14625,7 +14646,7 @@
       }
     }
 
-    function selectCalendarDate(dateStr) { lockTimeMachineIfActive(); closeModal('modal-calendar'); if (timerState.isRunning && dateStr !== timerState.dateStr) popOutFocusForHistoryView(); currentDateStr = dateStr; ensureDailyRecord(dateStr); switchView('view-main'); }
+    function selectCalendarDate(dateStr) { lockTimeMachineIfActive(); closeModal('modal-calendar'); currentDateStr = dateStr; ensureDailyRecord(dateStr); switchView('view-main'); if (timerState.isRunning) notifyFocusVisibilityChanged(); }
     function openSettingsModal() { document.getElementById('modal-settings').classList.remove('hidden'); }
     function handleAddSubject(e) { e.preventDefault(); state.subjects.push({ id: 's_'+Date.now(), name: document.getElementById('input-sub-name').value, color: document.getElementById('input-sub-color').value }); saveData(); renderSubjects(); document.getElementById('form-add-subject').reset(); }
     function deleteSubject(id) { if(state.subjects.length <= 1) { uiAlert('최소 1개의 과목은 존재해야 합니다.'); return; } state.subjects = state.subjects.filter(s => s.id !== id); saveData(); renderSubjects(); }
@@ -14770,6 +14791,7 @@
       getLocalDateStr,
       getSubject,
       getFocusWidgetData,
+      isViewingLiveFocusDate,
       getWeeklyReport,
       getXP,
       getTierInfo,
@@ -16943,7 +16965,9 @@
             // 떠야 한다. 유일한 예외는 "지금 재생 중인 바로 그 플레이리스트"의 실제 카세트 화면을
             // 보고 있을 때뿐이다 (그 화면 자체가 이미 재생 상태를 보여주므로 중복 표시를 막는다).
             const suppressMixHere = !!window.__inPlaylistPlayScreen;
-            const suppressInlineFocus = page === 'planner';
+            // 플래너 탭에 있어도, 타이머가 도는 바로 그 날짜가 아니라 이전 기록을 열람 중이면
+            // 화면에 타이머가 안 보이므로(중복 표시 우려가 없으므로) 인라인 위젯을 그대로 띄운다.
+            const suppressInlineFocus = page === 'planner' && (!window.PlannerApp || !window.PlannerApp.isViewingLiveFocusDate || window.PlannerApp.isViewingLiveFocusDate());
             const suppressInlineMix = page === 'mixtape' && suppressMixHere;
 
             if (state.mode === 'inline') {
