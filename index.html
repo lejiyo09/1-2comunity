@@ -4110,9 +4110,12 @@
                     return;
                 }
 
-                onValue(ref(db, `users/${user.uid}`), (snapshot) => {
-                    const d = snapshot.val();
-                    if(d) {
+                // RTDB(users/{uid})는 브라우저 SDK에 오프라인 캐시가 없다 - 완전히 오프라인이면 이
+                // 리스너가 영원히 응답하지 않아서, 로그인은 됐는데(Firebase Auth 자체는 로컬에 남아있는
+                // 세션을 오프라인에서도 바로 복원한다) 그 아래 모든 초기화(플래너/급식/청소/일정 등 화면
+                // 구성)가 통째로 멈춰 서서 "로그인 화면에서 안 넘어가는" 것처럼 보이는 원인이 됐다.
+                // 그래서 리스너를 걸기 전에 마지막으로 저장해둔 내 프로필로 먼저 이 초기화를 실행해둔다.
+                function initSignedInUser(d, user) {
                         currentUser = user;
                         currentUserInfo = d;
                         // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
@@ -4256,8 +4259,18 @@
                             renderGames(); renderCategoryFilters();
                         }
                         if (!isListeningToSquad) { listenToSquad(); isListeningToSquad = true; }
+                }
+                onValue(ref(db, `users/${user.uid}`), (snapshot) => {
+                    const d = snapshot.val();
+                    if (d) {
+                        saveInfoCache('user_profile_' + user.uid, d);
+                        initSignedInUser(d, user);
                     }
                 });
+                // 위 리스너가 응답하기 전(또는 오프라인이라 영원히 응답하지 않을 때) 마지막으로 저장해둔
+                // 프로필로 먼저 화면을 채운다 - 온라인이면 곧바로 리스너의 최신 값이 덮어쓴다.
+                const cachedUserProfile = loadInfoCache('user_profile_' + user.uid);
+                if (cachedUserProfile) initSignedInUser(cachedUserProfile.data, user);
             } else {
                 // 진짜 로그아웃 상태(익명 세션도 없음): 익명으로라도 로그인해서 커뮤니티를 읽을 수 있게
                 // 시도한다. 이 콜백이 다시 익명 사용자로 한 번 더 불려서 위 user.isAnonymous 분기를 탄다.
