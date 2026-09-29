@@ -2346,17 +2346,6 @@
                     </div>
                 </div>
                 </div>
-
-                <div class="home-section" data-section-id="personal">
-                <div class="home-section-header">
-                    <input type="text" class="dashboard-section-title-input" data-section-title readonly value="📝 나만의 공간 (개인)">
-                    <span class="home-section-arrows"></span>
-                </div>
-                <div class="dashboard-grid" data-section-grid>
-                    <div class="card" data-widget-id="w-memo" style="grid-column: span 3;"></div>
-                    <div class="card" data-widget-id="w-photo" style="grid-column: span 3;"></div>
-                </div>
-                </div>
                 </div>
 
             </div>
@@ -4405,8 +4394,9 @@
             { id: 'priority-strip', label: '⏱ 우선순위 (날씨·미션·지금 학교는)', widgets: ['w-weather', 'w-missions', 'w-period'] },
             { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
             { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
-            { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] },
-            { id: 'personal', label: '📝 나만의 공간 (개인)', widgets: ['w-memo', 'w-photo'] }
+            { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] }
+            // 메모/사진 위젯은 기본으로 주어지지 않는다 - 사용자가 필요할 때 "+ 메모"/"+ 사진"으로 원하는 만큼
+            // 추가하고 삭제하는 것이다(숨기기 개념이 아님). 그 위젯을 담을 카테고리도 사용자가 알아서 만든다.
         ];
         const DEFAULT_HOME_SECTION_IDS = DEFAULT_HOME_LAYOUT.map(s => s.id);
         const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
@@ -4593,13 +4583,14 @@
                         bar.onclick = (e) => e.stopPropagation(); // 편집 바 클릭이 카드 자체의 onclick(탭 이동 등)으로 안 새어나가게
                         widgetEl.prepend(bar);
                     }
-                    // 사용자가 직접 추가한 메모/사진 위젯(기본 w-memo/w-photo 제외)은 숨기기뿐 아니라
-                    // 완전히 삭제도 할 수 있어야 하므로, 편집 바에 삭제 버튼을 함께 넣는다.
-                    const canDeleteWidget = (isMemoWidgetId(widgetId) || isPhotoWidgetId(widgetId)) && widgetId !== 'w-memo' && widgetId !== 'w-photo';
+                    // 앱 기능을 요약해 보여주는 고정 위젯(하나뿐)은 숨기기/다시 꺼내기, 사용자가 원하는 만큼
+                    // 만들고 내용도 마음대로 채우는 메모/사진 위젯은 숨기기가 아니라 삭제(추가/삭제 개념)다.
+                    const actionBtn = isPersonalWidgetId(widgetId)
+                        ? `<button type="button" class="widget-size-btn" onclick="deletePersonalWidget('${widgetId}')" title="이 위젯 삭제">🗑</button>`
+                        : `<button type="button" class="widget-size-btn" onclick="hideHomeWidget('${widgetId}')" title="이 위젯 숨기기">🙈</button>`;
                     bar.innerHTML = `
                         <span class="widget-drag-handle" title="드래그해서 옮기기">⠿</span>
-                        <button type="button" class="widget-size-btn" onclick="hideHomeWidget('${widgetId}')" title="이 위젯 숨기기">🙈</button>
-                        ${canDeleteWidget ? `<button type="button" class="widget-size-btn" onclick="deletePersonalWidget('${widgetId}')" title="이 위젯 삭제">🗑</button>` : ''}
+                        ${actionBtn}
                     `;
                     // 크기 조절 손잡이는 리렌더할 때마다 다시 만들지 않는다 - 이미 있으면 그대로 두고
                     // (드래그 중 재생성되면 진행 중인 드래그가 끊긴다), 처음 편집 모드로 들어갔을 때만 만든다.
@@ -4635,16 +4626,16 @@
             'w-period': '🕒 지금 우리 학교는', 'w-meal': '🍱 오늘의 급식', 'w-timetable': '🗓️ 오늘의 시간표',
             'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위',
             'w-calendar': '📅 일정', 'w-planner-time': '📖 오늘의 공부', 'w-planner-tasks': '📋 오늘 할 일',
-            'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글',
-            'w-memo': '📝 나만의 메모', 'w-photo': '🖼 나만의 사진'
+            'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글'
         };
         function loadHiddenHomeWidgets() {
             try {
                 const saved = JSON.parse(localStorage.getItem(HOME_WIDGET_HIDDEN_KEY) || '[]');
-                // 기본 위젯이든, 사용자가 새로 만든 메모/사진 위젯이든 전부 숨길 수 있어야 하므로 더 이상
-                // ALL_HOME_WIDGET_IDS(기본 위젯 목록)로만 걸러내지 않는다. 존재하지 않는 위젯 id가 섞여 있어도
+                // 숨기기는 고정 위젯 전용이다 - 메모/사진 위젯은 숨김 개념이 없으므로(추가/삭제만 한다), 예전
+                // 버전이 남겨둔 숨김 기록에 메모/사진 id가 섞여 있어도 무시한다. 안 그러면 다시 꺼낼 방법이 없는
+                // 채로 영원히 안 보이는 위젯이 생긴다. 존재하지 않는 위젯 id가 섞여 있어도
                 // applyHomeWidgetVisibility()가 해당 DOM을 못 찾아 조용히 무시하므로 문제없다.
-                return Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : [];
+                return Array.isArray(saved) ? saved.filter(id => typeof id === 'string' && !isPersonalWidgetId(id)) : [];
             } catch (e) { return []; }
         }
         function saveHiddenHomeWidgets(ids) {
@@ -4657,6 +4648,7 @@
             });
         }
         window.hideHomeWidget = function(widgetId) {
+            if (isPersonalWidgetId(widgetId)) return; // 메모/사진은 숨기지 않고 삭제한다(deletePersonalWidget)
             const hidden = loadHiddenHomeWidgets();
             if (!hidden.includes(widgetId)) hidden.push(widgetId);
             saveHiddenHomeWidgets(hidden);
@@ -4678,12 +4670,9 @@
             panel.innerHTML = `<span style="font-size:12px; color:var(--text-muted);">숨긴 위젯 (눌러서 다시 꺼내기):</span>` +
                 hidden.map(id => `<button type="button" class="btn-sub" style="font-size:12px; padding:5px 10px;" onclick="showHomeWidget('${id}')">+ ${homeWidgetDisplayLabel(id)}</button>`).join('');
         }
-        // 기본 위젯은 고정 이름표(HOME_WIDGET_LABELS)를, 사용자가 새로 추가한 메모/사진 위젯은 종류로 이름을 보여준다.
+        // 숨긴 위젯 버튼에 보여줄 이름 - 숨길 수 있는 건 고정 위젯뿐이라 고정 이름표(HOME_WIDGET_LABELS)만 쓴다.
         function homeWidgetDisplayLabel(id) {
-            if (HOME_WIDGET_LABELS[id]) return HOME_WIDGET_LABELS[id];
-            if (typeof isMemoWidgetId === 'function' && isMemoWidgetId(id)) return '📝 메모';
-            if (typeof isPhotoWidgetId === 'function' && isPhotoWidgetId(id)) return '🖼 사진';
-            return id;
+            return HOME_WIDGET_LABELS[id] || id;
         }
 
         window.moveHomeSection = function(sectionId, dir) {
@@ -5938,9 +5927,11 @@
         // - 메모(텍스트)와 사진은 서로 다른 위젯이다 - 메모는 텍스트만, 사진은 사진 한 장만 담는다.
         // - 텍스트는 localStorage에, 사진은 배경화면과 같은 방식으로 작은 전용 IndexedDB에 저장한다.
         // - Firebase에도, 외부 이미지 호스팅에도 올리지 않는다 - 이 브라우저에만 남는다.
-        // - 기본으로 하나씩(w-memo, w-photo) 주어지지만, 필요하면 각각 여러 개를 더 추가할 수 있다
-        //   (추가된 것들의 id는 "w-memo-<시각>-<난수>" / "w-photo-<시각>-<난수>" 형태 - id의 접두어로
-        //   위젯 종류를 구분하고, 기본 위젯(w-memo/w-photo)만 삭제할 수 없게 막는다).
+        // - 기본으로 주어지는 위젯은 없다. 사용자가 편집 모드의 "+ 메모"/"+ 사진"으로 원하는 만큼 추가하고
+        //   삭제한다 - 앱 기능을 요약해 보여주는 고정 위젯(하나뿐, 숨기기/다시 꺼내기)과는 다른 개념이라
+        //   숨기기는 없고 추가/삭제만 있다. id는 "w-memo-<시각>-<난수>" / "w-photo-<시각>-<난수>" 형태이고
+        //   id의 접두어로 위젯 종류를 구분한다. (예전 버전은 기본으로 w-memo/w-photo 하나씩을 "나만의 공간"
+        //   카테고리에 줬다 - 그 흔적은 migrateLegacyPersonalSection()이 한 번 정리한다.)
         // =========================================================================
         const MEMO_TEXT_KEY = 'hanilgo_personal_memo_text';
         const MEMO_DB_NAME = 'personalMemoDB';
@@ -5950,6 +5941,7 @@
         }
         function isMemoWidgetId(id){ return id === 'w-memo' || id.indexOf('w-memo-') === 0; }
         function isPhotoWidgetId(id){ return id === 'w-photo' || id.indexOf('w-photo-') === 0; }
+        function isPersonalWidgetId(id){ return isMemoWidgetId(id) || isPhotoWidgetId(id); }
         function openMemoDB() {
             return new Promise((resolve, reject) => {
                 const req = indexedDB.open(MEMO_DB_NAME, MEMO_DB_VERSION);
@@ -6108,7 +6100,7 @@
             window.addPersonalWidget(layout[0].id, type);
         };
         window.deletePersonalWidget = function(widgetId) {
-            if (widgetId === 'w-memo' || widgetId === 'w-photo') return; // 기본 위젯은 숨기기만 가능, 삭제는 불가
+            if (!isPersonalWidgetId(widgetId)) return; // 삭제는 메모/사진 위젯 전용 - 고정 위젯은 숨기기만 가능
             if (!confirm('이 위젯을 삭제할까요? 저장된 내용도 함께 삭제됩니다.')) return;
             const layout = loadHomeLayout();
             layout.forEach(s => { s.widgets = s.widgets.filter(id => id !== widgetId); });
@@ -6117,11 +6109,110 @@
             if (cardEl) cardEl.remove();
             try { localStorage.removeItem(memoTextKey(widgetId)); } catch (e) {}
             deleteMemoPhotoFromIndexedDB(widgetId).catch(() => {});
-            saveHiddenHomeWidgets(loadHiddenHomeWidgets().filter(id => id !== widgetId));
             const sizes = loadHomeWidgetSizes();
             if (sizes[widgetId]) { delete sizes[widgetId]; saveHomeWidgetSizes(sizes); }
             if (homeSectionEditMode) renderHomeEditControls();
         };
+
+        // =========================================================================
+        // 예전 버전이 모두에게 기본으로 줬던 "📝 나만의 공간 (개인)" 카테고리와 그 안의 기본 메모/사진
+        // 위젯(w-memo, w-photo) 정리 - 이제 기본 위젯은 없고 사용자가 필요할 때만 추가/삭제한다.
+        // 이미 그 카테고리를 쓰던 사용자의 실제 데이터(써둔 메모, 올려둔 사진)는 절대 지우지 않는다:
+        //  - 내용이 비어 있는 기본 메모/사진은 그냥 삭제한다(숨겨두고 안 쓰던 경우가 대부분).
+        //  - 내용이 있는 건 살려서 첫 번째 카테고리로 옮기고 다시 보이게 한다(이제 🗑로 직접 지울 수 있다).
+        //  - "나만의 공간" 카테고리 자체는 없앤다. 그 안에 사용자가 다른 위젯을 옮겨 넣었다면 그것도 첫
+        //    번째 카테고리로 옮겨서 위젯이 사라지지 않게 한다.
+        //  - 메모/사진은 숨김 개념이 없으므로 숨김 목록에서 전부 뺀다.
+        // 브라우저마다 딱 한 번만 실행된다(플래그).
+        // =========================================================================
+        // 순수 계산 함수 - DOM/스토리지를 건드리지 않고 "정리된 결과"만 돌려줘서 따로 테스트할 수 있다.
+        // hasContent: { 'w-memo': boolean, 'w-photo': boolean } (기본 메모/사진에 저장된 내용이 있는지)
+        function computeLegacyPersonalMigration(layout, hidden, sizes, hasContent) {
+            const LEGACY_SECTION_ID = 'personal';
+            const LEGACY_WIDGET_IDS = ['w-memo', 'w-photo'];
+            const isPersonalId = (id) => /^w-(memo|photo)(-|$)/.test(id);
+            let newLayout = layout.map(s => ({ id: s.id, label: s.label, widgets: s.widgets.slice() }));
+            const newSizes = Object.assign({}, sizes);
+
+            // 1) 내용이 없는 기본 메모/사진은 어디에 있든 삭제한다.
+            const deleteIds = LEGACY_WIDGET_IDS.filter(id => !hasContent[id]);
+            newLayout.forEach(s => { s.widgets = s.widgets.filter(id => !deleteIds.includes(id)); });
+            deleteIds.forEach(id => { delete newSizes[id]; });
+
+            // 2) "나만의 공간" 카테고리는 없앤다 - 남은 위젯은 첫 번째로 남는 카테고리로 옮긴다.
+            //    (이 카테고리가 전부라 옮길 곳이 없으면 위젯이 사라지므로 그대로 둔다.)
+            const legacySection = newLayout.find(s => s.id === LEGACY_SECTION_ID);
+            if (legacySection) {
+                const remaining = newLayout.filter(s => s.id !== LEGACY_SECTION_ID);
+                if (remaining.length > 0) {
+                    remaining[0].widgets.push(...legacySection.widgets);
+                    newLayout = remaining;
+                }
+            }
+
+            // 3) 내용이 있어서 살려둔 기본 메모/사진이 어느 카테고리에도 없으면(예전 기본 배치를 그대로 쓰던
+            //    사용자) 첫 번째 카테고리 끝에 넣는다.
+            LEGACY_WIDGET_IDS.forEach(id => {
+                if (hasContent[id] && !newLayout.some(s => s.widgets.includes(id))) newLayout[0].widgets.push(id);
+            });
+
+            // 4) 예전엔 기본 폭이 3칸이었다. 저장된 크기가 없으면 그 폭을 유지시켜서, 살려둔 위젯의 모양이
+            //    갑자기 좁아지지 않게 한다.
+            LEGACY_WIDGET_IDS.forEach(id => {
+                if (hasContent[id] && !newSizes[id]) newSizes[id] = { colSpan: 3, minHeight: 0 };
+            });
+
+            // 5) 메모/사진은 숨김 개념이 없다 - 숨김 목록에서 전부 뺀다(내용이 있는 위젯은 다시 보이게 된다).
+            const newHidden = hidden.filter(id => !isPersonalId(id));
+
+            return { layout: newLayout, hidden: newHidden, sizes: newSizes, deleteIds };
+        }
+        async function migrateLegacyPersonalSection() {
+            const FLAG = 'hanilgo_home_personal_migrated_v1';
+            try { if (localStorage.getItem(FLAG) === '1') return; } catch (e) { return; }
+            try {
+                await migrateLegacyMemoPhoto(); // 옛날 'current' 사진 키를 w-photo로 먼저 옮겨야 내용 유무를 정확히 알 수 있다
+                const hasContent = {};
+                // 내용 유무를 확인하다 오류가 나면 "있다"고 취급한다 - 잘못 지우는 것보다 잘못 남기는 게 안전하다.
+                try { hasContent['w-memo'] = ((localStorage.getItem(memoTextKey('w-memo')) || '').trim().length > 0); } catch (e) { hasContent['w-memo'] = true; }
+                try { hasContent['w-photo'] = !!(await getMemoPhotoFromIndexedDB('w-photo')); } catch (e) { hasContent['w-photo'] = true; }
+
+                const before = { layout: loadHomeLayout(), hidden: loadHiddenHomeWidgets(), sizes: loadHomeWidgetSizes() };
+                const result = computeLegacyPersonalMigration(before.layout, before.hidden, before.sizes, hasContent);
+
+                result.deleteIds.forEach(id => {
+                    const cardEl = document.querySelector(`.card[data-widget-id="${id}"]`);
+                    if (cardEl) cardEl.remove();
+                    try { localStorage.removeItem(memoTextKey(id)); } catch (e) {}
+                    deleteMemoPhotoFromIndexedDB(id).catch(() => {});
+                });
+                // 섹션째로 사라질 때 옮겨질 위젯 카드까지 같이 지워지지 않도록 먼저 컨테이너 밖으로 빼둔다.
+                const legacySectionEl = document.querySelector('.home-section[data-section-id="personal"]');
+                if (legacySectionEl && !result.layout.some(s => s.id === 'personal')) {
+                    legacySectionEl.querySelectorAll('.card[data-widget-id]').forEach(c => document.body.appendChild(c));
+                    legacySectionEl.remove();
+                }
+                const changed = JSON.stringify(result.layout) !== JSON.stringify(before.layout)
+                    || JSON.stringify(result.sizes) !== JSON.stringify(before.sizes);
+                if (changed) {
+                    saveHomeLayout(result.layout);
+                    saveHomeWidgetSizes(result.sizes);
+                }
+                saveHiddenHomeWidgets(result.hidden); // 예전 숨김 기록에 남아있던 메모/사진 id까지 저장소에서 정리
+                if (changed) {
+                    applyHomeLayout();
+                    applyHomeWidgetSizes();
+                    applyHomeWidgetVisibility();
+                    initAllMemoWidgets(); // 새로 자리를 옮긴/다시 보이게 된 위젯이 아직 초기화 전이면 채운다
+                    if (homeSectionEditMode) renderHomeEditControls();
+                }
+            } catch (e) {
+                console.warn('나만의 공간 정리 실패(다음 접속 때 다시 시도):', e);
+                return;
+            }
+            try { localStorage.setItem(FLAG, '1'); } catch (e) {}
+        }
+        migrateLegacyPersonalSection();
         // 지난 버전엔 'current' 키 하나에만 저장했다. 'light'/'dark' 슬롯이 아직 하나도 없고 'current'만
         // 있으면, 그 사진을 라이트 슬롯으로 옮겨서 계속 "공용(라이트 사진을 다크에도 그대로)"으로 동작하게 한다.
         async function migrateLegacyCustomBackground() {
