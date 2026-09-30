@@ -3051,6 +3051,10 @@
                 <div id="seat-secure-content" style="display: none;">
                     <button id="btn-shuffle-seats" onclick="shuffleSeats()" class="auth-btn" style="display:none; width: auto; padding: 12px 24px; font-size: 15px; margin-bottom: 15px;">🎲 자리 무작위 배치 셔플 시작</button>
                     <p id="seat-view-only-hint" style="display:none; font-size:13px; color:var(--text-muted); margin-bottom:15px;">✏️ 자리 배치는 커뮤니티 엔지니어·반장·부반장·담임선생님만 수정할 수 있습니다.</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
+                        <button class="btn-sub" onclick="downloadSeatingImage()">📥 이미지로 저장</button>
+                        <button class="btn-sub" onclick="shareSeatingLink()">🔗 링크 공유</button>
+                    </div>
                     <div class="classroom">
                         <div class="teacher-desk">교 탁</div>
                         <div class="seating-grid" id="seating-grid"></div>
@@ -5444,9 +5448,10 @@
         // - 게스트(비로그인)도 커뮤니티/공지는 읽기 전용으로 볼 수 있으므로, 공유 링크는 로그인
         //   여부와 무관하게 항상 동작한다.
         // =========================================================================
+        // id가 없는 대상(자리 배치처럼 페이지 하나 자체를 가리키는 링크)은 id를 생략할 수 있다.
         function buildShareUrl(type, id) {
             const url = new URL(location.href);
-            url.search = `?share=${type}&id=${encodeURIComponent(id)}`;
+            url.search = id === undefined ? `?share=${type}` : `?share=${type}&id=${encodeURIComponent(id)}`;
             url.hash = '';
             return url.toString();
         }
@@ -5483,6 +5488,7 @@
                 const params = new URLSearchParams(location.search);
                 const type = params.get('share');
                 const id = params.get('id');
+                if (type === 'seat') return { type, id: null }; // 자리 배치 페이지 자체를 가리키는 링크라 id가 없다
                 if ((type === 'post' || type === 'notice') && id) return { type, id };
             } catch (e) {}
             return null;
@@ -5500,6 +5506,12 @@
                 window.switchTab('notice');
                 showNoticeDetail(id);
                 try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+            } else if (type === 'seat' && seatingDataReady) {
+                // 자리 배치 데이터는 1-2반으로 로그인한 사람에게만 구독되므로, 데이터가 도착했다는 건
+                // 이 사람이 볼 수 있다는 뜻이다(권한 없는 사람은 여기까지 오지 않고 아래 시간 초과 안내를 본다).
+                pendingShareTarget = null;
+                window.switchTab('seat');
+                try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
             }
         }
         if (pendingShareTarget) {
@@ -5507,7 +5519,9 @@
             // 8초 뒤에도 못 열었을 것 - 그때 한 번만 안내하고 포기한다(무한 대기 방지).
             setTimeout(() => {
                 if (pendingShareTarget) {
-                    alert('공유된 글을 찾을 수 없어요. 삭제되었거나 더 이상 접근할 수 없는 글일 수 있어요.');
+                    alert(pendingShareTarget.type === 'seat'
+                        ? '자리 배치는 1-2반으로 로그인한 뒤에 볼 수 있어요.'
+                        : '공유된 글을 찾을 수 없어요. 삭제되었거나 더 이상 접근할 수 없는 글일 수 있어요.');
                     pendingShareTarget = null;
                 }
             }, 8000);
@@ -13318,15 +13332,29 @@
         };
         const seatStructure = [[1,5,9,14,19,23],[2,6,10,15,20,24],[3,7,11,16,21,25],[4,8,12,17,22,26],[0,0,13,18,0,0]];
         let seatingDataCache = {};
+        let seatingDataReady = false; // 자리 배치 데이터(캐시든 실시간이든)를 한 번이라도 받았는지 - 공유 링크로 열었을 때 탭을 옮길 시점 판단용
         function listenToSeating() {
             // RTDB는 오프라인 캐시가 없어서, 리스너가 값을 받기 전까지는 마지막으로 저장해둔 자리배치를 먼저 보여준다.
             const cached = loadInfoCache('seating');
-            if (cached) { seatingDataCache = cached.data; renderSeatingGrid(); }
+            if (cached) { seatingDataCache = cached.data; seatingDataReady = true; renderSeatingGrid(); tryConsumePendingShareTarget(); }
             onValue(ref(db, 'dashboard/seating'), (snap) => {
                 seatingDataCache = snap.val() || {};
+                seatingDataReady = true;
                 saveInfoCache('seating', seatingDataCache);
                 renderSeatingGrid();
+                tryConsumePendingShareTarget();
             });
+        }
+        // 한 좌석에 보여줄 이름 - 화면(renderSeatingGrid)과 이미지 저장(downloadSeatingImage)이 항상 똑같은
+        // 결과를 보여주도록 계산을 여기 한 곳에 둔다.
+        function getSeatDisplayName(num) {
+            const assigned = seatingDataCache[`seat_${num}`];
+            if (assigned !== undefined && assigned !== null && assigned !== '') {
+                // 숫자(학생 번호)로 저장된 경우 보는 사람에 맞는 이름으로 변환, 예전 이름 문자열 데이터는 그대로 표시(호환)
+                const resolved = /^\d+$/.test(assigned) ? resolveStudentDisplayName(assigned) : null;
+                return resolved || assigned;
+            }
+            return `${num}번 학생`;
         }
         function renderSeatingGrid() {
             const gridEl = document.getElementById('seating-grid');
@@ -13338,20 +13366,144 @@
                     if (num === 0) box.className = 'seat-box empty';
                     else {
                         box.className = 'seat-box';
-                        const assigned = seatingDataCache[`seat_${num}`];
-                        let displayName = `${num}번 학생`;
-                        if (assigned !== undefined && assigned !== null && assigned !== '') {
-                            // 숫자(학생 번호)로 저장된 경우 보는 사람에 맞는 이름으로 변환, 예전 이름 문자열 데이터는 그대로 표시(호환)
-                            const resolved = /^\d+$/.test(assigned) ? resolveStudentDisplayName(assigned) : null;
-                            displayName = resolved || assigned;
-                        }
-                        box.innerHTML = `<div class="seat-label">${num}번 좌석</div><div class="seat-user">${displayName}</div>`;
+                        box.innerHTML = `<div class="seat-label">${num}번 좌석</div><div class="seat-user">${getSeatDisplayName(num)}</div>`;
                         if (canManageSeats) { box.style.cursor = 'pointer'; box.onclick = () => openSeatModal(num); }
                     }
                     gridEl.appendChild(box);
                 });
             });
         }
+
+        // =========================================================================
+        // 자리 배치 이미지로 저장 / 링크 공유
+        // - 화면을 캡처(html2canvas)하지 않고 좌석 데이터로 캔버스에 직접 그린다: 이 앱의 카드 스타일(블러,
+        //   CSS 변수, 다크 모드)에 결과가 좌우되지 않고, CDN 스크립트가 안 떠도 오프라인(저장된 자리배치)에서도
+        //   동작하며, 어떤 테마로 보고 있든 공유하기 좋은 밝은 이미지가 나온다.
+        // - 링크 공유는 게시글/공지와 같은 방식(?share=seat)이다. 이미지를 외부 호스트에 올려 만든 공개
+        //   링크가 아니라 앱 링크라서, 1-2반으로 로그인한 사람만 열어볼 수 있다(반 친구들 실명이 들어간 자료).
+        // =========================================================================
+        // 순수 함수 - 캔버스/DOM 없이 좌표만 계산해서 따로 테스트할 수 있다(기본 좌석 배치 seatStructure와 같은 모양).
+        function computeSeatImageLayout(structure) {
+            const COLS = Math.max(...structure.map(r => r.length));
+            const PAD = 48, HEADER_H = 136, DESK_W = 220, DESK_H = 50, DESK_GAP = 34;
+            const SEAT_W = 150, SEAT_H = 96, GAP = 18, FOOTER_H = 64;
+            const width = PAD * 2 + COLS * SEAT_W + (COLS - 1) * GAP;
+            const desk = { x: (width - DESK_W) / 2, y: HEADER_H, w: DESK_W, h: DESK_H };
+            const gridTop = desk.y + desk.h + DESK_GAP;
+            const seats = [];
+            structure.forEach((row, r) => row.forEach((num, c) => {
+                if (num === 0) return; // 0은 빈 칸(자리 없음)
+                seats.push({ num, x: PAD + c * (SEAT_W + GAP), y: gridTop + r * (SEAT_H + GAP), w: SEAT_W, h: SEAT_H });
+            }));
+            const gridBottom = gridTop + structure.length * SEAT_H + (structure.length - 1) * GAP;
+            return { width, height: gridBottom + FOOTER_H, pad: PAD, desk, seats };
+        }
+        function pathRoundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+        const SEAT_IMAGE_FONT = `'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif`;
+        function drawSeatingImage(ctx, layout, getName, dateLabel) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, layout.width, layout.height);
+            ctx.textBaseline = 'middle';
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#0f172a';
+            ctx.font = `800 40px ${SEAT_IMAGE_FONT}`;
+            ctx.fillText('1-2반 자리 배치', layout.pad, layout.pad + 22);
+            ctx.fillStyle = '#64748b';
+            ctx.font = `500 20px ${SEAT_IMAGE_FONT}`;
+            ctx.fillText(dateLabel, layout.pad, layout.pad + 66);
+
+            pathRoundRect(ctx, layout.desk.x, layout.desk.y, layout.desk.w, layout.desk.h, 12);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fill();
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `700 20px ${SEAT_IMAGE_FONT}`;
+            ctx.fillText('교 탁', layout.desk.x + layout.desk.w / 2, layout.desk.y + layout.desk.h / 2);
+
+            layout.seats.forEach(seat => {
+                pathRoundRect(ctx, seat.x, seat.y, seat.w, seat.h, 14);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.stroke();
+
+                const cx = seat.x + seat.w / 2;
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = `500 14px ${SEAT_IMAGE_FONT}`;
+                ctx.fillText(`${seat.num}번 좌석`, cx, seat.y + 28);
+
+                // 이름이 칸보다 길면 글자 크기를 줄여서 맞추고(최소 14px), 그래도 넘치면 말줄임(…)으로 자른다 -
+                // 어떤 데이터가 들어와도 글자가 옆 칸으로 삐져나가거나 잘리지 않게 한다.
+                const maxTextW = seat.w - 20;
+                let name = String(getName(seat.num));
+                let size = 28;
+                ctx.fillStyle = '#0f172a';
+                ctx.font = `700 ${size}px ${SEAT_IMAGE_FONT}`;
+                while (size > 14 && ctx.measureText(name).width > maxTextW) {
+                    size -= 2;
+                    ctx.font = `700 ${size}px ${SEAT_IMAGE_FONT}`;
+                }
+                if (ctx.measureText(name).width > maxTextW) {
+                    while (name.length > 1 && ctx.measureText(name + '…').width > maxTextW) name = name.slice(0, -1);
+                    name += '…';
+                }
+                ctx.fillText(name, cx, seat.y + 62);
+            });
+
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = `500 16px ${SEAT_IMAGE_FONT}`;
+            ctx.fillText('1-2 커뮤니티', layout.width - layout.pad, layout.height - 30);
+        }
+        window.downloadSeatingImage = async function() {
+            try {
+                // 웹폰트가 아직 로딩 중이면 캔버스가 대체 글꼴로 그려버리므로, 준비될 때까지 잠깐 기다린다.
+                if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+                const now = new Date();
+                const pad2 = n => String(n).padStart(2, '0');
+                const dateKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+                const layout = computeSeatImageLayout(seatStructure);
+                const scale = 2; // 카톡 등으로 공유해도 글씨가 또렷하도록 2배 해상도로 만든다
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(layout.width * scale);
+                canvas.height = Math.round(layout.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.scale(scale, scale);
+                drawSeatingImage(ctx, layout, getSeatDisplayName, dateKey.replace(/-/g, '.') + ' 기준');
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) throw new Error('이미지를 만들지 못했어요.');
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // 파일명은 영문으로 - 브라우저에 따라 한글 download 이름이 무시되고 확장자 없는 "download"로 저장되는
+                // 경우가 있어서(실제로 확인됨), .png 확장자가 확실히 붙는 이름을 쓴다.
+                a.download = `seat-chart_${dateKey}.png`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+            } catch (e) {
+                console.error('자리 배치 이미지 저장 오류:', e);
+                alert('이미지 저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+            }
+        };
+        window.shareSeatingLink = async function() {
+            const ok = await copyTextToClipboard(buildShareUrl('seat'));
+            alert(ok
+                ? '자리 배치 링크가 복사되었어요! 붙여넣기로 공유해보세요.\n(1-2반으로 로그인한 친구들만 열어볼 수 있어요)'
+                : '링크 복사에 실패했어요. 브라우저 권한을 확인해주세요.');
+        };
 
         // 랜덤 자리 배치 셔플/개별 자리 수정 버튼 노출 (canManageSeats가 바뀔 때마다 호출됨)
         function updateSeatComposerVisibility() {
