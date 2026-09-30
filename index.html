@@ -5549,6 +5549,17 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
+        // onclick="fn('...')" 처럼 HTML 속성 안의 작은따옴표 문자열 리터럴에 값을 넣을 때 쓴다.
+        // 순서가 중요하다: 브라우저는 속성값의 HTML 엔티티를 "먼저" 풀고 그 결과를 JS로 해석하므로,
+        // (1) JS용으로 \ 와 ' 를 먼저 이스케이프한 뒤 (2) HTML 이스케이프해야 한다.
+        // (예전처럼 HTML 이스케이프를 먼저 하면 ' 가 &#39; 가 되어 뒤의 JS 이스케이프가 못 잡고,
+        //  속성에서 다시 ' 로 풀려 곡 제목에 ' 가 들어가면 SyntaxError로 버튼이 통째로 죽는다.)
+        function escapeJsAttr(str) {
+            return escapeNoticeText(String(str == null ? '' : str)
+                .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+                .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'));
+        }
 
         function noticeCategoryLabel(cat) { return cat === 'etc' ? '📌 기타' : '🏫 학급'; }
         function isNoticeConfirmedByMe(noticeId) { return !!(currentUser && noticeReadsCache[noticeId] && noticeReadsCache[noticeId][currentUser.uid]); }
@@ -10030,7 +10041,7 @@
                 ? `background-image: linear-gradient(rgba(15,23,42,0.5), rgba(15,23,42,0.5)), url('${g.backgroundImage}'); background-size: cover; background-position: center;`
                 : (g.color ? `background: ${g.color};` : `background: linear-gradient(135deg, #3b82f6, #6366f1);`);
             const disabledBadge = (!g.enabled && !isFallback) ? `<span class="badge" style="background:#fee2e2; color:#991b1b; font-size:10px; margin-bottom:6px; display:inline-block;">비활성</span><br>` : '';
-            const safeUrl = (g.url || '').replace(/'/g, "\\'");
+            const safeUrl = escapeJsAttr(g.url || '');
             let adminControls = '';
             if (isAdmin) {
                 adminControls = `<div style="display:flex; gap:6px; justify-content:center; margin-top:8px; flex-wrap:wrap;">
@@ -10177,7 +10188,7 @@
             let html = `<span class="pokemon-cat-btn" data-cat="전체" onclick="setPokemonCategoryFilter('전체')" style="cursor: pointer; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: ${pokemonCategoryFilter === '전체' ? 'var(--primary)' : '#f3f4f6'}; color: ${pokemonCategoryFilter === '전체' ? 'white' : 'var(--text-muted)'};">전체</span>`;
             names.forEach(name => {
                 const active = pokemonCategoryFilter === name;
-                html += `<span class="pokemon-cat-btn" data-cat="${name}" onclick="setPokemonCategoryFilter('${name}')" style="cursor: pointer; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: ${active ? 'var(--primary)' : '#f3f4f6'}; color: ${active ? 'white' : 'var(--text-muted)'};">${name}</span>`;
+                html += `<span class="pokemon-cat-btn" data-cat="${escapeNoticeText(name)}" onclick="setPokemonCategoryFilter('${escapeJsAttr(name)}')" style="cursor: pointer; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: ${active ? 'var(--primary)' : '#f3f4f6'}; color: ${active ? 'white' : 'var(--text-muted)'};">${name}</span>`;
             });
             wrap.innerHTML = html;
             const manageBtn = document.getElementById('btn-manage-categories');
@@ -10209,10 +10220,10 @@
                 <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface-secondary); padding:8px 12px; border-radius:8px; border:1px solid var(--border-color);">
                     <span style="font-size:13px; font-weight:600;">${c.name}</span>
                     <div style="display:flex; gap:6px;">
-                        <span onclick="renameCategory('${id}', '${c.name.replace(/'/g, "\\'")}')" style="cursor:pointer; font-size:13px;" title="이름 수정">✏️</span>
+                        <span onclick="renameCategory('${id}', '${escapeJsAttr(c.name)}')" style="cursor:pointer; font-size:13px;" title="이름 수정">✏️</span>
                         ${idx > 0 ? `<span onclick="moveCategory('${id}', -1)" style="cursor:pointer; font-size:13px;" title="위로">▲</span>` : ''}
                         ${idx < entries.length - 1 ? `<span onclick="moveCategory('${id}', 1)" style="cursor:pointer; font-size:13px;" title="아래로">▼</span>` : ''}
-                        <span onclick="deleteCategory('${id}', '${c.name.replace(/'/g, "\\'")}')" style="cursor:pointer; font-size:13px; color:#ef4444;" title="삭제">🗑️</span>
+                        <span onclick="deleteCategory('${id}', '${escapeJsAttr(c.name)}')" style="cursor:pointer; font-size:13px; color:#ef4444;" title="삭제">🗑️</span>
                     </div>
                 </div>
             `).join('');
@@ -11194,7 +11205,7 @@
                 const nowPlaying = window.MixTapeApp && window.MixTapeApp.getNowPlaying ? window.MixTapeApp.getNowPlaying() : null;
                 listEl.innerHTML = playlists.map(p => {
                     const isPlayingThis = nowPlayingId === p.id && nowPlaying && nowPlaying.playing;
-                    const safeName = escapeNoticeText(p.name || '').replace(/'/g, "\\'");
+                    const safeName = escapeJsAttr(p.name || '');
                     return `
                         <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; margin-bottom:8px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px;">
                             <span onclick="openPlaylistPlayer(${p.id})" style="flex:1; min-width:0; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -11689,8 +11700,8 @@
         function myMusicTrackCardHTML(t, artworkUrlsSink, selectable) {
             const title = t._title != null ? t._title : (t.title || t.name || '제목 없음');
             const artist = t._artist != null ? t._artist : (t.artist || '');
-            const safeName = escapeNoticeText(title).replace(/'/g, "\\'");
-            const safeArtist = escapeNoticeText(artist).replace(/'/g, "\\'");
+            const safeName = escapeJsAttr(title);
+            const safeArtist = escapeJsAttr(artist);
             let artHtml = musicTrackIcon();
             if (t.artwork) {
                 const artUrl = URL.createObjectURL(t.artwork);
@@ -12326,7 +12337,7 @@
         function renderMusicTrackCard(t, likedIds, downloadedIds) {
             const liked = likedIds && likedIds.has(t.id);
             const downloaded = downloadedIds && downloadedIds.has(t.id);
-            const safeTitle = escapeNoticeText(t.title || '').replace(/'/g, "\\'");
+            const safeTitle = escapeJsAttr(t.title || '');
             const isOwner = !!(currentUser && t.uploader_id && currentUser.uid === t.uploader_id);
             return `
                 <div class="music-track-card">
@@ -12885,7 +12896,7 @@
             if (filterEl) {
                 const chips = ['전체', ...categories];
                 filterEl.innerHTML = chips.map(cat => `
-                    <div class="archive-subnav-item ${materialsCategoryFilter === cat ? 'active' : ''}" onclick="setMaterialsCategoryFilter('${cat.replace(/'/g, "\\'")}')">${escapeNoticeText(cat)}</div>
+                    <div class="archive-subnav-item ${materialsCategoryFilter === cat ? 'active' : ''}" onclick="setMaterialsCategoryFilter('${escapeJsAttr(cat)}')">${escapeNoticeText(cat)}</div>
                 `).join('');
             }
 
@@ -13099,7 +13110,7 @@
             Object.keys(data).forEach(sub => { if (!allSubjects.includes(sub)) allSubjects.push(sub); });
             allSubjects.forEach(sub => {
                 const row = document.createElement('div'); row.className = 'subject-row';
-                const escSub = escapeHtml(sub).replace(/'/g, "\\'");
+                const escSub = escapeJsAttr(sub);
                 row.innerHTML = `<span class="subject-name">${escapeHtml(sub)}</span><button type="button" onclick="renameExamSubject('${escSub}')" class="btn-sub" style="font-size:11px; padding:3px 7px;" title="과목 이름 수정">✏️</button><textarea class="subject-input" id="note-${sub}" rows="1" placeholder="${escapeHtml(sub)} 범위를 업데이트하세요.">${escapeHtml(data[sub] || '')}</textarea><button onclick="saveExamNote('${escSub}')" class="btn-sub" style="color:var(--primary); border-color:var(--primary);">저장</button>`;
                 container.appendChild(row);
                 const ta = row.querySelector('textarea');
@@ -13615,7 +13626,7 @@
                 ...Object.entries(personalShortcuts).map(([id, sc]) => ({ id, sc, personal: true }))
             ].sort((a, b) => (a.sc.order || 0) - (b.sc.order || 0));
             grid.innerHTML = entries.map(({ id, sc, personal }) => {
-                const safeUrl = (sc.url || '').replace(/'/g, "\\'");
+                const safeUrl = escapeJsAttr(sc.url || '');
                 // 개인 바로가기는 관리자 권한과 무관하게 항상 본인이 수정/삭제할 수 있다.
                 const canEditThis = personal || canManageShortcuts;
                 const editBtn = canEditThis ? `<span onclick="event.stopPropagation(); openShortcutModal('${id}', '${personal ? 'personal' : 'shared'}')" style="position:absolute; top:-6px; right:-6px; cursor:pointer; font-size:14px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">⚙️</span>` : '';
