@@ -942,16 +942,14 @@
     .planner-app .view-fade-in { animation: plannerFadeIn 0.3s ease-out forwards; }
     @keyframes plannerFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .planner-app .time-box { transition: background-color 0.5s ease, transform 0.14s ease, box-shadow 0.14s ease; }
-    /* 마우스를 올린 칸과 같은 활동으로 채워진 모든 칸: 살짝 떠오르고 테두리로 강조해서
-       타임테이블에서 그 활동이 얼마나 차지하는지 한눈에 보이게 한다. (JS: applyActivityHighlight) */
-    .planner-app .time-box.hl-activity {
-      transform: translateY(-2px) scale(1.12); z-index: 30;
-      box-shadow: 0 0 0 2px #ffffff, 0 0 0 3.5px rgba(15, 23, 42, 0.85), 0 6px 12px rgba(0, 0, 0, 0.35);
-    }
-    .planner-app .time-box.active-slot.hl-activity {
-      box-shadow: inset 0 0 0 2px #818cf8, 0 0 0 2px #ffffff, 0 0 0 3.5px rgba(15, 23, 42, 0.85), 0 6px 12px rgba(0, 0, 0, 0.35);
-    }
+    .planner-app .time-box { transition: background-color 0.5s ease; }
+    /* 마우스를 올린 활동의 "색칠된 막대" 바깥 테두리만 그리는 오버레이(JS: applyActivityHighlight).
+       칸 하나하나가 아니라 이어진 덩어리의 바깥선만 보이도록 SVG 경로로 그린다. */
+    .planner-app #timetable-grid { position: relative; }
+    .planner-app .planner-hl-outline { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 40; }
+    .planner-app .planner-hl-outline path { fill: none; stroke-linecap: square; }
+    .planner-app .planner-hl-outline .hl-under { stroke: rgba(15, 23, 42, 0.9); stroke-width: 4.5px; }
+    .planner-app .planner-hl-outline .hl-line { stroke: #ffffff; stroke-width: 2px; filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.6)); }
     .planner-app .time-box.locked:hover::after { content: none; }
     .planner-app .time-box.unlocked:hover::after { content: ''; position: absolute; inset: 0; background-color: rgba(15, 23, 42, 0.08); z-index: 10; }
     .planner-app .active-slot { box-shadow: inset 0 0 0 2px #818cf8, inset 0 0 10px rgba(99, 102, 241, 0.25); z-index: 5; }
@@ -966,11 +964,21 @@
     /* 타임테이블 칸 위에 마우스를 올렸을 때 "어떤 할 일이었는지" 보여주는 플로팅 툴팁 (document.body에 붙는다) */
     .planner-segment-tooltip {
       display: none; position: fixed; z-index: 9999; pointer-events: none;
-      background: #111827; color: #f2f3f5; font-size: 12px; font-weight: 600; line-height: 1.4;
-      padding: 6px 10px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-      max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      font-family: 'Pretendard', sans-serif;
+      background: #111827; color: #f2f3f5; line-height: 1.35;
+      padding: 10px 14px 10px 10px; border-radius: 12px; border: 2px solid var(--tip-color, #6366f1);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 14px var(--tip-glow, rgba(99,102,241,0.45)), 0 8px 20px rgba(0,0,0,0.45);
+      min-width: 150px; max-width: 260px; font-family: 'Pretendard', sans-serif;
     }
+    .planner-segment-tooltip .pst-row { display: flex; align-items: center; gap: 10px; }
+    .planner-segment-tooltip .pst-icon {
+      flex: none; width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      background: var(--tip-color, #6366f1); font-size: 18px;
+    }
+    .planner-segment-tooltip .pst-body { min-width: 0; }
+    .planner-segment-tooltip .pst-sub { font-size: 11px; font-weight: 700; color: var(--tip-color, #a5b4fc); }
+    .planner-segment-tooltip .pst-title { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .planner-segment-tooltip .pst-meta { margin-top: 6px; font-size: 12px; font-weight: 600; color: #cbd5e1; }
+    .planner-segment-tooltip .pst-meta div + div { margin-top: 2px; }
 
     .planner-app input[type="checkbox"].task-check {
       appearance: none; width: 1.15rem; height: 1.15rem; border: 2px solid #cbd5e1; border-radius: 0.25rem;
@@ -14205,8 +14213,7 @@
         // 95% 이상 공부했으면 빈틈없이 꽉 채운 솔리드 컬러로 덮어버림
         let rawFillPct = (cellData.seconds / 600) * 100;
         if (rawFillPct >= 95) {
-            let mainSubId = Object.keys(cellData.parts).reduce((a, b) => cellData.parts[a] > cellData.parts[b] ? a : b, Object.keys(cellData.parts)[0]);
-            return getSubject(mainSubId).color;
+            return getSubject(cellMainSubId(cellData)).color;
         } 
         
         let gradParts = [];
@@ -14257,6 +14264,7 @@
       const task = seg.taskId ? (state.records[currentDateStr].tasks || []).find(t => t.id === seg.taskId) : null;
       const taskLabel = task ? task.title : (seg.taskId ? '삭제된 할 일' : '알 수 없음');
       const sub = getSubject(seg.subId);
+      const run = computeActivityRun(seg, box.id.slice(5).replace('-', ':'));
       let tooltipEl = document.getElementById('planner-segment-tooltip');
       if (!tooltipEl) {
         tooltipEl = document.createElement('div');
@@ -14264,11 +14272,61 @@
         tooltipEl.className = 'planner-segment-tooltip';
         document.body.appendChild(tooltipEl);
       }
-      tooltipEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sub.color};margin-right:5px;vertical-align:middle;"></span>${plannerEscapeText(taskLabel)} · ${plannerEscapeText(sub.name)}`;
+      tooltipEl.style.setProperty('--tip-color', sub.color);
+      tooltipEl.style.setProperty('--tip-glow', plannerHexToRgba(sub.color, 0.45) || 'rgba(99,102,241,0.45)');
+      tooltipEl.innerHTML = `<div class="pst-row"><div class="pst-icon">📖</div><div class="pst-body">`
+        + `<div class="pst-sub">${plannerEscapeText(sub.name)}</div>`
+        + `<div class="pst-title">${plannerEscapeText(taskLabel)}</div></div></div>`
+        + (run ? `<div class="pst-meta"><div>🕐 ${formatClockFromOffset(run.startSec)} ~ ${formatClockFromOffset(run.endSec)}</div><div>⏱ ${formatRunDuration(run.totalSec)}</div></div>` : '');
       tooltipEl.style.display = 'block';
-      tooltipEl.style.left = (e.clientX + 14) + 'px';
-      tooltipEl.style.top = (e.clientY + 16) + 'px';
+      // 화면 오른쪽/아래 끝에서는 잘리지 않도록 커서 반대편으로 뒤집는다.
+      let left = e.clientX + 14, top = e.clientY + 16;
+      if (left + tooltipEl.offsetWidth > window.innerWidth - 8) left = Math.max(8, e.clientX - 14 - tooltipEl.offsetWidth);
+      if (top + tooltipEl.offsetHeight > window.innerHeight - 8) top = Math.max(8, e.clientY - 16 - tooltipEl.offsetHeight);
+      tooltipEl.style.left = left + 'px';
+      tooltipEl.style.top = top + 'px';
       return seg;
+    }
+    // 타임테이블은 07:00부터 시작해 다음 날 00시대까지 이어지므로, 07:00를 0초로 하는 "하루 안의 위치(초)"로 바꿔 계산한다.
+    function timeKeyToOffsetSec(timeKey) {
+      const [h, m] = timeKey.split(':').map(Number);
+      return ((h - 7 + 24) % 24) * 3600 + m * 60;
+    }
+    function formatClockFromOffset(sec) {
+      const total = Math.round(sec / 60) * 60;
+      return `${String((7 + Math.floor(total / 3600)) % 24).padStart(2, '0')}:${String(Math.floor((total % 3600) / 60)).padStart(2, '0')}`;
+    }
+    function formatRunDuration(sec) {
+      const total = Math.round(sec);
+      const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60);
+      if (h > 0) return `${h}시간 ${m}분`;
+      if (m > 0) return `${m}분`;
+      return `${total}초`;
+    }
+    // 커서가 가리키는 조각이 속한 "이어진 구간"(같은 활동이 쉬지 않고 이어진 막대)의 시작/끝/총 시간을 구한다.
+    // 칸 경계를 넘어 이어지는 조각은 같은 구간으로 합치고, 중간에 쉰 시간이 있으면 별개 구간으로 본다.
+    function computeActivityRun(seg, timeKey) {
+      const recordGrid = (state.records[currentDateStr] && state.records[currentDateStr].grid) || {};
+      const key = activityKeyOf(seg);
+      const items = [];
+      Object.keys(recordGrid).forEach(tk => {
+        const segs = recordGrid[tk] && recordGrid[tk].segments;
+        if (!segs) return;
+        const base = timeKeyToOffsetSec(tk);
+        segs.forEach(sg => {
+          if (activityKeyOf(sg) === key) items.push({ start: base + sg.startOffset, end: base + sg.startOffset + sg.seconds, ref: sg });
+        });
+      });
+      if (!items.length) return null;
+      items.sort((a, b) => a.start - b.start);
+      const runs = [];
+      items.forEach(it => {
+        const last = runs[runs.length - 1];
+        if (last && it.start - last.end <= 2) { last.end = Math.max(last.end, it.end); last.total += it.end - it.start; last.items.push(it); }
+        else runs.push({ start: it.start, end: it.end, total: it.end - it.start, items: [it] });
+      });
+      const run = runs.find(r => r.items.some(it => it.ref === seg));
+      return run ? { startSec: run.start, endSec: run.end, totalSec: run.total } : null;
     }
     function hideSegmentTooltip() {
       const el = document.getElementById('planner-segment-tooltip');
@@ -14285,20 +14343,87 @@
       activeHighlightDate = key ? currentDateStr : null;
       applyActivityHighlight();
     }
-    // 현재 보고 있는 날짜의 기록에서, 강조 중인 활동이 조금이라도 들어있는 칸을 전부 찾아 강조 클래스를 붙인다.
+    // 칸이 "95% 이상 찼으면 빈틈없이 한 색으로 칠하는" 규칙(getCellGradient)과 똑같이 대표 과목을 고른다.
+    function cellMainSubId(cellData) {
+      return Object.keys(cellData.parts).reduce((a, b) => cellData.parts[a] > cellData.parts[b] ? a : b, Object.keys(cellData.parts)[0]);
+    }
+    // [x0,x1] 구간에서 cuts(구간 목록)와 겹치는 부분을 빼고 남는 구간들을 돌려준다.
+    function subtractSpans(x0, x1, cuts) {
+      let rest = [[x0, x1]];
+      cuts.forEach(([c0, c1]) => {
+        const next = [];
+        rest.forEach(([a, b]) => {
+          if (c1 <= a || c0 >= b) { next.push([a, b]); return; }
+          if (c0 > a) next.push([a, c0]);
+          if (c1 < b) next.push([c1, b]);
+        });
+        rest = next;
+      });
+      return rest.filter(([a, b]) => b - a > 0.5);
+    }
+    // 강조 중인 활동이 실제로 색칠된 영역의 "바깥 테두리"만 SVG 경로로 만든다.
+    // 행(시간) 단위로 이어진 칠해진 구간을 구한 뒤, 위/아래 행과 맞닿은 면은 빼고 바깥으로 드러난 변만 긋는다.
+    function buildActivityOutline(grid, recordGrid) {
+      const gr = grid.getBoundingClientRect();
+      const rows = Array.from(grid.children).filter(el => el.querySelector && el.querySelector('.time-box'));
+      const rowInfo = rows.map(row => {
+        const cells = Array.from(row.querySelectorAll('.time-box'));
+        const rr = cells[0].getBoundingClientRect();
+        const spans = [];
+        cells.forEach(cell => {
+          const cd = recordGrid[cell.id.slice(5).replace('-', ':')];
+          const segs = cd && cd.segments ? cd.segments.filter(sg => activityKeyOf(sg) === activeHighlightKey) : [];
+          if (!segs.length) return;
+          const cr = cell.getBoundingClientRect();
+          const left = cr.left - gr.left;
+          let ranges;
+          if (cd.seconds / 600 * 100 >= 95 && cd.segments.every(sg => sg.subId === cellMainSubId(cd))) {
+            ranges = [[0, 1]]; // 이 칸은 통째로 한 색으로 칠해져 보이므로 칸 전체를 감싼다
+          } else {
+            ranges = segs.slice().sort((p, q) => p.startOffset - q.startOffset)
+              .map(sg => [sg.startOffset / 600, (sg.startOffset + sg.seconds) / 600])
+              .reduce((acc, r) => { const last = acc[acc.length - 1]; if (last && r[0] - last[1] < 0.002) last[1] = r[1]; else acc.push(r.slice()); return acc; }, []);
+          }
+          ranges.forEach(([a, b]) => {
+            const x0 = left + a * cr.width, x1 = left + b * cr.width;
+            const last = spans[spans.length - 1];
+            if (last && x0 - last[1] < 0.75) last[1] = x1; else spans.push([x0, x1]);
+          });
+        });
+        return { y0: rr.top - gr.top, y1: rr.bottom - gr.top, spans };
+      });
+      let d = '';
+      const f = n => Math.round(n * 100) / 100;
+      rowInfo.forEach((row, i) => {
+        const above = i > 0 ? rowInfo[i - 1].spans : [];
+        const below = i < rowInfo.length - 1 ? rowInfo[i + 1].spans : [];
+        row.spans.forEach(([x0, x1]) => {
+          d += `M${f(x0)} ${f(row.y0)}V${f(row.y1)}M${f(x1)} ${f(row.y0)}V${f(row.y1)}`;
+          subtractSpans(x0, x1, above).forEach(([a, b]) => { d += `M${f(a)} ${f(row.y0)}H${f(b)}`; });
+          subtractSpans(x0, x1, below).forEach(([a, b]) => { d += `M${f(a)} ${f(row.y1)}H${f(b)}`; });
+        });
+      });
+      if (!d) return null;
+      const NS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('class', 'planner-hl-outline');
+      ['hl-under', 'hl-line'].forEach(cls => {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('class', cls); path.setAttribute('d', d); svg.appendChild(path);
+      });
+      return svg;
+    }
+    // 현재 보고 있는 날짜의 기록에서, 강조 중인 활동이 칠해진 막대의 바깥 테두리를 그린다(칸 하나하나가 아니라 이어진 덩어리 단위).
     function applyActivityHighlight() {
       const grid = document.getElementById('timetable-grid');
       if (!grid) return;
-      grid.querySelectorAll('.time-box.hl-activity').forEach(el => el.classList.remove('hl-activity'));
+      const old = grid.querySelector('.planner-hl-outline');
+      if (old) old.remove();
       if (activeHighlightKey && activeHighlightDate !== currentDateStr) { activeHighlightKey = null; activeHighlightDate = null; } // 다른 날짜로 넘어갔으면 잊는다(되돌아와도 되살아나지 않게)
       if (!activeHighlightKey) return;
       const recordGrid = (state.records[currentDateStr] && state.records[currentDateStr].grid) || {};
-      Object.keys(recordGrid).forEach(timeKey => {
-        const segs = recordGrid[timeKey] && recordGrid[timeKey].segments;
-        if (!segs || !segs.some(s => activityKeyOf(s) === activeHighlightKey)) return;
-        const el = document.getElementById('cell-' + timeKey.replace(':', '-'));
-        if (el) el.classList.add('hl-activity');
-      });
+      const svg = buildActivityOutline(grid, recordGrid);
+      if (svg) grid.appendChild(svg);
     }
     function handleSegmentHover(e, box, segments) {
       const seg = showSegmentTooltip(e, box, segments);
