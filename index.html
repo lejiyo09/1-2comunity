@@ -541,6 +541,7 @@
         /* 상세 화면 */
         .community-detail-card { max-width: 700px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 26px 28px; } /* 가독성을 위해 불투명한 배경(글래스모피즘 아님) */
         .detail-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .detail-meta:has(.pf-streak, .pf-ach) { margin-top: 12px; margin-bottom: 20px; } /* 닉네임 연출(궤도/밑줄/체크)이 위의 '← 커뮤니티'와 아래 제목에 붙지 않도록 간격 확보 */
         .detail-title { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; line-height: 1.4; }
         .detail-body { font-size: 15px; color: var(--text-secondary); line-height: 1.7; white-space: pre-wrap; margin-bottom: 16px; }
         .detail-actions { display: flex; align-items: center; gap: 18px; font-size: 14px; padding: 14px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
@@ -888,8 +889,9 @@
         @keyframes bk-wall { 0%, 4% { opacity:0; transform:scaleY(0.1); } 14%, 100% { opacity:0.9; transform:scaleY(1); } }
 
         /* 이음(꾸준한 사람): 닉네임의 글자마다 그 위에 작은 점이 하나씩 왼쪽부터 차례로 켜지고(한 번만 재생), 모두 켜진 상태로 유지된다 */
-        .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:calc(-0.08em + 1.25px); height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
-        .pf-ach-dot { position:absolute; top:-0.08em; width:3.5px; height:3.5px; margin-left:-1.75px; border-radius:50%; background:#a78bfa; pointer-events:none; opacity:0;
+        .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:calc(-0.2em + 1.25px); height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
+        .pf-ach-chain { line-height: 1.3; } /* 어디서든 점이 글자 위로 같은 간격에 오도록 줄 높이를 고정(baseline 정렬이라 글자 위치는 그대로) */
+        .pf-ach-dot { position:absolute; top:-0.2em; width:3.5px; height:3.5px; margin-left:-1.75px; border-radius:50%; background:#a78bfa; pointer-events:none; opacity:0;
             animation: pf-ach-dot-on 0.6s ease-out both; animation-delay: calc(var(--i) * 0.2s + 0.2s); }
         @keyframes pf-ach-dot-on { 0% { opacity:0; transform:scale(0.2); } 60% { opacity:1; transform:scale(1.5); box-shadow: 0 0 6px rgba(167,139,250,0.95); } 100% { opacity:1; transform:scale(1); box-shadow: 0 0 4px rgba(167,139,250,0.8); } }
 
@@ -904,7 +906,8 @@
         .pf-ach-finish5::after, .pf-ach-finish15::after, .pf-ach-finish30::after { content:''; position:absolute; left:0.6em; right:1.9em; bottom:-3px; height:1.8px; pointer-events:none; border-radius:2px;
             background: linear-gradient(90deg, var(--fc) 0%, var(--fc2) 82%, var(--fc2) 100%); filter: drop-shadow(0 0 2px var(--fc));
             transform-origin: left center; transform: scaleX(0); animation: pf-ach-fline 4.4s ease-in-out both; }
-        .pf-ach-finish5::after, .pf-ach-finish15::after, .pf-ach-finish30::after { right:0.4em; }
+        /* 완료선은 체크의 아래 꼭짓점(체크 폭의 42% 지점)에서 딱 끝나 체크 오른쪽으로 삐져나가지 않는다 */
+        .pf-ach-finish5::after { right:0.6em; } .pf-ach-finish15::after { right:0.66em; } .pf-ach-finish30::after { right:0.73em; }
         .pf-ach-finish15::after { height:2.1px; }
         .pf-ach-finish30::after { height:2.5px; }
         .pf-ach-fdia { position:absolute; left:0.05em; bottom:calc(-1.9px - 0.27em); width:0.54em; height:0.54em; pointer-events:none; background: linear-gradient(135deg, var(--fc2), var(--fc)); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
@@ -938,6 +941,8 @@
         body:not(.gmw-site-dark) .pf-streak-t4 { --sk-c: #0d9488; --sk-dot: #0d9488; }
         body:not(.gmw-site-dark) .pf-streak-t5 { --sk-c: #7c5cf0; --sk-dot: #7c5cf0; }
         body:not(.gmw-site-dark) .pf-streak-t7 { --sk-c: #d99a06; --sk-dot: #d99a06; }
+        .pf-streak { margin-left: 0.95em; margin-right: 0.95em; } /* 궤도가 좌우로 튀어나오는 만큼 여백을 둬서 옆의 글자([운영자] 표시, 날짜 등)와 겹치지 않게 한다 */
+        .pf-streak.has-ach { margin-left: 1.35em; margin-right: 1.35em; }
         .pf-streak-orbit { position:absolute; inset:-0.42em -0.95em; pointer-events:none; z-index:0; border-radius:50%; }
         /* 업적 세트 연출(책/책장의 왼쪽 그림, 펜과 밑줄, 닉네임 아래 선)이 함께 있을 때는 궤도를 더 크게 잡아, 연출이 궤도 선·빛점과 겹치지 않고 궤도 안쪽에 들어오게 한다 */
         .pf-streak.has-ach > .pf-ach { z-index: 1; }
@@ -7777,9 +7782,9 @@
         //   희소한 효과는 활동 업적(achievementId)으로 따로 해금한다.
         // - "활동 업적 해금" 항목(achievementId)은 그 뒤에 나열한다. 레벨처럼 자동 적용되지 않고,
         //   사용자가 프로필 꾸미기에서 직접 선택해야만 적용된다(해금되어도 자동 장착되지 않음).
-        // - badge는 다중 선택 카테고리다(여러 개 동시 장착 가능). 나머지는 단일 선택이다.
+        // - 배지 카테고리는 삭제되어 모든 카테고리가 단일 선택이다.
         // 레벨/칭호는 순수 cosmetic이며 어떤 기능 권한도 부여하지 않는다.
-        const MULTI_SELECT_CATEGORIES = ['badge'];
+        const MULTI_SELECT_CATEGORIES = []; // 배지 카테고리를 없앴으므로 현재는 다중 선택 카테고리가 없다(함수는 그대로 둔다)
         function isMultiSelectCategory(cat) { return MULTI_SELECT_CATEGORIES.includes(cat); }
 
         // 프레임 장식(별/크리스탈/과목 문양 등)의 각도 배치를 만드는 공용 헬퍼.
@@ -7875,20 +7880,6 @@
                 // colors(배열)를 쓰면 여러 색의 box-shadow를 겹쳐서(층마다 반경을 다르게) 진짜 여러 색 광원이 퍼지는 것처럼 보이게 한다.
                 rainbowAura: { unlockLevel: 30, label: 'Rainbow Aura',  colors: RAINBOW_PALETTE, animated: true }
             },
-            // 다중 선택: 배지는 여러 개 동시에 달 수 있다 (최대 4개까지만 화면에 표시).
-            badge: {
-                star:    { unlockLevel: 5, label: '별 배지',       icon: '⭐' },
-                medal:   { unlockLevel: 10, label: '메달 배지',     icon: '🎖️' },
-                diamond: { unlockLevel: 10, label: '다이아몬드 배지', icon: '💎' },
-                trophy:  { unlockLevel: 14, label: '트로피 배지',   icon: '🏆' },
-                crown:   { unlockLevel: 22, label: '왕관 배지',     icon: '👑' },
-                legend:  { unlockLevel: 30, label: '레전드 배지',   icon: '🌟' },
-                // 흑백 인포그래픽 스타일의 기하학적 심볼 배지 (grayscale 필터로 렌더링됨 - .pf-badge CSS 참고)
-                starGeo:    { unlockLevel: 8, label: '별 심볼 ✦',    icon: '✦' },
-                diamondGeo: { unlockLevel: 12, label: '다이아몬드 심볼 ◈', icon: '◈' },
-                sunGeo:     { unlockLevel: 15, label: '태양 심볼 ☼',  icon: '☼' },
-                hexGeo:     { unlockLevel: 25, label: '헥사곤 심볼 ⬢', icon: '⬢' }
-            },
             // 이름 효과 설계: 초중반(Lv.1~20)은 "단순 단색 / 네온(Glow·Pulse) / 정지된 그라데이션",
             // 색이 흘러 이동하는 flow 계열(Flow·Sweep·Refraction·Spark·Singularity)은 후반 Lv.21~30의 최상위 레벨 전용 효과다.
             // 활동 업적은 이 이름들을 쓰지 않고 업적 세트(작은 전용 연출)로만 보상한다.
@@ -7952,7 +7943,7 @@
                 finish30:{ achievementId: 'allClear30', label: '완주 · 9회',      icon: '✓',  desc: '가장 선명한 체크와 금빛 빛 조각 5개까지 완성돼요' }
             }
         };
-        const APPEARANCE_CATEGORY_LABELS = { frameStyle: '프레임 모양', frameColor: '프레임 색상', animation: '테두리 애니메이션', glow: 'Glow', badge: '배지', aura: 'Aura', nameEffect: '이름 효과', achievementSet: '업적 세트' };
+        const APPEARANCE_CATEGORY_LABELS = { frameStyle: '프레임 모양', frameColor: '프레임 색상', animation: '테두리 애니메이션', glow: 'Glow', aura: 'Aura', nameEffect: '이름 효과', achievementSet: '업적 세트' };
 
         // 이 레벨에서 해금된 "레벨 기반" 항목 중 가장 높은 등급을 반환한다.
         // (활동 업적 항목은 unlockLevel이 없으므로 `level >= undefined` 비교가 항상 false가 되어 자동으로 폴백 후보에서 제외된다 -
@@ -8096,7 +8087,7 @@
             const glow = optionIfActive('glow', appearance.glow) || APPEARANCE_CATALOG.glow.none;
             const aura = optionIfActive('aura', appearance.aura) || APPEARANCE_CATALOG.aura.none;
             const nameEff = optionIfActive('nameEffect', appearance.nameEffect) || APPEARANCE_CATALOG.nameEffect.none;
-            const badges = (appearance.badge || []).map(k => optionIfActive('badge', k)).filter(Boolean).slice(0, 4);
+            const badges = []; // 배지는 삭제됨(예전에 저장된 badge 값은 무시한다)
             // 업적 세트: 장착했고 + (스트릭형이면) 지금도 조건이 유지될 때만 보인다(optionIfActive가 걸러준다).
             const achSetKey = (appearance.achievementSet && appearance.achievementSet !== 'none' && optionIfActive('achievementSet', appearance.achievementSet)) ? appearance.achievementSet : null;
             const achSetIcons = achSetKey ? (APPEARANCE_CATALOG.achievementSet[achSetKey].setIcons || {}) : {};
