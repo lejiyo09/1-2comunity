@@ -831,14 +831,13 @@
             background: linear-gradient(90deg, rgba(79,107,237,0.2) 0%, #4f6bed 14%, #3b52c9 82%, rgba(59,82,201,0) 100%);
             transform-origin: left center; transform: rotate(-0.7deg) scaleX(0); animation: pf-ach-pen-draw 4.6s ease-in-out infinite; }
         @keyframes pf-ach-pen-draw { 0% { transform: rotate(-0.7deg) scaleX(0); opacity:1; } 28%, 72% { transform: rotate(-0.7deg) scaleX(1); opacity:1; } 100% { transform: rotate(-0.7deg) scaleX(1); opacity:0; } }
-        /* 책갈피 - 이름 옆에 작은 "페이지 빛"이 은은하게 깜빡인다. 20시간 단계는 더 밝고 잔광이 붙는다 */
-        .pf-ach-bookmark10, .pf-ach-bookmark20 { margin-right: 11px; }
-        .pf-ach-bookmark10::after, .pf-ach-bookmark20::after { content:''; position:absolute; right:-11px; top:50%; width:6px; height:8px; margin-top:-4px; pointer-events:none;
-            border-radius: 1px 2px 2px 1px; background: linear-gradient(135deg, rgba(204,251,241,0.95), rgba(45,212,191,0.55));
-            animation: pf-ach-page-light 3.6s ease-in-out infinite; }
-        @keyframes pf-ach-page-light { 0%, 100% { opacity:0.45; box-shadow: 0 0 3px 0 rgba(45,212,191,0.4); } 50% { opacity:1; box-shadow: 0 0 8px 2px rgba(45,212,191,0.7); } }
+        /* 책갈피 - 이름 앞의 📖/📚 아이콘이 페이지에 빛이 비치듯 은은하게 밝아졌다 어두워진다(20시간 단계는 더 밝고, 이름에도 청록 잔광이 붙는다) */
+        .pf-ach-icon { display:inline-block; }
+        .pf-ach-icon-bookmark10 { filter: drop-shadow(0 0 0 rgba(45,212,191,0)); animation: pf-ach-icon-page 3.6s ease-in-out infinite; }
+        .pf-ach-icon-bookmark20 { filter: drop-shadow(0 0 2px rgba(45,212,191,0.5)); animation: pf-ach-icon-page-strong 3s ease-in-out infinite; }
+        @keyframes pf-ach-icon-page { 0%, 100% { filter: drop-shadow(0 0 0 rgba(45,212,191,0)); } 50% { filter: drop-shadow(0 0 5px rgba(45,212,191,0.9)); } }
+        @keyframes pf-ach-icon-page-strong { 0%, 100% { filter: drop-shadow(0 0 2px rgba(45,212,191,0.5)); } 50% { filter: drop-shadow(0 0 7px rgba(45,212,191,1)); } }
         .pf-ach-bookmark20 { filter: drop-shadow(0 0 3px rgba(45,212,191,0.45)); }
-        .pf-ach-bookmark20::after { right:-12px; width:7px; height:9px; margin-top:-4.5px; animation-duration: 2.8s; }
         /* 별빛 - 이름 주변의 작은 별 3개가 시차를 두고 천천히 밝아진다 */
         .pf-ach-star { position:absolute; font-style:normal; font-size:7px; line-height:1; color:#fcd34d; pointer-events:none; opacity:0.15; text-shadow:0 0 4px rgba(252,211,77,0.9); animation: pf-ach-star-glow 6s ease-in-out infinite; }
         .pf-ach-star.a { top:-6px; left:-5px; }
@@ -856,8 +855,8 @@
         .pf-ach-ring.teal { border-color: rgba(45,212,191,0.9); }
         .pf-ach-ring.gold { border-color: rgba(251,191,36,0.95); }
         .pf-ach-ring.soft { border-width:1px; opacity:0.55; }
-        .pf-ach-ribbon { position:absolute; top:-6px; right:4px; width:9px; height:15px; pointer-events:none; z-index:25;
-            background: linear-gradient(180deg, #2dd4bf, #0f766e); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%); filter: drop-shadow(0 0 2px rgba(15,118,110,0.6)); }
+        .pf-ach-ribbon { position:absolute; top:-12px; right:13px; width:9px; height:16px; pointer-events:none; z-index:25; transform: rotate(14deg); transform-origin: 50% 0;
+            background: linear-gradient(180deg, #5eead4, #0f766e); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%); filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.35)); }
         .pf-ach-spark { position:absolute; width:6px; height:6px; pointer-events:none; z-index:25; opacity:0; background:#fff8e1;
             clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: pf-ach-spark-anim 4.2s ease-in-out infinite; }
         @keyframes pf-ach-spark-anim { 0%, 70%, 100% { opacity:0; transform:scale(0.4); } 82% { opacity:1; transform:scale(1.15); } 92% { opacity:0; transform:scale(0.6); } }
@@ -867,7 +866,7 @@
         .pf-ach-glowdisc { position:absolute; inset:-3px; border-radius:50%; pointer-events:none; z-index:1; animation: pf-ach-glowdisc-pulse 4.5s ease-in-out infinite; }
         @keyframes pf-ach-glowdisc-pulse { 0%, 100% { box-shadow: 0 0 6px 1px rgba(251,191,36,0.35); } 50% { box-shadow: 0 0 14px 4px rgba(251,191,36,0.55); } }
         @media (prefers-reduced-motion: reduce) {
-            .pf-ach, .pf-ach-badge.strong, .pf-ach-star, .pf-ach-star-deco, .pf-ach-glowdisc, .pf-ach-bookmark10::after, .pf-ach-bookmark20::after { animation: none !important; }
+            .pf-ach, .pf-ach-icon, .pf-ach-badge.strong, .pf-ach-star, .pf-ach-star-deco, .pf-ach-glowdisc { animation: none !important; }
             .pf-ach-pen::after { animation: none; transform: rotate(-0.7deg) scaleX(1); }
             .pf-ach-star, .pf-ach-star-deco { opacity: 0.85; }
             .pf-ach-ember, .pf-ach-spark { animation: none; opacity: 0; }
@@ -7746,38 +7745,52 @@
                 sunGeo:     { unlockLevel: 15, label: '태양 심볼 ☼',  icon: '☼' },
                 hexGeo:     { unlockLevel: 18, label: '헥사곤 심볼 ⬢', icon: '⬢' }
             },
+            // 이름 효과 설계: 레벨 보상은 "단순 단색 / 네온(Glow·Pulse) / 정지된 그라데이션"만 쓰고,
+            // 색이 흘러 이동하는 효과(flow 계열: Shimmer·Flow·Sweep·Refraction·Spark·Singularity)는 전부 활동 업적으로만 얻는다.
             nameEffect: {
                 none:     { unlockLevel: 1,  label: '기본' },
-                // 이름 효과는 전부 최소 Lv.10부터 해금된다 (기본/없음 상태만 예외).
+                // --- 단색(글로우 없는 평범한 색 글자) ---
+                solidRed:    { unlockLevel: 2,  label: '빨강', color: '#ef4444', solid: true },
+                solidYellow: { unlockLevel: 2,  label: '노랑', color: '#eab308', solid: true },
+                solidTeal:   { unlockLevel: 5,  label: '청록', color: '#14b8a6', solid: true },
+                solidPurple: { unlockLevel: 7,  label: '보라', color: '#8b5cf6', solid: true },
+                solidPink:   { unlockLevel: 7,  label: '분홍', color: '#ec4899', solid: true },
+                // --- Glow (색 + 은은한 번짐) ---
                 blue:     { starter: true, unlockLevel: 1, label: 'Blue Glow',   color: '#38bdf8' },
-                cyan:     { unlockLevel: 3, label: 'Cyan Glow',   color: '#22d3ee' },
                 green:    { starter: true, unlockLevel: 1, label: 'Green Glow',  color: '#34d399' },
+                cyan:     { unlockLevel: 3, label: 'Cyan Glow',   color: '#22d3ee' },
                 orange:   { unlockLevel: 3, label: 'Orange Glow', color: '#fb923c' },
-                // "움직이는" 이름 효과 - 텍스트 자체는 절대 움직이지 않는다. text-shadow 밝기 변화(pulse) 또는
-                // gradient의 background-position 이동(flow)만 사용한다. prefers-reduced-motion에서는 정적으로 고정된다.
-                redPulse:    { unlockLevel: 6, label: 'Red Pulse',    color: '#ef4444', pulse: true },
-                orangePulse: { unlockLevel: 4, label: 'Orange Pulse', color: '#fb923c', pulse: true },
-                greenPulse:  { unlockLevel: 4, label: 'Green Pulse',  color: '#34d399', pulse: true },
-                cyanPulse:   { unlockLevel: 6, label: 'Cyan Pulse',   color: '#22d3ee', pulse: true },
                 pink:        { unlockLevel: 8, label: 'Pink Glow',   color: '#f472b6' },
                 purple:      { unlockLevel: 8, label: 'Purple Glow', color: '#a855f7' },
+                gold:        { unlockLevel: 11, label: 'Gold Glow',   color: '#fbbf24' },
+                // --- Pulse (Glow가 천천히 숨 쉬듯 밝아졌다 어두워짐). 텍스트 위치/크기는 절대 안 바뀐다 ---
+                orangePulse: { unlockLevel: 4, label: 'Orange Pulse', color: '#fb923c', pulse: true },
+                greenPulse:  { unlockLevel: 4, label: 'Green Pulse',  color: '#34d399', pulse: true },
+                redPulse:    { unlockLevel: 6, label: 'Red Pulse',    color: '#ef4444', pulse: true },
+                cyanPulse:   { unlockLevel: 6, label: 'Cyan Pulse',   color: '#22d3ee', pulse: true },
                 bluePulse:   { unlockLevel: 9, label: 'Blue Pulse',   color: '#38bdf8', pulse: true },
                 purplePulse: { unlockLevel: 9, label: 'Purple Pulse', color: '#a855f7', pulse: true },
-                gold:        { unlockLevel: 11, label: 'Gold Glow',   color: '#fbbf24' },
-                gradient:    { unlockLevel: 10, label: 'Gradient Text', gradient: ['#6366f1', '#a855f7', '#f59e0b'] },
                 pinkPulse:   { unlockLevel: 11, label: 'Pink Pulse',   color: '#f472b6', pulse: true },
-                goldShimmer: { unlockLevel: 12, label: 'Gold Shimmer', gradient: ['#fbbf24', '#fef08a', '#fbbf24'], flow: true },
+                // --- 정지된 그라데이션 / 한 번씩 밝아지는 Bloom (색이 이동하지는 않는다) ---
+                gradient:    { unlockLevel: 10, label: 'Gradient Text', gradient: ['#6366f1', '#a855f7', '#f59e0b'] },
+                solarBloom:  { unlockLevel: 14, label: 'Solar Bloom', gradient: ['#fbbf24', '#fff7ed'], bloom: true },
                 rainbow:     { unlockLevel: 15, label: 'Rainbow Text',  gradient: RAINBOW_PALETTE },
-                rainbowFlow: { unlockLevel: 16, label: 'Rainbow Flow', gradient: RAINBOW_PALETTE, flow: true },
-                // ===== 프리즘/솔라/루나/아이스/싱귤래리티 계열 - 색상 흐름 + 전용 애니메이션 조합으로 정체성을 명확히 준다 =====
-                prismBase:  { unlockLevel: 17, label: 'Prism Flow (Void→Cyan→White)', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s' },
-                solarBloom: { unlockLevel: 17, label: 'Solar Bloom', gradient: ['#fbbf24', '#fff7ed'], bloom: true },
-                iceFlow:    { unlockLevel: 17, label: 'Ice Flow', gradient: ['#38bdf8', '#f0f9ff'], flow: true, flowDuration: '6s' },
-                prismSweep: { unlockLevel: 18, label: 'Prism Sweep', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true },
-                lunarSweep: { unlockLevel: 18, label: 'Lunar Prism Sweep', gradient: ['#cbd5e1', '#4338ca', '#312e81'], flow: true, flowDuration: '6s', sweep: true, sweepColor: 'rgba(203,213,225,0.85)' },
-                prismRefraction: { unlockLevel: 19, label: 'Prism Refraction', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, refraction: true },
-                prismCrystal:    { unlockLevel: 19, label: 'Crystal Spark', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, sparkle: true },
-                singularity:     { unlockLevel: 20, label: 'Singularity', gradient: ['#000000', '#7c3aed', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '7s', sweep: true, refraction: true, sparkle: true, flash: true }
+                // --- 네온(밝은 글자 + 겹겹이 번지는 색 빛. 레벨이 높을수록 더 진한 색) ---
+                neonMint:    { unlockLevel: 13, label: '네온 민트',   color: '#2dd4bf', core: '#ecfeff', neon: true },
+                neonPink:    { unlockLevel: 16, label: '네온 핑크',   color: '#f472b6', core: '#fdf2f8', neon: true },
+                neonViolet:  { unlockLevel: 17, label: '네온 바이올렛', color: '#a78bfa', core: '#f5f3ff', neon: true },
+                neonYellow:  { unlockLevel: 18, label: '네온 옐로',   color: '#facc15', core: '#fefce8', neon: true },
+                neonRed:     { unlockLevel: 20, label: '네온 레드',   color: '#f87171', core: '#fef2f2', neon: true },
+                // --- 활동 업적 전용: 색이 흘러 이동하는 flow 계열. 업적 하나당 어울리는 효과가 열린다(레벨로는 절대 열리지 않는다) ---
+                goldShimmer:     { achievementId: 'attendance7', label: 'Gold Shimmer', gradient: ['#fbbf24', '#fef08a', '#fbbf24'], flow: true },
+                rainbowFlow:     { achievementId: 'activity10',  label: 'Rainbow Flow', gradient: RAINBOW_PALETTE, flow: true },
+                iceFlow:         { achievementId: 'study10h',    label: 'Ice Flow', gradient: ['#38bdf8', '#f0f9ff'], flow: true, flowDuration: '6s' },
+                prismBase:       { achievementId: 'study20h',    label: 'Prism Flow (Void→Cyan→White)', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s' },
+                lunarSweep:      { achievementId: 'streak5',     label: 'Lunar Prism Sweep', gradient: ['#cbd5e1', '#4338ca', '#312e81'], flow: true, flowDuration: '6s', sweep: true, sweepColor: 'rgba(203,213,225,0.85)' },
+                prismSweep:      { achievementId: 'allClear5',   label: 'Prism Sweep', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true },
+                prismCrystal:    { achievementId: 'allClear15',  label: 'Crystal Spark', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, sparkle: true },
+                prismRefraction: { achievementId: 'allClear15',  label: 'Prism Refraction', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, refraction: true },
+                singularity:     { achievementId: 'allClear30',  label: 'Singularity', gradient: ['#000000', '#7c3aed', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '7s', sweep: true, refraction: true, sparkle: true, flash: true }
             },
             // 활동 업적 "세트": 레벨 효과처럼 색만 다른 변형을 늘리는 게 아니라, 업적마다 "그 행동을 했다"는 게 보이는 전용 연출 한 묶음이다.
             // 이름 연출 + 아이콘/배지 + 프로필 사진 주변 장식이 한 번에 적용되고, 난이도가 올라갈수록 구성 요소가 늘어난다.
@@ -7982,6 +7995,14 @@
                 if (nameEff.sweepColor) nameStyle += ` --pf-sweep-color:${nameEff.sweepColor};`;
                 if (nameEff.bloom) nameStyle += ` --pf-name-glow-color:${nameEff.gradient[0]};`; // 그라데이션 텍스트에도 Bloom Glow를 씌울 수 있게(예: Solar Gold→White)
                 nameClass = `pf-name-styled pf-name-gradient${nameEff.flow ? ' pf-name-flow' : ''}${nameEff.sweep ? ' pf-name-sweep' : ''}${nameEff.refraction ? ' pf-name-refraction' : ''}${nameEff.bloom ? ' pf-name-bloom' : ''}`;
+            } else if (nameEff.solid) {
+                // 단색: 번짐/그림자 없이 글자 색만 바꾼다
+                nameStyle = `color:${nameEff.color};`;
+                nameClass = 'pf-name-styled';
+            } else if (nameEff.neon) {
+                // 네온: 밝은 코어 글자 + 색 빛이 안쪽→바깥쪽으로 겹겹이 번진다
+                nameStyle = `color:${nameEff.core || '#fff'}; text-shadow: 0 0 3px ${nameEff.color}, 0 0 8px ${nameEff.color}, 0 0 16px ${nameEff.color}aa; --pf-name-glow-color:${nameEff.color};`;
+                nameClass = 'pf-name-styled pf-name-neon';
             } else if (nameEff.color) {
                 nameStyle = `color:${nameEff.color}; text-shadow: 0 0 6px ${nameEff.color}88; --pf-name-glow-color:${nameEff.color};`;
                 nameClass = `pf-name-styled${nameEff.pulse ? ' pf-name-pulse' : ''}${nameEff.bloom ? ' pf-name-bloom' : ''}`;
@@ -8147,8 +8168,9 @@
         function renderStyledName(rawName, appearance, activeChecker, escapeFn) {
             const esc = escapeFn || (s => s);
             const v = buildAppearanceVisuals(appearance, activeChecker);
-            const prefix = v.prefixIcons.length ? v.prefixIcons.join('') + ' ' : '';
-            const suffix = v.suffixIcons.length ? ' ' + v.suffixIcons.join('') : '';
+            const iconSpan = i => v.achSet ? `<span class="pf-ach-icon pf-ach-icon-${v.achSet}">${i}</span>` : i; // 업적 세트 아이콘은 세트별로 은은하게 빛날 수 있게 감싼다
+            const prefix = v.prefixIcons.length ? v.prefixIcons.map(iconSpan).join('') + ' ' : '';
+            const suffix = v.suffixIcons.length ? ' ' + v.suffixIcons.map(iconSpan).join('') : '';
             // 레벨 배지는 흑백 인포그래픽 심볼(.pf-badge)이지만, 업적 세트의 배지는 "특별 해금"이라는 걸 보여주려고 색을 그대로 둔다(.pf-ach-badge).
             const badgeParts = v.badgeIcons.map(i => `<span class="pf-badge">${i}</span>`);
             if (v.achBadge) badgeParts.push(`<span class="pf-ach-badge${v.achBadge.strong ? ' strong' : ''}">${v.achBadge.icon}</span>`);
@@ -8353,6 +8375,8 @@
         function decorateOptionSwatchHTML(cat, opt, sampleName) {
             if (cat === 'nameEffect') {
                 if (opt.gradient) return `<span style="font-weight:800; font-size:12.5px; background-image:linear-gradient(90deg, ${opt.gradient.join(',')}); -webkit-background-clip:text; background-clip:text; color:transparent;">${sampleName}</span>`;
+                if (opt.solid) return `<span style="font-weight:800; font-size:12.5px; color:${opt.color};">${sampleName}</span>`;
+                if (opt.neon) return `<span style="font-weight:800; font-size:12.5px; color:${opt.core || '#fff'}; text-shadow:0 0 3px ${opt.color}, 0 0 8px ${opt.color}, 0 0 14px ${opt.color}aa;">${sampleName}</span>`;
                 if (opt.color) return `<span style="font-weight:800; font-size:12.5px; color:${opt.color}; text-shadow:0 0 6px ${opt.color}88;">${sampleName}</span>`;
                 return `<span style="font-weight:800; font-size:12.5px; color:var(--text-main);">${sampleName}</span>`;
             }
@@ -8408,7 +8432,12 @@
                 } else {
                     const key = decorateDraftAppearance[cat];
                     const opt = key && catalog[key];
-                    if (opt && key !== 'none' && key !== 'static' && key !== 'basic') tagsHtml += `<span class="deco-equipped-tag">${APPEARANCE_CATEGORY_LABELS[cat]}: ${opt.label}</span>`;
+                    if (opt && key !== 'none' && key !== 'static' && key !== 'basic') {
+                        // 연속 출석/연속 완료처럼 "지금도 조건을 유지해야" 보이는 효과가, 조건이 끊겨서 미리보기에 안 보이는 상태면 이유를 알려준다
+                        // (해금 기록은 그대로이고, 조건을 다시 채우면 자동으로 다시 켜진다).
+                        const off = opt.achievementId && !isMyAchievementActive(opt.achievementId);
+                        tagsHtml += `<span class="deco-equipped-tag"${off ? ' style="opacity:0.7;"' : ''}>${APPEARANCE_CATEGORY_LABELS[cat]}: ${opt.label}${off ? ` · ⏸ 지금은 꺼져 있어요 (${(ACHIEVEMENTS.find(a => a.id === opt.achievementId) || {}).label || ''} 조건이 끊겼어요)` : ''}</span>`;
+                    }
                 }
             });
             tagsEl.innerHTML = tagsHtml || '<span class="deco-equipped-tag" style="opacity:0.6;">장착한 효과 없음</span>';
@@ -8447,7 +8476,8 @@
                 }
                 if (cat === 'achievementSet') {
                     // 업적 세트는 "색 하나"가 아니라 여러 요소가 묶인 구성이라, 무엇이 함께 적용되는지 설명을 같이 보여준다.
-                    const setSub = unlocked ? (selected ? '현재 사용 중' : '') : lockHint;
+                    const setOff = unlocked && selected && opt.achievementId && !isMyAchievementActive(opt.achievementId);
+                    const setSub = unlocked ? (selected ? (setOff ? '사용 중 · 지금은 꺼짐(조건이 끊김)' : '현재 사용 중') : '') : lockHint;
                     return `<div class="deco-option-card deco-set-card ${selected ? 'selected' : ''} ${unlocked ? '' : 'locked'}" onclick="${unlocked ? onClickFn : ''}">
                         ${checkMark}
                         <span style="font-size:20px; line-height:1;">${unlocked ? (opt.icon || '–') : '🔒'}</span>
@@ -8457,7 +8487,8 @@
                     </div>`;
                 }
                 const swatch = decorateOptionSwatchHTML(cat, opt, displayName);
-                const subLine = unlocked ? (selected ? '현재 사용 중' : (opt.unlockLevel ? `Lv.${opt.unlockLevel}~` : '')) : lockHint;
+                const optOff = unlocked && selected && opt.achievementId && !isMyAchievementActive(opt.achievementId);
+                const subLine = unlocked ? (selected ? (optOff ? '사용 중 · 지금은 꺼짐(조건이 끊김)' : '현재 사용 중') : (opt.unlockLevel ? `Lv.${opt.unlockLevel}~` : '')) : lockHint;
                 return `<div class="deco-option-card ${selected ? 'selected' : ''} ${unlocked ? '' : 'locked'}" onclick="${unlocked ? onClickFn : ''}">
                     ${checkMark}
                     ${unlocked ? swatch : '<span style="font-size:18px;">🔒</span>'}
