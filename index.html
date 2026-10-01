@@ -515,6 +515,13 @@
         .rich-editable { min-height: 140px; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 10px 10px; padding: 12px; font-size: 15px; line-height: 1.6; color: var(--text-main); outline: none; overflow-wrap: break-word; }
         .rich-editable:empty::before { content: attr(data-placeholder); color: var(--text-muted); }
         .rich-editable img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 6px; }
+        .rich-editable img.rich-img-selected { outline: 2px solid var(--primary); outline-offset: 2px; }
+        /* 사진 배치 자율성: 기본은 한 줄을 차지(block)하고, 왼쪽/오른쪽을 고르면 사진이 그쪽에 붙고 글이 옆으로 흐른다.
+           왼쪽(또는 오른쪽) 사진 여러 장은 폭이 합쳐서 한 줄에 들어가면 가로로 나란히 배열된다(사진 폭 슬라이더로 조절).
+           data-layout은 저장 시 sanitizeRichHTML이 left/right 두 값만 남긴다. */
+        .rich-editable, .rich-content { display: flow-root; } /* float를 감싸서 아래 요소에 안 새게 */
+        .rich-editable img[data-layout="left"], .rich-content img[data-layout="left"] { float: left; margin: 4px 1.2% 8px 0; }
+        .rich-editable img[data-layout="right"], .rich-content img[data-layout="right"] { float: right; margin: 4px 0 8px 1.2%; }
 
         /* 저장된 리치 콘텐츠를 실제로 보여줄 때 (상세화면 등, 전체 크기) */
         .rich-content { font-size: 15px; line-height: 1.7; color: var(--text-secondary); overflow-wrap: break-word; }
@@ -524,6 +531,7 @@
         /* 작은 공간(홈 위젯/PIP)에서 리치 콘텐츠를 안전하게 축소 표시할 때 */
         .rich-content-compact { font-size: 13px; line-height: 1.5; overflow: hidden; max-height: 160px; }
         .rich-content-compact img { max-width: 100%; max-height: 120px; object-fit: contain; }
+        .rich-content-compact img[data-layout] { float: none; margin: 8px 0; } /* 좁은 곳(홈 위젯/PiP)에서는 배치 없이 세로로 */
         .community-compose-toolrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
         .community-compose-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
         .community-compose-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
@@ -747,7 +755,6 @@
         /* 레이어 순서: Aura(wrap의 box-shadow, 항상 맨 뒤) < 프레임 링(z-index:2) < 프로필 사진(z-index:10)
            < 프레임 장식(별/크리스탈/과목 문자/오빗 등, z-index:20) < 온라인 점(z-index:30).
            즉 장식은 사진보다 항상 앞에 보인다 - 사진 뒤에 숨어서 가려지지 않는다. */
-        .pf-frame-outer-ring { position:absolute; border-radius:50%; pointer-events:none; box-sizing:border-box; z-index:20; }
         .pf-frame-deco { position:absolute; font-size:11px; line-height:1; pointer-events:none; filter: drop-shadow(0 0 2px rgba(0,0,0,0.25)); z-index:20; transform: translate(-50%, -50%); }
         .pf-frame-wave-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
         .pf-frame-orbit-wrap { position:absolute; inset:0; pointer-events:none; z-index:20; }
@@ -759,7 +766,6 @@
         /* 과목 프레임 문자 전용 - Bold + 얇은 검정 외곽선(밝은 프레임 위에서도 또렷하게 보이도록) */
         .pf-frame-deco-text { font-weight: 800; text-shadow: 0.6px 0 0 rgba(0,0,0,0.55), -0.6px 0 0 rgba(0,0,0,0.55), 0 0.6px 0 rgba(0,0,0,0.55), 0 -0.6px 0 rgba(0,0,0,0.55); }
         /* 온라인 점(z-index:30)과 겹치지 않도록 우하단(se)은 쓰지 않는다 */
-        .pf-frame-outer-ring-gradient { -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); }
         .pf-frame-orbit-dot { position:absolute; width:5px; height:5px; margin:-2.5px 0 0 -2.5px; border-radius:50%; }
         @keyframes pf-frame-orbit-spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         .pf-frame-orbit-wrap.spin { animation: pf-frame-orbit-spin 9s linear infinite; }
@@ -4079,7 +4085,7 @@
         const sidebarMenuContainer = document.querySelector('.sidebar-menu-container');
         let savedSidebarScrollTop = 0;
         function isSidebarExpanded() {
-            return sidebar.matches(':hover') || sidebar.classList.contains('mobile-open') || sidebar.classList.contains('touch-expanded');
+            return sidebar.matches(':hover') || sidebar.classList.contains('mobile-open') || sidebar.classList.contains('touch-expanded') || sidebar.classList.contains('pinned-expanded');
         }
         if (sidebarMenuContainer) {
             sidebarMenuContainer.addEventListener('scroll', () => {
@@ -4120,6 +4126,7 @@
         sidebar.addEventListener('click', (e) => {
             if (window.innerWidth <= 768) return; // 모바일은 하단 '메뉴' 버튼 드로어 방식을 그대로 사용
             if (!isCoarsePointer()) return; // 마우스 환경은 기존 hover 확장 그대로 사용
+            if (sidebar.classList.contains('pinned-expanded')) return; // "항상 펼치기"면 이미 펼쳐져 있으므로 첫 탭부터 바로 메뉴를 실행한다
             if (!sidebar.classList.contains('touch-expanded')) {
                 sidebar.classList.add('touch-expanded');
                 restoreSidebarScroll();
@@ -7668,12 +7675,11 @@
 
         const APPEARANCE_CATALOG = {
             // 프레임은 "모양(frameStyle)"과 "색상(frameColor)" 두 축으로 분리되어 서로 자유롭게 조합할 수 있다
-            // (예: 이중 링 + 골드, 오빗 링 + 레인보우). 사진은 항상 원형/선명 그대로 유지되고, 아래 모양들은
+            // (예: 점선 링 + 골드, 오빗 링 + 블루). 사진은 항상 원형/선명 그대로 유지되고, 아래 모양들은
             // 전부 사진 "바깥쪽"(테두리 링·장식·글로우)에만 그려진다.
             frameStyle: {
                 basic:       { unlockLevel: 1,  label: '기본 링',           shape: 'basic', group: 'basic' },
                 dotted:      { starter: true, unlockLevel: 1,  label: '점선 링',           shape: 'dotted', group: 'basic' },
-                double:      { unlockLevel: 2,  label: '이중 링',           shape: 'double', group: 'basic' },
                 wave:        { unlockLevel: 5,  label: '물결 링',           shape: 'wave', group: 'decorative' },
                 cornerStars: { unlockLevel: 6,  label: '별 링',             shape: 'basic', group: 'decorative', decorations: fourPointDecorations('✦') },
                 segmented:   { unlockLevel: 7, label: '세그먼트 링',       shape: 'segmented', group: 'premium' },
@@ -7695,9 +7701,8 @@
                 ] },
                 science:     { unlockLevel: 17, label: 'Science Frame',   shape: 'basic', group: 'subject', decorations: quadrantDecorations(['Na', 'Cl', 'H₂', 'CO₂']) },
                 neonRing:    { unlockLevel: 7, label: '네온 링',          shape: 'neon', group: 'premium' },
-                orbital:     { unlockLevel: 13, label: '오빗 링',          shape: 'orbital', group: 'decorative' },
-                premiumRing: { unlockLevel: 15, label: '프리미엄 다중 링', shape: 'premium', group: 'premium' }
-                // 폐기: 홀로그램, Electric - 더 이상 카탈로그에 없으므로 이미 이 값을 쓰고 있던 사용자도
+                orbital:     { unlockLevel: 13, label: '오빗 링',          shape: 'orbital', group: 'decorative' }
+                // 폐기: 홀로그램, Electric, 이중 링, 프리미엄 다중 링 - 더 이상 카탈로그에 없으므로 이미 이 값을 쓰고 있던 사용자도
                 // computeEffectiveAppearance()의 "해금 안 됐거나 존재하지 않는 값 → 안전한 기본값 폴백" 로직에 의해
                 // 자동으로 기본 링으로 대체된다 (Firebase 데이터나 다른 cosmetic에는 영향 없음).
             },
@@ -7962,7 +7967,7 @@
             const shape = frameStyleOpt.shape || 'basic';
             const frameGradient = frameColorOpt.gradient || null; // 프레임 색상에서는 항상 null (Rainbow 삭제됨) - 다른 색상 카테고리가 나중에 그라데이션을 쓰게 되더라도 대비해 구조는 남겨둔다
             const frameColorCss = frameColorOpt.color || 'var(--border-color)';
-            const ringWidth = (shape === 'double' || shape === 'premium') ? 2 : 3;
+            const ringWidth = 3;
             let frameStyle;
             if (shape === 'segmented') {
                 frameStyle = `border:${ringWidth}px solid transparent; background-image: linear-gradient(var(--card-bg), var(--card-bg)), repeating-conic-gradient(${frameColorCss} 0deg 24deg, transparent 24deg 36deg); background-origin: border-box; background-clip: padding-box, border-box;`;
@@ -7973,7 +7978,6 @@
             }
             if (shape === 'neon') frameStyle += ` box-shadow:0 0 10px 2px ${frameGradient ? RAINBOW_PALETTE[2] : frameColorCss};`; // 레인보우면 팔레트 색으로 - frameColorCss(단색)로 fallback해서 어두워지지 않도록
             const frameDecorations = frameStyleOpt.decorations || []; // 별/크리스탈/과목 문양 등 사진 바깥 작은 장식 (작은 아바타에서는 생략)
-            const frameExtraRings = shape === 'double' ? 1 : (shape === 'premium' ? 2 : 0); // 이중/다중 링용 바깥 링 개수
             const frameOrbit = shape === 'orbital';
             const frameShape = shape; // 'wave'인지 여부는 렌더 함수에서 SVG로 그릴지 판단하는 데 쓰인다
 
@@ -8024,7 +8028,7 @@
                 frameClass: `pf-frame-ring ${anim.anim || ''}`.trim(),
                 frameStyle, frameShape,
                 frameAnimShadowColor: anim.shadowColor || '',
-                frameDecorations, frameExtraRings, frameOrbit, frameColorCss,
+                frameDecorations, frameOrbit, frameColorCss,
                 frameIsGradient: !!frameGradient, // true면 레인보우 - 보조 링/장식/오빗도 검정 fallback 대신 무지개 색을 써야 한다
                 badgeIcons: badges.map(b => b.icon).filter(Boolean),
                 prefixIcons: achSetIcons.prefix ? [achSetIcons.prefix] : [],
@@ -8038,7 +8042,7 @@
         }
 
         // 프로필 사진 하나를 프레임/글로우/오라/온라인 상태까지 포함해 그려주는 공용 렌더 함수.
-        // small=true면 댓글/작성자 같은 아주 작은 아바타용으로, 이중 링·장식·오빗 등은 생략하고
+        // small=true면 댓글/작성자 같은 아주 작은 아바타용으로, 장식·오빗 등은 생략하고
         // (너무 작은 영역에 여러 장식이 겹치면 오히려 지저분해지고 카드 레이아웃과 부딪히므로) 프레임 색상만 간소하게 보여준다.
         function renderProfileAvatarHTML(appearance, photoUrl, isOnline, small, activeChecker) {
             const v = buildAppearanceVisuals(appearance, activeChecker);
@@ -8052,22 +8056,13 @@
             const dotHtml = typeof isOnline === 'boolean' ? `<span class="pf-online-dot" style="background:${isOnline ? '#22c55e' : '#9ca3af'};"></span>` : '';
             const frameAnimVars = v.frameAnimShadowColor ? ` --pf-anim-shadow-a:0 0 6px 1px ${v.frameAnimShadowColor}; --pf-anim-shadow-b:0 0 16px 4px ${v.frameAnimShadowColor};` : '';
 
-            // 프레임 "모양" 장식: 이중/다중 링, 별·크리스탈·과목 문양 등 작은 장식, 오빗 링. 전부 사진 바깥에만 그려지고,
+            // 프레임 "모양" 장식: 별·크리스탈·과목 문양 등 작은 장식, 오빗 링. 전부 사진 바깥에만 그려지고,
             // 온라인 점(우하단, z-index:2로 항상 최상단)과 겹치더라도 z-index 때문에 점이 항상 위에 보인다.
             // 모든 장식은 "각도(angle)" 하나로 통일해서 위치를 계산한다(12/3/6/9시의 4개든, 과목 프레임의 7~10개든 동일한 방식).
             // frameColorCss는 레인보우일 때 실제 단일 색상이 없으므로(그라데이션이라), 검정으로 fallback되는 대신
             // 보조 요소(외부 링/장식/오빗 점) 각각에 RAINBOW_PALETTE에서 색을 하나씩 배분한다.
             let decoHtml = '';
             if (!small) {
-                for (let i = 0; i < v.frameExtraRings; i++) {
-                    const ringInset = -4 - i * 4;
-                    if (v.frameIsGradient) {
-                        const rotate = i * 45; // 링마다 시작 각도를 살짝 달리해서 겹쳐도 단조롭지 않게 한다
-                        decoHtml += `<span class="pf-frame-outer-ring pf-frame-outer-ring-gradient" style="inset:${ringInset}px; background: conic-gradient(from ${rotate}deg, ${RAINBOW_PALETTE.join(', ')}, ${RAINBOW_PALETTE[0]});"></span>`;
-                    } else {
-                        decoHtml += `<span class="pf-frame-outer-ring" style="inset:${ringInset}px; border:1.5px solid ${v.frameColorCss};"></span>`;
-                    }
-                }
                 v.frameDecorations.forEach((d, i) => {
                     // 레인보우 프레임 색상은 폐기되었으므로 항상 frameColorCss 하나로 통일한다.
                     const decoColor = v.frameColorCss;
@@ -10013,7 +10008,7 @@
 
         // 허용 태그/속성 화이트리스트 기반 sanitizer. contenteditable에서 나온 HTML만 통과시킨다.
         const RICH_ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','S','STRIKE','P','DIV','BR','SPAN','A','IMG','UL','OL','LI','BLOCKQUOTE']);
-        const RICH_ALLOWED_STYLE_PROPS = new Set(['color', 'font-size', 'text-align', 'width', 'max-width', 'height']);
+        const RICH_ALLOWED_STYLE_PROPS = new Set(['color', 'font-size', 'text-align', 'width', 'max-width', 'height', 'clear']);
         function sanitizeRichHTML(html) {
             if (!html) return '';
             const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
@@ -10057,6 +10052,11 @@
                         return;
                     }
                     if (name === 'alt' || name === 'title') return; // 유지
+                    // 사진 배치(왼쪽/오른쪽에 붙여서 글이 옆으로 흐르게 함): float를 style로 직접 받지 않고 data-layout 값 두 가지만 허용한다
+                    if (name === 'data-layout' && node.tagName === 'IMG') {
+                        if (attr.value !== 'left' && attr.value !== 'right') node.removeAttribute(attr.name);
+                        return;
+                    }
                     node.removeAttribute(attr.name); // 그 외(on*, id, class 등)는 전부 제거
                 });
             }
@@ -10110,7 +10110,11 @@
                     <button type="button" onclick="richExec('${targetId}','justifyRight')" title="오른쪽 정렬">⯈</button>
                     <span class="rich-toolbar-sep"></span>
                     <button type="button" onclick="richInsertLink('${targetId}')" title="링크">🔗</button>
-                    <button type="button" onclick="richInsertImage('${targetId}')" title="이미지 삽입">🖼</button>
+                    <button type="button" onclick="richInsertImage('${targetId}')" title="이미지 삽입 (여러 장을 한 번에 고르면 가로로 나란히 배치돼요)">🖼</button>
+                    <button type="button" onclick="richSetImageLayout('${targetId}','block')" title="선택한 사진: 한 줄을 차지 (기본)">▭</button>
+                    <button type="button" onclick="richSetImageLayout('${targetId}','left')" title="선택한 사진: 왼쪽에 붙이고 글이 오른쪽으로 흐르게 / 여러 장이면 가로로 나란히">◧</button>
+                    <button type="button" onclick="richSetImageLayout('${targetId}','right')" title="선택한 사진: 오른쪽에 붙이고 글이 왼쪽으로 흐르게">◨</button>
+                    <button type="button" onclick="richInsertClear('${targetId}')" title="여기서부터 사진 옆 흐름을 끊고 아래 줄에서 이어쓰기">↧</button>
                     <span class="rich-toolbar-sep"></span>
                     <div class="rich-size-wrap">
                         <span class="rich-img-size-label">크기</span>
@@ -10162,37 +10166,73 @@
         // 제출 자체를 막는다.
         const richImageUploadsInFlight = new Set();
         function isRichEditorUploadingImage(targetId) { return richImageUploadsInFlight.has(targetId); }
+        // 여러 장을 한 번에 고르면 왼쪽 정렬(left) + 장수에 맞춘 폭으로 넣어서 가로로 나란히 배치되게 한다
+        // (2장=48%, 3장=32%, 4장 이상=23% - 이미지 사이 여백 1.2%까지 합쳐 한 줄에 들어간다). 1장은 예전처럼 한 줄 전체.
+        function richBatchImageWidth(count) { return count <= 1 ? 100 : (count === 2 ? 48 : (count === 3 ? 32 : 23)); }
         window.richInsertImage = function(targetId) {
             const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'image/*';
+            input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
             input.onchange = async () => {
-                const file = input.files[0];
-                if (!file) return;
+                const files = Array.from(input.files || []);
+                if (!files.length) return;
                 const el = document.getElementById(targetId);
                 el.focus();
                 richImageUploadsInFlight.add(targetId);
-                const placeholderId = `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                document.execCommand('insertHTML', false, `<span id="${placeholderId}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중...</span>`);
+                // 자리표시자를 한 번에(순서대로) 먼저 넣어두고, 업로드가 끝나는 대로 각자 자기 자리의 이미지로 바꾼다
+                const placeholderIds = files.map(() => `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+                document.execCommand('insertHTML', false, placeholderIds.map((pid, i) => `<span id="${pid}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중... (${i + 1}/${files.length})</span>`).join(''));
+                const width = richBatchImageWidth(files.length);
                 try {
-                    const url = await uploadImageToFreeImageHost(file);
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.alt = '첨부 이미지';
-                    img.style.width = '100%';
-                    img.style.maxWidth = '100%';
-                    img.setAttribute('onerror', 'handleRichImgLoadError(this)');
-                    const placeholder = document.getElementById(placeholderId);
-                    if (placeholder) placeholder.replaceWith(img); else el.appendChild(img);
-                } catch (e) {
-                    console.error('게시글 이미지 업로드 오류:', e);
-                    const placeholder = document.getElementById(placeholderId);
-                    if (placeholder) placeholder.remove();
-                    alert(e.message && e.message.includes('60MB') ? e.message : '이미지 업로드 중 오류가 발생했습니다.');
+                    await Promise.all(files.map(async (file, i) => {
+                        const placeholderId = placeholderIds[i];
+                        try {
+                            const url = await uploadImageToFreeImageHost(file);
+                            const img = document.createElement('img');
+                            img.src = url;
+                            img.alt = '첨부 이미지';
+                            img.style.width = width + '%';
+                            img.style.maxWidth = '100%';
+                            if (files.length > 1) img.setAttribute('data-layout', 'left');
+                            img.setAttribute('onerror', 'handleRichImgLoadError(this)');
+                            const placeholder = document.getElementById(placeholderId);
+                            if (placeholder) placeholder.replaceWith(img); else el.appendChild(img);
+                        } catch (e) {
+                            console.error('게시글 이미지 업로드 오류:', e);
+                            const placeholder = document.getElementById(placeholderId);
+                            if (placeholder) placeholder.remove();
+                            alert(e.message && e.message.includes('60MB') ? e.message : '이미지 업로드 중 오류가 발생했습니다.');
+                        }
+                    }));
                 } finally {
                     richImageUploadsInFlight.delete(targetId);
                 }
             };
             input.click();
+        };
+        // 선택한(마지막으로 클릭한) 사진의 배치를 바꾼다: block=한 줄 차지(기본), left/right=그쪽에 붙고 글이 옆으로 흐름.
+        // 폭이 거의 100%인 사진을 left/right로 바꾸면 옆에 글이 들어갈 자리가 없으므로 절반 폭으로 줄여준다.
+        window.richSetImageLayout = function(targetId, mode) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            const img = richLastClickedImage && el.contains(richLastClickedImage) ? richLastClickedImage : el.querySelector('img:last-of-type');
+            if (!img) { alert('먼저 배치를 바꿀 사진을 클릭해서 선택해주세요.'); return; }
+            if (mode === 'left' || mode === 'right') {
+                img.setAttribute('data-layout', mode);
+                if ((parseInt(img.style.width) || 100) >= 90) img.style.width = '50%';
+            } else {
+                img.removeAttribute('data-layout');
+            }
+            img.style.maxWidth = '100%'; img.style.height = 'auto';
+            const slider = document.querySelector(`.rich-toolbar[data-target="${targetId}"] .rich-size-slider`);
+            if (slider) slider.value = parseInt(img.style.width) || 100;
+            el.focus();
+        };
+        // 사진 옆으로 흐르던 글을 여기서 끊고 아래에서 이어쓰게 하는 "줄 내리기" 구분자(clear:both)를 커서 위치에 넣는다.
+        window.richInsertClear = function(targetId) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            el.focus();
+            document.execCommand('insertHTML', false, '<div style="clear:both"><br></div>');
         };
         // 슬라이더를 움직일 때마다 실시간으로 선택된 이미지 크기를 반영한다 (10%~100%, 5% 단위로 세밀하게 조절 가능)
         window.richResizeImageLive = function(targetId, percent) {
@@ -10208,6 +10248,8 @@
             if (e.target.tagName === 'IMG' && e.target.closest('.rich-editable')) {
                 richLastClickedImage = e.target;
                 const editable = e.target.closest('.rich-editable');
+                editable.querySelectorAll('img.rich-img-selected').forEach(i => i.classList.remove('rich-img-selected'));
+                e.target.classList.add('rich-img-selected'); // 어떤 사진이 크기/배치 조절 대상인지 보이게 (class는 저장 시 sanitize에서 제거된다)
                 const slider = document.querySelector(`.rich-toolbar[data-target="${editable.id}"] .rich-size-slider`);
                 if (slider) slider.value = parseInt(e.target.style.width) || 100;
             }
@@ -17696,6 +17738,9 @@
 
         // switchTab()에서 호출: 새 tabId를 즉시 반영해서 판별 정확도를 높인 뒤 handleGesture와 동일하게 처리.
         function handlePageChange(tabId){
+            // "닫기"로 숨긴 음악 미니 위젯은 음악 페이지에 새로 들어가면 다시 나타나게 한다
+            // (예전에는 재생이 완전히 끝날 때까지 계속 숨겨져서, 닫은 뒤 음악 페이지를 다녀와도 안 돌아왔다).
+            if (tabId === 'mixtape') mixInlineDismissed = false;
             handleGesture();
         }
 
@@ -18066,7 +18111,17 @@
             knobEl.style.transform = on ? 'translateX(18px)' : 'translateX(0)';
         }
 
-        function isSidebarPinned(){ return localStorage.getItem(SIDEBAR_PIN_KEY) === '1'; }
+        // 터치 인터페이스(hover가 없거나 주 입력이 손가락)에서는 hover로 펼칠 수 없으므로, 사용자가 직접 정한 적이 없으면
+        // "사이드바 항상 펼치기"를 자동으로 켠다. 직접 켜거나 끈 적이 있으면('1'/'0') 그 선택이 항상 우선이다.
+        function isTouchInterface(){
+            return window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches;
+        }
+        function isSidebarPinned(){
+            const saved = localStorage.getItem(SIDEBAR_PIN_KEY);
+            if (saved === '1') return true;
+            if (saved === '0') return false;
+            return isTouchInterface();
+        }
         function applySidebarPinUI(){
             const pinned = isSidebarPinned();
             const sidebarEl = document.getElementById('sidebar');
@@ -18074,6 +18129,11 @@
             setKnob(sidebarPinKnob, pinned);
         }
         applySidebarPinUI();
+        // 터치 인터페이스로 바뀌거나(예: 태블릿 모드 전환) 돌아오면, 직접 정한 적 없는 경우에 한해 다시 반영한다
+        ['(hover: none)', '(pointer: coarse)'].forEach(q => {
+            const mq = window.matchMedia(q);
+            if (mq.addEventListener) mq.addEventListener('change', applySidebarPinUI);
+        });
         if (sidebarPinToggle) sidebarPinToggle.addEventListener('click', () => {
             const next = !isSidebarPinned();
             localStorage.setItem(SIDEBAR_PIN_KEY, next ? '1' : '0');
