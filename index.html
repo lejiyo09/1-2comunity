@@ -2319,8 +2319,8 @@
                 <div class="dashboard-grid" data-section-grid>
                     <div class="card" data-widget-id="w-shortcuts" style="grid-column: span 6;">
                         <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
-                            <button id="btn-add-shortcut" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'shared')">+ 바로가기 추가</button>
-                            <button id="btn-add-shortcut-personal" class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'personal')">👤 내 바로가기 추가</button>
+                            <button id="btn-add-shortcut" data-edit-control class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'shared')">+ 바로가기 추가</button>
+                            <button id="btn-add-shortcut-personal" data-edit-control class="btn-sub" style="display:none; font-size:12px; padding:6px 12px;" onclick="openShortcutModal(null, 'personal')">👤 내 바로가기 추가</button>
                         </div>
                         <!-- auto-fit + minmax: 뷰포트 폭이 아니라 이 위젯 자체가 실제로 차지한 너비를 기준으로
                              알아서 줄 수를 조절한다(위젯을 손잡이로 좁게 늘려도, 사이드바 상태가 바뀌어도
@@ -4847,7 +4847,9 @@
             // 편집 모드에서는 카드를 눌러도 곧바로 탭 이동이 안 되게 막는다 (편집 바 자체 클릭은 예외).
             container.addEventListener('click', (e) => {
                 if (!homeSectionEditMode) return;
-                if (e.target.closest('.widget-edit-bar')) return;
+                // 편집 바와, 편집 모드에서만 나타나는 조작 버튼(바로가기 추가/수정 등, data-edit-control)은 막지 않는다.
+                // (예전에는 카드 안의 모든 클릭을 막아서, 편집 모드에서만 보이는 "내 바로가기 추가" 버튼이 눌러지지 않았다.)
+                if (e.target.closest('.widget-edit-bar, [data-edit-control]')) return;
                 const card = e.target.closest('.card[data-widget-id]');
                 if (card) { e.stopPropagation(); e.preventDefault(); }
             }, true);
@@ -13908,7 +13910,7 @@
                 const safeUrl = escapeJsAttr(sc.url || '');
                 // 개인 바로가기는 관리자 권한과 무관하게 항상 본인이 수정/삭제할 수 있다.
                 const canEditThis = personal || canManageShortcuts;
-                const editBtn = canEditThis ? `<span onclick="event.stopPropagation(); openShortcutModal('${id}', '${personal ? 'personal' : 'shared'}')" style="position:absolute; top:-6px; right:-6px; cursor:pointer; font-size:14px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">⚙️</span>` : '';
+                const editBtn = canEditThis ? `<span data-edit-control onclick="event.stopPropagation(); openShortcutModal('${id}', '${personal ? 'personal' : 'shared'}')" style="position:absolute; top:-6px; right:-6px; cursor:pointer; font-size:14px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">⚙️</span>` : '';
                 const personalBadge = personal ? `<span title="나만 보이는 개인 바로가기" style="position:absolute; top:-6px; left:-6px; font-size:11px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">👤</span>` : '';
                 return `<div style="position:relative;">
                     ${editBtn}${personalBadge}
@@ -17741,6 +17743,8 @@
             // "닫기"로 숨긴 음악 미니 위젯은 음악 페이지에 새로 들어가면 다시 나타나게 한다
             // (예전에는 재생이 완전히 끝날 때까지 계속 숨겨져서, 닫은 뒤 음악 페이지를 다녀와도 안 돌아왔다).
             if (tabId === 'mixtape') mixInlineDismissed = false;
+            // 집중 타이머 미니 위젯도 같은 방식: 닫았더라도 플래너 페이지에 새로 들어가면 다시 나타나게 한다
+            if (tabId === 'planner') focusInlineDismissed = false;
             handleGesture();
         }
 
