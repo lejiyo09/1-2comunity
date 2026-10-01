@@ -515,6 +515,13 @@
         .rich-editable { min-height: 140px; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 10px 10px; padding: 12px; font-size: 15px; line-height: 1.6; color: var(--text-main); outline: none; overflow-wrap: break-word; }
         .rich-editable:empty::before { content: attr(data-placeholder); color: var(--text-muted); }
         .rich-editable img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 6px; }
+        .rich-editable img.rich-img-selected { outline: 2px solid var(--primary); outline-offset: 2px; }
+        /* 사진 배치 자율성: 기본은 한 줄을 차지(block)하고, 왼쪽/오른쪽을 고르면 사진이 그쪽에 붙고 글이 옆으로 흐른다.
+           왼쪽(또는 오른쪽) 사진 여러 장은 폭이 합쳐서 한 줄에 들어가면 가로로 나란히 배열된다(사진 폭 슬라이더로 조절).
+           data-layout은 저장 시 sanitizeRichHTML이 left/right 두 값만 남긴다. */
+        .rich-editable, .rich-content { display: flow-root; } /* float를 감싸서 아래 요소에 안 새게 */
+        .rich-editable img[data-layout="left"], .rich-content img[data-layout="left"] { float: left; margin: 4px 1.2% 8px 0; }
+        .rich-editable img[data-layout="right"], .rich-content img[data-layout="right"] { float: right; margin: 4px 0 8px 1.2%; }
 
         /* 저장된 리치 콘텐츠를 실제로 보여줄 때 (상세화면 등, 전체 크기) */
         .rich-content { font-size: 15px; line-height: 1.7; color: var(--text-secondary); overflow-wrap: break-word; }
@@ -524,6 +531,7 @@
         /* 작은 공간(홈 위젯/PIP)에서 리치 콘텐츠를 안전하게 축소 표시할 때 */
         .rich-content-compact { font-size: 13px; line-height: 1.5; overflow: hidden; max-height: 160px; }
         .rich-content-compact img { max-width: 100%; max-height: 120px; object-fit: contain; }
+        .rich-content-compact img[data-layout] { float: none; margin: 8px 0; } /* 좁은 곳(홈 위젯/PiP)에서는 배치 없이 세로로 */
         .community-compose-toolrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
         .community-compose-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
         .community-compose-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
@@ -10013,7 +10021,7 @@
 
         // 허용 태그/속성 화이트리스트 기반 sanitizer. contenteditable에서 나온 HTML만 통과시킨다.
         const RICH_ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','S','STRIKE','P','DIV','BR','SPAN','A','IMG','UL','OL','LI','BLOCKQUOTE']);
-        const RICH_ALLOWED_STYLE_PROPS = new Set(['color', 'font-size', 'text-align', 'width', 'max-width', 'height']);
+        const RICH_ALLOWED_STYLE_PROPS = new Set(['color', 'font-size', 'text-align', 'width', 'max-width', 'height', 'clear']);
         function sanitizeRichHTML(html) {
             if (!html) return '';
             const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
@@ -10057,6 +10065,11 @@
                         return;
                     }
                     if (name === 'alt' || name === 'title') return; // 유지
+                    // 사진 배치(왼쪽/오른쪽에 붙여서 글이 옆으로 흐르게 함): float를 style로 직접 받지 않고 data-layout 값 두 가지만 허용한다
+                    if (name === 'data-layout' && node.tagName === 'IMG') {
+                        if (attr.value !== 'left' && attr.value !== 'right') node.removeAttribute(attr.name);
+                        return;
+                    }
                     node.removeAttribute(attr.name); // 그 외(on*, id, class 등)는 전부 제거
                 });
             }
@@ -10110,7 +10123,11 @@
                     <button type="button" onclick="richExec('${targetId}','justifyRight')" title="오른쪽 정렬">⯈</button>
                     <span class="rich-toolbar-sep"></span>
                     <button type="button" onclick="richInsertLink('${targetId}')" title="링크">🔗</button>
-                    <button type="button" onclick="richInsertImage('${targetId}')" title="이미지 삽입">🖼</button>
+                    <button type="button" onclick="richInsertImage('${targetId}')" title="이미지 삽입 (여러 장을 한 번에 고르면 가로로 나란히 배치돼요)">🖼</button>
+                    <button type="button" onclick="richSetImageLayout('${targetId}','block')" title="선택한 사진: 한 줄을 차지 (기본)">▭</button>
+                    <button type="button" onclick="richSetImageLayout('${targetId}','left')" title="선택한 사진: 왼쪽에 붙이고 글이 오른쪽으로 흐르게 / 여러 장이면 가로로 나란히">◧</button>
+                    <button type="button" onclick="richSetImageLayout('${targetId}','right')" title="선택한 사진: 오른쪽에 붙이고 글이 왼쪽으로 흐르게">◨</button>
+                    <button type="button" onclick="richInsertClear('${targetId}')" title="여기서부터 사진 옆 흐름을 끊고 아래 줄에서 이어쓰기">↧</button>
                     <span class="rich-toolbar-sep"></span>
                     <div class="rich-size-wrap">
                         <span class="rich-img-size-label">크기</span>
@@ -10162,37 +10179,73 @@
         // 제출 자체를 막는다.
         const richImageUploadsInFlight = new Set();
         function isRichEditorUploadingImage(targetId) { return richImageUploadsInFlight.has(targetId); }
+        // 여러 장을 한 번에 고르면 왼쪽 정렬(left) + 장수에 맞춘 폭으로 넣어서 가로로 나란히 배치되게 한다
+        // (2장=48%, 3장=32%, 4장 이상=23% - 이미지 사이 여백 1.2%까지 합쳐 한 줄에 들어간다). 1장은 예전처럼 한 줄 전체.
+        function richBatchImageWidth(count) { return count <= 1 ? 100 : (count === 2 ? 48 : (count === 3 ? 32 : 23)); }
         window.richInsertImage = function(targetId) {
             const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'image/*';
+            input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
             input.onchange = async () => {
-                const file = input.files[0];
-                if (!file) return;
+                const files = Array.from(input.files || []);
+                if (!files.length) return;
                 const el = document.getElementById(targetId);
                 el.focus();
                 richImageUploadsInFlight.add(targetId);
-                const placeholderId = `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                document.execCommand('insertHTML', false, `<span id="${placeholderId}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중...</span>`);
+                // 자리표시자를 한 번에(순서대로) 먼저 넣어두고, 업로드가 끝나는 대로 각자 자기 자리의 이미지로 바꾼다
+                const placeholderIds = files.map(() => `rich-img-uploading-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+                document.execCommand('insertHTML', false, placeholderIds.map((pid, i) => `<span id="${pid}" contenteditable="false" style="display:inline-block; padding:4px 8px; border:1px dashed var(--border-color); border-radius:6px; color:var(--text-muted); font-size:12px;">⏳ 이미지 업로드 중... (${i + 1}/${files.length})</span>`).join(''));
+                const width = richBatchImageWidth(files.length);
                 try {
-                    const url = await uploadImageToFreeImageHost(file);
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.alt = '첨부 이미지';
-                    img.style.width = '100%';
-                    img.style.maxWidth = '100%';
-                    img.setAttribute('onerror', 'handleRichImgLoadError(this)');
-                    const placeholder = document.getElementById(placeholderId);
-                    if (placeholder) placeholder.replaceWith(img); else el.appendChild(img);
-                } catch (e) {
-                    console.error('게시글 이미지 업로드 오류:', e);
-                    const placeholder = document.getElementById(placeholderId);
-                    if (placeholder) placeholder.remove();
-                    alert(e.message && e.message.includes('60MB') ? e.message : '이미지 업로드 중 오류가 발생했습니다.');
+                    await Promise.all(files.map(async (file, i) => {
+                        const placeholderId = placeholderIds[i];
+                        try {
+                            const url = await uploadImageToFreeImageHost(file);
+                            const img = document.createElement('img');
+                            img.src = url;
+                            img.alt = '첨부 이미지';
+                            img.style.width = width + '%';
+                            img.style.maxWidth = '100%';
+                            if (files.length > 1) img.setAttribute('data-layout', 'left');
+                            img.setAttribute('onerror', 'handleRichImgLoadError(this)');
+                            const placeholder = document.getElementById(placeholderId);
+                            if (placeholder) placeholder.replaceWith(img); else el.appendChild(img);
+                        } catch (e) {
+                            console.error('게시글 이미지 업로드 오류:', e);
+                            const placeholder = document.getElementById(placeholderId);
+                            if (placeholder) placeholder.remove();
+                            alert(e.message && e.message.includes('60MB') ? e.message : '이미지 업로드 중 오류가 발생했습니다.');
+                        }
+                    }));
                 } finally {
                     richImageUploadsInFlight.delete(targetId);
                 }
             };
             input.click();
+        };
+        // 선택한(마지막으로 클릭한) 사진의 배치를 바꾼다: block=한 줄 차지(기본), left/right=그쪽에 붙고 글이 옆으로 흐름.
+        // 폭이 거의 100%인 사진을 left/right로 바꾸면 옆에 글이 들어갈 자리가 없으므로 절반 폭으로 줄여준다.
+        window.richSetImageLayout = function(targetId, mode) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            const img = richLastClickedImage && el.contains(richLastClickedImage) ? richLastClickedImage : el.querySelector('img:last-of-type');
+            if (!img) { alert('먼저 배치를 바꿀 사진을 클릭해서 선택해주세요.'); return; }
+            if (mode === 'left' || mode === 'right') {
+                img.setAttribute('data-layout', mode);
+                if ((parseInt(img.style.width) || 100) >= 90) img.style.width = '50%';
+            } else {
+                img.removeAttribute('data-layout');
+            }
+            img.style.maxWidth = '100%'; img.style.height = 'auto';
+            const slider = document.querySelector(`.rich-toolbar[data-target="${targetId}"] .rich-size-slider`);
+            if (slider) slider.value = parseInt(img.style.width) || 100;
+            el.focus();
+        };
+        // 사진 옆으로 흐르던 글을 여기서 끊고 아래에서 이어쓰게 하는 "줄 내리기" 구분자(clear:both)를 커서 위치에 넣는다.
+        window.richInsertClear = function(targetId) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            el.focus();
+            document.execCommand('insertHTML', false, '<div style="clear:both"><br></div>');
         };
         // 슬라이더를 움직일 때마다 실시간으로 선택된 이미지 크기를 반영한다 (10%~100%, 5% 단위로 세밀하게 조절 가능)
         window.richResizeImageLive = function(targetId, percent) {
@@ -10208,6 +10261,8 @@
             if (e.target.tagName === 'IMG' && e.target.closest('.rich-editable')) {
                 richLastClickedImage = e.target;
                 const editable = e.target.closest('.rich-editable');
+                editable.querySelectorAll('img.rich-img-selected').forEach(i => i.classList.remove('rich-img-selected'));
+                e.target.classList.add('rich-img-selected'); // 어떤 사진이 크기/배치 조절 대상인지 보이게 (class는 저장 시 sanitize에서 제거된다)
                 const slider = document.querySelector(`.rich-toolbar[data-target="${editable.id}"] .rich-size-slider`);
                 if (slider) slider.value = parseInt(e.target.style.width) || 100;
             }
@@ -17696,6 +17751,9 @@
 
         // switchTab()에서 호출: 새 tabId를 즉시 반영해서 판별 정확도를 높인 뒤 handleGesture와 동일하게 처리.
         function handlePageChange(tabId){
+            // "닫기"로 숨긴 음악 미니 위젯은 음악 페이지에 새로 들어가면 다시 나타나게 한다
+            // (예전에는 재생이 완전히 끝날 때까지 계속 숨겨져서, 닫은 뒤 음악 페이지를 다녀와도 안 돌아왔다).
+            if (tabId === 'mixtape') mixInlineDismissed = false;
             handleGesture();
         }
 
