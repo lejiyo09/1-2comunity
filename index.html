@@ -837,7 +837,7 @@
             filter: drop-shadow(0 0 calc(var(--bk-gl) * 3px) var(--bk-glow)); animation: pf-ach-pen-move 4.2s ease-in-out both; }
         .pf-ach-nib svg { display:block; width:100%; height:100%; overflow:visible; }
         @keyframes pf-ach-pen-draw { 0%, 14% { transform: scaleX(0); } 72%, 100% { transform: scaleX(1); } }
-        @keyframes pf-ach-pen-move { 0% { opacity:0; left:-0.09em; transform: translateY(-5px) rotate(-14deg); } 14% { opacity:1; left:-0.09em; transform: translateY(0) rotate(0deg); } 72%, 76% { opacity:1; left:calc(100% - 1.14em); transform: translateY(0) rotate(0deg); } 90% { opacity:1; left:calc(100% - 0.79em); transform: rotate(-70deg); } 100% { opacity:1; left:calc(100% - 0.79em); transform: rotate(-63deg); } }
+        @keyframes pf-ach-pen-move { 0% { opacity:0; left:-0.09em; transform: translateY(-5px) rotate(-14deg); } 14% { opacity:1; left:-0.09em; transform: translateY(0) rotate(0deg); } 72%, 76% { opacity:1; left:calc(100% - 1.14em); transform: translateY(0) rotate(0deg); } 90% { opacity:1; left:calc(100% - 0.66em); transform: rotate(-70deg); } 100% { opacity:1; left:calc(100% - 0.66em); transform: rotate(-63deg); } }
         .pf-ach-icon { display:inline-block; font-size:0.82em; vertical-align:0.02em; }
 
         /* 학습가(10시간) 책 넘김: 닉네임 왼쪽에 빛나는 작은 책이 나타나 표지가 열리며 펼쳐지고, 페이지가 한 장 넘어가며 빛이 퍼진 뒤 잔상(입자)이 흩어진다.
@@ -887,11 +887,11 @@
         @keyframes bk-lean { 0% { opacity:0; transform:translateY(5px) rotate(-30deg); } 14% { opacity:1; transform:translateY(0) rotate(-30deg); } 36% { transform:rotate(-30deg); } 50%, 100% { opacity:1; transform:rotate(-14deg); } }
         @keyframes bk-wall { 0%, 4% { opacity:0; transform:scaleY(0.1); } 14%, 100% { opacity:0.9; transform:scaleY(1); } }
 
-        /* 이음(꾸준한 사람): 닉네임 위로 작은 점 세 개가 가는 선으로 이어지며 왼쪽부터 차례로 켜진다 */
-        .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:-0.34em; height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
-        .pf-ach-dot { position:absolute; top:-0.42em; width:3.5px; height:3.5px; margin-left:-1.75px; border-radius:50%; background:#a78bfa; pointer-events:none; opacity:0.25; animation: pf-ach-dot-on 4.8s ease-in-out infinite; }
-        .pf-ach-dot.a { left:8%; } .pf-ach-dot.b { left:50%; animation-delay:0.6s; } .pf-ach-dot.c { left:92%; animation-delay:1.2s; }
-        @keyframes pf-ach-dot-on { 0%, 100% { opacity:0.25; } 25%, 55% { opacity:1; box-shadow: 0 0 4px rgba(167,139,250,0.9); } }
+        /* 이음(꾸준한 사람): 닉네임의 글자마다 그 위에 작은 점이 하나씩 왼쪽부터 차례로 켜지고(한 번만 재생), 모두 켜진 상태로 유지된다 */
+        .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:calc(-0.08em + 1.25px); height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
+        .pf-ach-dot { position:absolute; top:-0.08em; width:3.5px; height:3.5px; margin-left:-1.75px; border-radius:50%; background:#a78bfa; pointer-events:none; opacity:0;
+            animation: pf-ach-dot-on 0.6s ease-out both; animation-delay: calc(var(--i) * 0.2s + 0.2s); }
+        @keyframes pf-ach-dot-on { 0% { opacity:0; transform:scale(0.2); } 60% { opacity:1; transform:scale(1.5); box-shadow: 0 0 6px rgba(167,139,250,0.95); } 100% { opacity:1; transform:scale(1); box-shadow: 0 0 4px rgba(167,139,250,0.8); } }
 
         /* 완주(올클리어): 왼쪽에서 작은 마름모 파츠가 나타나고 → 닉네임 아래로 완료선이 쭉 그어진 뒤 → 마지막에 오른쪽 끝(글자 바깥)에 체크가 붙는다. 한 번만 재생되고 마지막 상태 유지.
            단계가 올라갈수록 체크가 커지고 빛 조각이 늘어나며(3회=완료선+작은 체크 / 5회=강화된 체크+빛 조각 2개 / 9회=선명한 체크+빛 조각 5개+빛 조각), 색은 파랑→보라→금빛이다. */
@@ -957,7 +957,7 @@
         @keyframes pf-streak-dot-breathe { 0%, 100% { opacity:0.55; } 50% { opacity:1; } }
         @media (prefers-reduced-motion: reduce) {
             .pf-ach-pen::after { animation: none; transform: scaleX(1); }
-            .pf-ach-nib { animation: none; opacity: 1; left: calc(100% - 0.79em); transform: rotate(-63deg); }
+            .pf-ach-nib { animation: none; opacity: 1; left: calc(100% - 0.66em); transform: rotate(-63deg); }
             .bk-cover, .bk-turn { animation: none !important; opacity: 0 !important; }
             .bk-all, .bk-base, .bk-ink-r, .bk-ink-l, .bk-spine, .bk-wall, .pf-ach-arc { animation: none !important; opacity: 1 !important; transform: none !important; }
             .bk-cover-in { animation: none !important; opacity: 1 !important; transform: scaleX(-1) !important; }
@@ -966,7 +966,7 @@
             .pf-ach-fdia, .pf-ach-fcheck, .pf-ach-fspk { animation: none !important; transform: none !important; }
             .pf-ach-fdia { opacity: 1; } .pf-ach-fcheck { clip-path: none !important; opacity: 1; } .pf-ach-fspk { opacity: 0.9; }
             .pf-ach-dot, .pf-ach-spark, .pf-streak-dot { animation: none !important; }
-            .pf-ach-dot { opacity: 0.85; } .pf-ach-spark { opacity: 0; } .pf-streak-dot { opacity: 0.85; }
+            .pf-ach-dot { opacity: 1; transform: none; } .pf-ach-spark { opacity: 0; } .pf-streak-dot { opacity: 0.85; }
         }
         .profile-thumb-level { font-size: 10.5px; font-weight: 700; margin-top: 14px; } /* 닉네임 주변 연출(Streak 궤도 등)이 아래 레벨 줄과 겹치지 않도록 넉넉한 간격 */
         .profile-thumb-info { font-size: 14px; font-weight: 700; color: var(--text-main); }
@@ -7946,7 +7946,7 @@
                 pen:     { achievementId: 'activity10', label: '펜',              icon: '✒️', desc: '펜이 닉네임 아래에 밑줄을 쭉 긋고 줄 끝에 남아요',                 setIcons: { suffix: '✒️' } },
                 focus10: { achievementId: 'study10h',   label: '책 넘김 · 10시간', icon: '◎',  desc: '닉네임 옆 작은 책이 펼쳐지고 페이지가 넘어가요' },
                 focus20: { achievementId: 'study20h',   label: '책장 · 20시간', icon: '◎',  desc: '작은 책장에 책이 차례로 꽂혀요' },
-                chain:   { achievementId: 'streak5',    label: '이음',            icon: '⋯',  desc: '닉네임 위로 작은 점 세 개가 차례로 이어져요' },
+                chain:   { achievementId: 'streak5',    label: '이음',            icon: '⋯',  desc: '닉네임 글자마다 위에 작은 점이 차례로 켜져요' },
                 finish5: { achievementId: 'allClear5',  label: '완주 · 3회',      icon: '✓',  desc: '완료선이 그어지고 작은 체크가 닉네임 옆에 남아요' },
                 finish15:{ achievementId: 'allClear15', label: '완주 · 5회',      icon: '✓',  desc: '체크가 강화되고 작은 빛 조각 2개가 더해져요' },
                 finish30:{ achievementId: 'allClear30', label: '완주 · 9회',      icon: '✓',  desc: '가장 선명한 체크와 금빛 빛 조각 5개까지 완성돼요' }
@@ -8341,12 +8341,33 @@
         }
 
         // 업적 세트/Streak의 추가 요소(닉네임 주변의 작은 선·점). 전부 absolute라 글자 위치에는 영향이 없다.
-        function achievementNameExtras(setKey) {
+        // 이음: 글자마다 그 위에 점 하나. 글자 폭은 한글/전각=1, 숫자/영문/기호는 대략적인 비율로 어림해 점을 글자 가운데에 놓는다(공백은 점 없음).
+        function chainDotsMarkup(rawName) {
+            const chars = Array.from(String(rawName == null ? '' : rawName));
+            const widthOf = (ch) => {
+                if (/\s/.test(ch)) return 0.3;
+                if (/[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u3000-\u9fff\uff00-\uffef]/.test(ch)) return 1;
+                if (/[0-9]/.test(ch)) return 0.58;
+                if (/[A-Z]/.test(ch)) return 0.66;
+                if (/[a-z]/.test(ch)) return 0.54;
+                return 0.62;
+            };
+            const widths = chars.map(widthOf);
+            const total = widths.reduce((a, b) => a + b, 0) || 1;
+            let acc = 0, idx = 0, html = '';
+            chars.forEach((ch, i) => {
+                const w = widths[i];
+                if (!/\s/.test(ch)) html += `<i class="pf-ach-dot" style="left:${((acc + w / 2) / total * 100).toFixed(2)}%; --i:${idx++}"></i>`;
+                acc += w;
+            });
+            return html;
+        }
+        function achievementNameExtras(setKey, rawName) {
             switch (setKey) {
                 case 'pen': return pfPenMarkup();
                 case 'focus10': return pfBookMarkup(true);
                 case 'focus20': return pfBookMarkup(false);
-                case 'chain': return '<i class="pf-ach-dot a"></i><i class="pf-ach-dot b"></i><i class="pf-ach-dot c"></i>';
+                case 'chain': return chainDotsMarkup(rawName);
                 case 'finish5': return pfFinishMarkup(1);
                 case 'finish15': return pfFinishMarkup(2);
                 case 'finish30': return pfFinishMarkup(3);
@@ -8396,7 +8417,7 @@
                 nameHtml = `<span class="${v.nameClass}" style="${v.nameStyle}" data-text="${attrSafeName}">${esc(rawName)}${sparkleHtml}${flashHtml}</span>`;
             }
             // 업적 세트의 이름 연출(펜선/집중선/이음/완주 표시)은 이름 전체를 감싸는 래퍼에 붙인다 - 레벨 이름 효과와 겹쳐도 서로 영향을 주지 않는다.
-            if (v.achSet) nameHtml = `<span class="pf-ach pf-ach-${v.achSet}">${nameHtml}${achievementNameExtras(v.achSet)}</span>`;
+            if (v.achSet) nameHtml = `<span class="pf-ach pf-ach-${v.achSet}">${nameHtml}${achievementNameExtras(v.achSet, rawName)}</span>`;
             // Streak Effect는 업적 세트와도 독립이라 가장 바깥에서 한 번 더 감싼다(둘 다 있어도 서로 가리지 않게 궤도는 뒤쪽 레이어).
             // 접두/접미 아이콘과 배지도 궤도 안쪽에 들어오도록, 궤도는 닉네임 + 아이콘 + 배지 전체를 감싼다.
             const streakTier = streakTierFor(appearance && appearance.streakDays);
