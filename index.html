@@ -826,11 +826,11 @@
         .pf-ach, .pf-streak { position: relative; display: inline-block; max-width: 100%; vertical-align: baseline; }
 
         /* --- 활동 업적 세트: 행동을 연상시키는 작은 닉네임 연출 --- */
-        /* 펜(활동왕): 닉네임 아래에 손으로 그은 듯 살짝 굽은 짧은 펜선이 왼쪽→오른쪽으로 그어졌다 잠시 머물고 옅어진다 */
-        .pf-ach-pen::after { content:''; position:absolute; left:-0.04em; bottom:-0.3em; width:90%; height:0.34em; pointer-events:none;
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%236d85f5' stop-opacity='.25'/%3E%3Cstop offset='.18' stop-color='%234f6bed'/%3E%3Cstop offset='.8' stop-color='%233b52c9'/%3E%3Cstop offset='1' stop-color='%233b52c9' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M1 7 C18 3.5 40 9 62 5.5 S92 4.5 99 6' fill='none' stroke='url(%23g)' stroke-width='2.6' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
-            clip-path: inset(0 100% 0 0); animation: pf-ach-pen-draw 4.8s ease-in-out infinite; }
-        @keyframes pf-ach-pen-draw { 0% { clip-path: inset(0 100% 0 0); opacity:1; } 30%, 74% { clip-path: inset(0 0 0 0); opacity:1; } 100% { clip-path: inset(0 0 0 0); opacity:0; } }
+        /* 펜(활동왕): 닉네임 아래에 쭉 뻗은 직선 펜선이 왼쪽→오른쪽으로 그어졌다 잠시 머물고 옅어진다 */
+        .pf-ach-pen::after { content:''; position:absolute; left:0; right:0; bottom:-3px; height:2.5px; pointer-events:none; border-radius:2px;
+            background: linear-gradient(90deg, rgba(79,107,237,0.2) 0%, #4f6bed 14%, #3b52c9 82%, rgba(59,82,201,0) 100%);
+            transform-origin: left center; transform: scaleX(0); animation: pf-ach-pen-draw 4.8s ease-in-out infinite; }
+        @keyframes pf-ach-pen-draw { 0% { transform: scaleX(0); opacity:1; } 30%, 74% { transform: scaleX(1); opacity:1; } 100% { transform: scaleX(1); opacity:0; } }
         .pf-ach-icon { display:inline-block; font-size:0.82em; vertical-align:0.02em; }
 
         /* 집중선(학습가): 닉네임 왼쪽에 가늘게 선 세로선과 아주 작은 광점. 20시간은 같은 모양이 두 줄 + 작은 궤도로 한 단계 완성된다 */
@@ -901,7 +901,7 @@
         .pf-streak-dot.faint { opacity:0.45; box-shadow:none; }
         @keyframes pf-streak-dot-breathe { 0%, 100% { opacity:0.55; } 50% { opacity:1; } }
         @media (prefers-reduced-motion: reduce) {
-            .pf-ach-pen::after { animation: none; clip-path: inset(0 0 0 0); }
+            .pf-ach-pen::after { animation: none; transform: scaleX(1); }
             .pf-ach-focus10::before, .pf-ach-focus10::after, .pf-ach-focus20::before, .pf-ach-dot, .pf-ach-finish30::after, .pf-ach-star4, .pf-ach-spark, .pf-streak-dot { animation: none !important; }
             .pf-ach-dot { opacity: 0.85; } .pf-ach-spark { opacity: 0; } .pf-streak-dot { opacity: 0.85; }
         }
