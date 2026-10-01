@@ -541,6 +541,7 @@
         /* 상세 화면 */
         .community-detail-card { max-width: 700px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 26px 28px; } /* 가독성을 위해 불투명한 배경(글래스모피즘 아님) */
         .detail-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .detail-meta:has(.pf-streak, .pf-ach) { margin-top: 12px; margin-bottom: 20px; } /* 닉네임 연출(궤도/밑줄/체크)이 위의 '← 커뮤니티'와 아래 제목에 붙지 않도록 간격 확보 */
         .detail-title { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; line-height: 1.4; }
         .detail-body { font-size: 15px; color: var(--text-secondary); line-height: 1.7; white-space: pre-wrap; margin-bottom: 16px; }
         .detail-actions { display: flex; align-items: center; gap: 18px; font-size: 14px; padding: 14px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
@@ -938,6 +939,8 @@
         body:not(.gmw-site-dark) .pf-streak-t4 { --sk-c: #0d9488; --sk-dot: #0d9488; }
         body:not(.gmw-site-dark) .pf-streak-t5 { --sk-c: #7c5cf0; --sk-dot: #7c5cf0; }
         body:not(.gmw-site-dark) .pf-streak-t7 { --sk-c: #d99a06; --sk-dot: #d99a06; }
+        .pf-streak { margin-left: 0.95em; margin-right: 0.95em; } /* 궤도가 좌우로 튀어나오는 만큼 여백을 둬서 옆의 글자([운영자] 표시, 날짜 등)와 겹치지 않게 한다 */
+        .pf-streak.has-ach { margin-left: 1.35em; margin-right: 1.35em; }
         .pf-streak-orbit { position:absolute; inset:-0.42em -0.95em; pointer-events:none; z-index:0; border-radius:50%; }
         /* 업적 세트 연출(책/책장의 왼쪽 그림, 펜과 밑줄, 닉네임 아래 선)이 함께 있을 때는 궤도를 더 크게 잡아, 연출이 궤도 선·빛점과 겹치지 않고 궤도 안쪽에 들어오게 한다 */
         .pf-streak.has-ach > .pf-ach { z-index: 1; }
