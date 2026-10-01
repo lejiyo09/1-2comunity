@@ -4085,7 +4085,7 @@
         const sidebarMenuContainer = document.querySelector('.sidebar-menu-container');
         let savedSidebarScrollTop = 0;
         function isSidebarExpanded() {
-            return sidebar.matches(':hover') || sidebar.classList.contains('mobile-open') || sidebar.classList.contains('touch-expanded');
+            return sidebar.matches(':hover') || sidebar.classList.contains('mobile-open') || sidebar.classList.contains('touch-expanded') || sidebar.classList.contains('pinned-expanded');
         }
         if (sidebarMenuContainer) {
             sidebarMenuContainer.addEventListener('scroll', () => {
@@ -4126,6 +4126,7 @@
         sidebar.addEventListener('click', (e) => {
             if (window.innerWidth <= 768) return; // 모바일은 하단 '메뉴' 버튼 드로어 방식을 그대로 사용
             if (!isCoarsePointer()) return; // 마우스 환경은 기존 hover 확장 그대로 사용
+            if (sidebar.classList.contains('pinned-expanded')) return; // "항상 펼치기"면 이미 펼쳐져 있으므로 첫 탭부터 바로 메뉴를 실행한다
             if (!sidebar.classList.contains('touch-expanded')) {
                 sidebar.classList.add('touch-expanded');
                 restoreSidebarScroll();
@@ -18110,7 +18111,17 @@
             knobEl.style.transform = on ? 'translateX(18px)' : 'translateX(0)';
         }
 
-        function isSidebarPinned(){ return localStorage.getItem(SIDEBAR_PIN_KEY) === '1'; }
+        // 터치 인터페이스(hover가 없거나 주 입력이 손가락)에서는 hover로 펼칠 수 없으므로, 사용자가 직접 정한 적이 없으면
+        // "사이드바 항상 펼치기"를 자동으로 켠다. 직접 켜거나 끈 적이 있으면('1'/'0') 그 선택이 항상 우선이다.
+        function isTouchInterface(){
+            return window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches;
+        }
+        function isSidebarPinned(){
+            const saved = localStorage.getItem(SIDEBAR_PIN_KEY);
+            if (saved === '1') return true;
+            if (saved === '0') return false;
+            return isTouchInterface();
+        }
         function applySidebarPinUI(){
             const pinned = isSidebarPinned();
             const sidebarEl = document.getElementById('sidebar');
@@ -18118,6 +18129,11 @@
             setKnob(sidebarPinKnob, pinned);
         }
         applySidebarPinUI();
+        // 터치 인터페이스로 바뀌거나(예: 태블릿 모드 전환) 돌아오면, 직접 정한 적 없는 경우에 한해 다시 반영한다
+        ['(hover: none)', '(pointer: coarse)'].forEach(q => {
+            const mq = window.matchMedia(q);
+            if (mq.addEventListener) mq.addEventListener('change', applySidebarPinUI);
+        });
         if (sidebarPinToggle) sidebarPinToggle.addEventListener('click', () => {
             const next = !isSidebarPinned();
             localStorage.setItem(SIDEBAR_PIN_KEY, next ? '1' : '0');
