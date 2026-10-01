@@ -928,6 +928,9 @@
         .pf-streak-orbit { position:absolute; inset:-0.42em -0.95em; pointer-events:none; z-index:0; border-radius:50%; }
         /* 업적 세트 연출(책/책장의 왼쪽 그림, 펜과 밑줄, 닉네임 아래 선)이 함께 있을 때는 궤도를 더 크게 잡아, 연출이 궤도 선·빛점과 겹치지 않고 궤도 안쪽에 들어오게 한다 */
         .pf-streak.has-ach > .pf-ach { z-index: 1; }
+        .pf-streak-gap-l { display:inline-block; margin-right:1.1em; }
+        .pf-streak-gap-r { display:inline-block; margin-left:1.1em; }
+        .pf-streak-gap-l.ach { margin-right:1.5em; } .pf-streak-gap-r.ach { margin-left:1.5em; }
         .pf-streak.has-ach .pf-streak-orbit { inset:-0.62em -1.35em -1em -1.35em; }
         .pf-streak-orbit::before, .pf-streak-orbit::after { content:''; position:absolute; inset:0; border-radius:50%; border:1px solid var(--sk-c);
             -webkit-mask-image: conic-gradient(from var(--sk-from, 0deg), transparent 0deg, #000 16deg, #000 calc(var(--sk-span, 90deg) - 16deg), transparent var(--sk-span, 90deg), transparent 360deg);
@@ -8373,6 +8376,13 @@
             // Streak Effect는 업적 세트와도 독립이라 가장 바깥에서 한 번 더 감싼다(둘 다 있어도 서로 가리지 않게 궤도는 뒤쪽 레이어).
             const streakTier = streakTierFor(appearance && appearance.streakDays);
             if (streakTier) nameHtml = `<span class="pf-streak pf-streak-t${streakTier}${v.achSet ? ' has-ach' : ''}" title="연속 출석 ${Number(appearance.streakDays) || 0}일">${streakOrbitHTML(streakTier)}${nameHtml}</span>`;
+            // 연속 출석 궤도는 닉네임 좌우로 튀어나오므로, 같은 줄의 앞(접두 아이콘)·뒤(접미 아이콘/배지) 이모지가 궤도와 겹치지 않도록 그만큼 간격을 띄운다.
+            if (streakTier) {
+                const gap = v.achSet ? ' ach' : '';
+                const before = prefix ? `<span class="pf-streak-gap-l${gap}">${prefix}</span>` : '';
+                const after = (suffix || badgeHtml) ? `<span class="pf-streak-gap-r${gap}">${suffix}${badgeHtml}</span>` : '';
+                return `${before}${nameHtml}${after}`;
+            }
             return `${prefix}${nameHtml}${suffix}${badgeHtml}`;
         }
 
