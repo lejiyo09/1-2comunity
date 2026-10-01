@@ -835,18 +835,18 @@
 
         /* 학습가(10시간) 책 넘김: 닉네임 왼쪽에 빛나는 작은 책이 나타나 표지가 열리며 펼쳐지고, 페이지가 한 장 넘어가며 빛이 퍼진 뒤 잔상(입자)이 흩어진다.
            연출은 한 번만 재생되고 "펼쳐진 작은 책 + 닉네임 아래 호선"인 마지막 상태로 계속 유지된다. 학습가+(20시간) 책장도 같은 방식(마지막 상태 유지). */
-        .pf-ach-focus10, .pf-ach-focus20 { padding-left: 2.15em; }
+        .pf-ach-focus10, .pf-ach-focus20 { padding-left: 2.15em; line-height: 1.3; } /* 줄 높이를 고정해 밑줄이 어디서든 글자 바로 아래에 오게 한다(baseline 정렬이라 글자 위치는 그대로) */
         .pf-ach-book, .pf-ach-shelf { --bk-a:#78a6ff; --bk-b:#2b52c8; --bk-pa:#ffffff; --bk-pb:#bcd0ff; --bk-edge:#3f63d8; --bk-ink:rgba(63,99,216,0.7); --bk-glow:#7aa0ff; --bk-gl:0.55;
             position:absolute; left:-0.05em; top:50%; width:2.1em; height:2.1em; margin-top:-1.08em; pointer-events:none; }
         /* 책장: 책이 닉네임 밑줄 위에 서도록 밑줄 높이에 책 바닥(viewBox y=36)을 맞춘다 */
-        .pf-ach-shelf { top:auto; bottom:-0.54em; margin-top:0; }
+        .pf-ach-shelf { top:auto; bottom:-0.14em; margin-top:0; }
         body.gmw-site-dark .pf-ach-book, body.gmw-site-dark .pf-ach-shelf { --bk-a:#8fb8ff; --bk-b:#2f5fe0; --bk-pa:#f4f8ff; --bk-pb:#9fbfff; --bk-edge:#5f8cff; --bk-ink:rgba(79,122,235,0.75); --bk-glow:#8fb4ff; --bk-gl:0.85; }
         .pf-ach-book svg, .pf-ach-shelf svg { display:block; width:100%; height:100%; overflow:visible; filter: drop-shadow(0 0 calc(var(--bk-gl) * 3px) var(--bk-glow)); }
         .bk-st-a { stop-color:var(--bk-a); } .bk-st-b { stop-color:var(--bk-b); } .bk-st-pa { stop-color:var(--bk-pa); } .bk-st-pb { stop-color:var(--bk-pb); }
         .bk-st-la { stop-color:var(--bk-glow); stop-opacity:0.8; } .bk-st-lb { stop-color:var(--bk-glow); stop-opacity:0; }
         .bk-all, .bk-cover, .bk-cover-in { transform-box: view-box; transform-origin: 20px 20px; }
         .bk-turn { transform-box: view-box; transform-origin: 20px 20px; }
-        .bk-light, .bk-ghost, .bk-p, .bk-spine, .bk-flow { transform-box: fill-box; transform-origin: 50% 50%; }
+        .bk-light, .bk-ghost, .bk-p, .bk-spine { transform-box: fill-box; transform-origin: 50% 50%; }
         .bk-edge { fill:none; stroke:var(--bk-edge); stroke-width:1.1; stroke-linejoin:round; stroke-linecap:round; }
         .bk-ink { fill:none; stroke:var(--bk-ink); stroke-width:0.9; stroke-linecap:round; }
         .bk-all { animation: bk-all 7s ease-in-out both; }
@@ -860,7 +860,8 @@
         .bk-ghost { opacity:0; animation: bk-ghost 7s ease-out both; }
         .bk-p { opacity:0; animation: bk-p 7s ease-out both; animation-delay: calc(var(--i) * 0.1s); }
         .bk-keep { opacity:0; animation: bk-keep 7s ease-in-out both; animation-delay: calc(var(--i) * 0.25s); }
-        .pf-ach-arc { position:absolute; left:0; right:-0.15em; bottom:-0.6em; height:0.55em; pointer-events:none; }
+        .pf-ach-arc { position:absolute; left:0; right:-0.15em; bottom:-0.2em; height:0.55em; pointer-events:none; }
+        .pf-ach-focus10 .pf-ach-arc { bottom:-0.32em; }
         .pf-ach-arc svg { display:block; width:100%; height:100%; overflow:visible; filter: drop-shadow(0 0 calc(var(--bk-gl, 0.6) * 2px) var(--bk-glow, #7aa0ff)); }
         .pf-ach-arc path { fill:none; stroke-width:1.4; stroke-linecap:round; vector-effect: non-scaling-stroke; }
         .pf-ach-arc .bk-ast-a { stop-color:var(--bk-glow, #7aa0ff); stop-opacity:0; } .pf-ach-arc .bk-ast-b { stop-color:var(--bk-glow, #7aa0ff); stop-opacity:1; }
@@ -881,10 +882,10 @@
         /* 학습가+(20시간) 책장: 닉네임 밑줄이 선반이 되어 그 위에 책이 차례로 정렬되고, 빛이 한 번 흘러간 뒤 잔상이 사라진다. 마지막(책이 꽂히고 밑줄이 그어진) 상태 유지 */
         .bk-spine { opacity:0; animation: bk-spine 7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 0.32s); }
         .bk-lean { transform-origin:0% 100%; animation-name: bk-lean; }
-        .bk-flow { opacity:0; animation: bk-flow 7s ease-in-out both; }
+        .bk-wall { fill:var(--bk-edge); transform-box: fill-box; transform-origin: 50% 100%; animation: bk-wall 7s ease-out both; }
         @keyframes bk-spine { 0% { opacity:0; transform:translateY(7px); } 14%, 100% { opacity:1; transform:translateY(0); } }
         @keyframes bk-lean { 0% { opacity:0; transform:translateY(5px) rotate(-30deg); } 14% { opacity:1; transform:translateY(0) rotate(-30deg); } 36% { transform:rotate(-30deg); } 50%, 100% { opacity:1; transform:rotate(-14deg); } }
-        @keyframes bk-flow { 0%, 30% { opacity:0; transform:translateX(0); } 38% { opacity:0.75; } 52% { opacity:0.75; transform:translateX(23px); } 58%, 100% { opacity:0; transform:translateX(25px); } }
+        @keyframes bk-wall { 0%, 4% { opacity:0; transform:scaleY(0.1); } 14%, 100% { opacity:0.9; transform:scaleY(1); } }
 
         /* 이음(꾸준한 사람): 닉네임 위로 작은 점 세 개가 가는 선으로 이어지며 왼쪽부터 차례로 켜진다 */
         .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:-0.34em; height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
@@ -942,8 +943,8 @@
         @keyframes pf-streak-dot-breathe { 0%, 100% { opacity:0.55; } 50% { opacity:1; } }
         @media (prefers-reduced-motion: reduce) {
             .pf-ach-pen::after { animation: none; transform: scaleX(1); }
-            .bk-cover, .bk-turn, .bk-light, .bk-ghost, .bk-flow, .bk-p { animation: none !important; opacity: 0 !important; }
-            .bk-all, .bk-base, .bk-ink-r, .bk-ink-l, .bk-spine, .pf-ach-arc, .bk-keep { animation: none !important; opacity: 1 !important; transform: none !important; }
+            .bk-cover, .bk-turn, .bk-light, .bk-ghost, .bk-p { animation: none !important; opacity: 0 !important; }
+            .bk-all, .bk-base, .bk-ink-r, .bk-ink-l, .bk-spine, .bk-wall, .pf-ach-arc, .bk-keep { animation: none !important; opacity: 1 !important; transform: none !important; }
             .bk-cover-in { animation: none !important; opacity: 1 !important; transform: scaleX(-1) !important; }
             .bk-lean { transform: rotate(-14deg) !important; }
             .pf-ach-dot, .pf-ach-finish30::after, .pf-ach-star4, .pf-ach-spark, .pf-streak-dot { animation: none !important; }
@@ -2041,7 +2042,7 @@
 
                 <div class="sidebar-expand-only">
                     <div class="user-profile" id="user-profile-card" style="display:none;">
-                        <div id="profile-nick-line" style="margin-bottom:6px;">👤 <strong id="profile-nick-text">불러오는 중...</strong></div>
+                        <div id="profile-nick-line" style="margin-bottom:14px; padding-top:5px;">👤 <strong id="profile-nick-text">불러오는 중...</strong></div>
                         <div id="profile-role-line" style="color:var(--text-secondary); margin-bottom:10px;">소속: <span id="profile-role-text">—</span></div>
                         <button onclick="setNickname()" style="width:100%; padding:6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer; margin-bottom:6px;">✏️ 닉네임 설정/변경</button>
                         <div id="sidebar-presence-widget" style="position:relative; display:none;">
@@ -4022,6 +4023,17 @@
         let activeStudentNum = null;
 
         const getAuthorName = () => currentUserInfo ? (currentUserInfo.nickname || `${currentUserInfo.ban}반 ${currentUserInfo.number}번`) : "익명";
+        // 사이드바 프로필 카드의 내 닉네임: 커뮤니티 글과 같은 공용 렌더러(renderStyledName)로 그려 이름 효과/업적 연출이 그대로 보인다.
+        let sidebarNickState = null;
+        function renderSidebarNick() {
+            const el = document.getElementById('profile-nick-text');
+            if (!el || !sidebarNickState) return;
+            const { nick, isGod, isTeacher } = sidebarNickState;
+            const num = getMyStudentNum();
+            if (isGod) el.innerHTML = `<span class="god-mode-text">👑 ${escapeNoticeText(nick)}</span>`;
+            else if (num && !isTeacher) el.innerHTML = renderStyledName(nick, getStudentAppearance(num, profilesData[`student_${num}`] || {}), null, escapeNoticeText);
+            else el.textContent = nick;
+        }
         const getAuthorOriginal = () => currentUserInfo ? `${currentUserInfo.number}번` : "익명";
 
         // POKEMON_CHAMPIONS_URL에 실제 게임 주소를 입력하면
@@ -4421,11 +4433,9 @@
 
                             const nickTextEl = document.getElementById('profile-nick-text');
                             const roleTextEl = document.getElementById('profile-role-text');
-                            if (nickTextEl) {
-                                nickTextEl.innerHTML = (user.email === SPECIAL_EMAIL)
-                                    ? `<span class="god-mode-text">👑 ${displayNick}</span>`
-                                    : displayNick;
-                            }
+                            sidebarNickState = { nick: displayNick, isGod: user.email === SPECIAL_EMAIL, isTeacher: isTeacherAccount };
+                            renderSidebarNick();
+                            syncOwnNicknameMirror();
                             if (roleTextEl) roleTextEl.textContent = roleText;
                             if (window.updatePresenceWidgetUI) window.updatePresenceWidgetUI();
                         });
@@ -8285,7 +8295,7 @@
             const bk = (i, x, y, w, h, extra, lines) => `<g class="bk-spine ${extra}" style="--i:${i}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="0.9" fill="url(#bkC${n})" stroke="var(--bk-edge)" stroke-width="0.8"/><path d="M${x + 0.9} ${y + 1} V${y + h - 1}" stroke="rgba(255,255,255,0.55)" stroke-width="0.7"/>${lines ? `<path d="M${x + 0.8} ${y + 4} H${x + w - 0.8} M${x + 0.8} ${y + h - 4} H${x + w - 0.8}" stroke="rgba(255,255,255,0.5)" stroke-width="0.7"/>` : ''}</g>`;
             return `<i class="pf-ach-shelf"><svg viewBox="0 0 40 40" aria-hidden="true">${grad}<ellipse class="bk-light" cx="21" cy="30" rx="18" ry="14" fill="url(#bkL${n})"/>`
                 + bk(0, 8, 18, 4.6, 18, '', true) + bk(1, 13.6, 13, 5.6, 23, '', true) + bk(2, 20.4, 17, 4.6, 19, '', true) + bk(3, 31, 19, 4.4, 17, 'bk-lean', false)
-                + `<rect class="bk-flow" x="6" y="11" width="2.2" height="25" rx="1" fill="var(--bk-glow)"/>`
+                + `<rect class="bk-wall" x="4.4" y="10" width="2" height="26" rx="0.8"/>`
                 + dots([[7, 10, 0.9, -3, -4], [22, 8, 1, 2, -5], [34, 14, 0.9, 4, -3], [36, 30, 0.8, 4, 2], [4, 20, 0.7, -4, -2], [17, 7, 0.7, 0, -5]])
                 + keeps([[22, 9, 0.9], [34, 15, 0.9], [6, 11, 0.8]])
                 + `</svg></i>${arc(true)}`;
@@ -8450,6 +8460,46 @@
             writeOwnProfileDoc(num, { xp });
         }
 
+        // 내 현재 닉네임(users/{uid}.nickname)을 profiles/student_{num}.nickname에 미러링한다. 다른 사람은 내 users 문서를 읽을 수 없어서,
+        // 이 거울 값이 있어야 예전에 쓴 글/댓글에도 바뀐 닉네임이 보인다. 닉네임을 해제하면 ''로 기록한다.
+        function syncOwnNicknameMirror() {
+            if (!currentUser || !currentUserInfo || !Object.keys(profilesData).length) return;
+            const num = getMyStudentNum();
+            if (!num) return;
+            const want = (currentUserInfo.nickname || '').trim();
+            const cur = (profilesData[`student_${num}`] || {}).nickname;
+            if (cur === want || (cur === undefined && want === '')) return;
+            writeOwnProfileDoc(num, { nickname: want });
+        }
+
+        // 프로필(닉네임/꾸미기/레벨/연속 출석)이 바뀌면 이미 그려진 글·아카이브·포켓몬 글·사이드바 이름도 새 값으로 다시 그린다.
+        // 매 스냅샷마다 다시 그리면 댓글을 쓰는 중에 입력이 날아가므로, 작성자 표시에 영향을 주는 값이 실제로 바뀐 때만, 입력 중이 아닐 때만 그린다.
+        let authorViewsSig = null, authorViewsTimer = null;
+        function authorViewsSignature() {
+            const out = [];
+            for (let i = 1; i <= 26; i++) {
+                const sd = profilesData[`student_${i}`];
+                out.push(sd ? [sd.nickname, JSON.stringify(getStudentAppearance(i, sd))] : null);
+            }
+            return JSON.stringify(out);
+        }
+        function refreshAuthorViews() {
+            const sig = authorViewsSignature();
+            if (sig === authorViewsSig) return;
+            const ae = document.activeElement;
+            if (ae && (/^(INPUT|TEXTAREA)$/.test(ae.tagName) || ae.isContentEditable)) {
+                clearTimeout(authorViewsTimer);
+                authorViewsTimer = setTimeout(refreshAuthorViews, 3000); // 입력이 끝난 뒤에 다시 시도
+                return;
+            }
+            authorViewsSig = sig;
+            const safe = (fn) => { try { fn(); } catch (e) { console.warn('작성자 표시 갱신 실패:', e); } };
+            safe(() => renderSidebarNick());
+            safe(() => { if (Object.keys(latestPostsData || {}).length) renderPostsList(latestPostsData); });
+            safe(() => { if (archiveSnapshotHandler && lastArchiveSnapshot) archiveSnapshotHandler(lastArchiveSnapshot); });
+            safe(() => { if (typeof renderPokemonPosts === 'function') renderPokemonPosts(); });
+        }
+
         // addXP()가 호출될 때마다 실행된다: 사이드바 갱신 + 레벨업 감지 + (본인 프로필이 있는 경우) Firestore profiles에 xp 미러링.
         // XP의 단일 원본(source of truth)은 이제 users/{uid}/xp이다. 이 profiles/student_{num}.xp는
         // 어디까지나 "친구 프로필 그리드"에서 다른 학생의 레벨/칭호를 한 번에 훑어보기 위한 거울(mirror) 값일 뿐이며,
@@ -8515,10 +8565,12 @@
             if (e.target === e.currentTarget) window.closeDecorateModal();
         });
 
-        // 편집 중이던 것을 전부 버리고, 모달을 열었을 때(=현재 저장되어 있는) 상태로 되돌린다.
+        // "초기화": 꾸미기를 한 번도 저장하지 않은 계정과 같은 기본 상태(내 레벨/업적에 맞춰 자동으로 정해지는 값)로 되돌린다.
+        // 예전에는 "모달을 열었을 때의 상태"로만 되돌려서, 열자마자 누르면 아무 변화가 없어 작동하지 않는 것처럼 보였다.
+        // (이전 저장 상태로 돌아가려면 취소/닫기. 어느 쪽이든 "적용하기"를 누르기 전에는 저장되지 않는다.)
         window.resetDecorateDraft = function() {
             if (!decorateInitialAppearance) return;
-            decorateDraftAppearance = JSON.parse(JSON.stringify(decorateInitialAppearance));
+            decorateDraftAppearance = computeEffectiveAppearance(decorateDraftLevel, null, myAchievementsUnlocked);
             renderDecorateModal();
         }
 
@@ -9721,8 +9773,19 @@
         // 공용 표시명 함수 - 98번 담임교사는 항상 "신중곤 선생님"으로 강제하고, 그 외에는 기존 닉네임을 그대로 쓴다.
         // 커뮤니티/아카이브/댓글/공지/일정/온라인현황 등 이름을 보여주는 모든 곳에서 원본 닉네임 대신 이 함수를 거친다.
         // (이름 효과/배지 같은 cosmetic은 이 함수가 반환한 표시명 위에 그대로 적용되므로 별도 처리가 필요 없다.)
+        // 글/댓글에는 쓴 시점의 닉네임(authorName)이 박제되어 있다. 닉네임을 바꾼 뒤에도 예전 글에 바뀐 이름이 보이도록,
+        // 작성자가 본인 profiles/student_{번호}.nickname에 미러링해 둔 현재 닉네임이 있으면 그 값을 우선한다(''이면 닉네임 해제 = 반/번호 표기).
+        // 아직 미러링한 적 없는 작성자는 예전처럼 박제된 이름을 그대로 쓴다.
+        function mirroredNicknameFor(authorOriginal) {
+            const p = parseIdentityFromOriginal(authorOriginal);
+            if (!p || p.grade !== '1' || p.ban !== '2' || p.number < 1 || p.number > 26) return null;
+            const nick = (profilesData[`student_${p.number}`] || {}).nickname;
+            if (typeof nick !== 'string') return null;
+            return nick || `${p.ban}반 ${p.number}번`;
+        }
         function resolveDisplayName(rawName, authorOriginal) {
-            return (isTeacher98Original(authorOriginal) || isTeacher98RawName(rawName)) ? TEACHER_98_DISPLAY_NAME : rawName;
+            if (isTeacher98Original(authorOriginal) || isTeacher98RawName(rawName)) return TEACHER_98_DISPLAY_NAME;
+            return mirroredNicknameFor(authorOriginal) || rawName;
         }
 
         // authorOriginal에서 학생 번호를 뽑아 그 학생의 프로필 cosmetic을 계산한다.
@@ -11142,8 +11205,10 @@
             if(confirm("이 추억 카드를 정말 삭제하시겠습니까?")) await deleteDoc(doc(fdb, 'archive', archiveId));
         }
 
+        let archiveSnapshotHandler = null, lastArchiveSnapshot = null; // 프로필이 바뀌면 같은 스냅샷으로 목록만 다시 그리기 위해 보관
         function listenToArchive() {
-            onSnapshot(collection(fdb, 'archive'), (snapshot) => {
+            onSnapshot(collection(fdb, 'archive'), archiveSnapshotHandler = (snapshot) => {
+                lastArchiveSnapshot = snapshot;
                 const data = fsSnapshotToMap(snapshot); 
                 latestArchiveData = data; // 활동 업적(게시글 합계) 계산용 캐시
                 evaluateAndSyncAchievements();
@@ -14152,6 +14217,7 @@
                 profilesData = fsSnapshotToMap(snap);
                 syncOwnXpMirror();
                 syncOwnStreakMirror();
+                syncOwnNicknameMirror();
                 const gridEl = document.getElementById('profile-card-grid'); 
                 if(gridEl) gridEl.innerHTML = '';
                 for(let i = 1; i <= 26; i++) {
@@ -14181,6 +14247,7 @@
                 // 학생 프로필 이름이 바뀔 수 있으므로, 번호 기반으로 이름을 보여주는 스쿼드/자리배치 화면도 함께 다시 그린다
                 renderSquadPitch();
                 renderSeatingGrid();
+                refreshAuthorViews();
             });
         }
 
