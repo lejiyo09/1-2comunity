@@ -833,49 +833,58 @@
         @keyframes pf-ach-pen-draw { 0% { transform: scaleX(0); opacity:1; } 30%, 74% { transform: scaleX(1); opacity:1; } 100% { transform: scaleX(1); opacity:0; } }
         .pf-ach-icon { display:inline-block; font-size:0.82em; vertical-align:0.02em; }
 
-        /* 학습가(10시간) 책 넘김: 닉네임 왼쪽에 빛나는 작은 책이 나타나 펼쳐지고, 페이지가 한 장 넘어가며 빛이 퍼진 뒤 잔상(입자)이 흩어지고
-           "펼쳐진 작은 책 + 닉네임 아래로 이어지는 얇은 호선" 완성 상태로 머문다. 학습가+(20시간) 책장은 같은 언어로 책이 꽂히는 한 단계 더 완성된 형태. */
+        /* 학습가(10시간) 책 넘김: 닉네임 왼쪽에 빛나는 작은 책이 나타나 표지가 열리며 펼쳐지고, 페이지가 한 장 넘어가며 빛이 퍼진 뒤 잔상(입자)이 흩어진다.
+           연출은 한 번만 재생되고 "펼쳐진 작은 책 + 닉네임 아래 호선"인 마지막 상태로 계속 유지된다. 학습가+(20시간) 책장도 같은 방식(마지막 상태 유지). */
         .pf-ach-focus10, .pf-ach-focus20 { padding-left: 2.15em; }
         .pf-ach-book, .pf-ach-shelf { --bk-a:#78a6ff; --bk-b:#2b52c8; --bk-pa:#ffffff; --bk-pb:#bcd0ff; --bk-edge:#3f63d8; --bk-ink:rgba(63,99,216,0.7); --bk-glow:#7aa0ff; --bk-gl:0.55;
             position:absolute; left:-0.05em; top:50%; width:2.1em; height:2.1em; margin-top:-1.08em; pointer-events:none; }
+        /* 책장: 책이 닉네임 밑줄 위에 서도록 밑줄 높이에 책 바닥(viewBox y=36)을 맞춘다 */
+        .pf-ach-shelf { top:auto; bottom:-0.54em; margin-top:0; }
         body.gmw-site-dark .pf-ach-book, body.gmw-site-dark .pf-ach-shelf { --bk-a:#8fb8ff; --bk-b:#2f5fe0; --bk-pa:#f4f8ff; --bk-pb:#9fbfff; --bk-edge:#5f8cff; --bk-ink:rgba(79,122,235,0.75); --bk-glow:#8fb4ff; --bk-gl:0.85; }
         .pf-ach-book svg, .pf-ach-shelf svg { display:block; width:100%; height:100%; overflow:visible; filter: drop-shadow(0 0 calc(var(--bk-gl) * 3px) var(--bk-glow)); }
         .bk-st-a { stop-color:var(--bk-a); } .bk-st-b { stop-color:var(--bk-b); } .bk-st-pa { stop-color:var(--bk-pa); } .bk-st-pb { stop-color:var(--bk-pb); }
         .bk-st-la { stop-color:var(--bk-glow); stop-opacity:0.8; } .bk-st-lb { stop-color:var(--bk-glow); stop-opacity:0; }
-        .bk-closed, .bk-open, .bk-turn, .bk-light, .bk-ghost, .bk-p, .bk-keep, .bk-spine, .bk-flow { transform-box: fill-box; transform-origin: 50% 50%; }
-        .bk-tilt { transform-box: view-box; transform-origin: 20px 20px; transform: rotate(-14deg); }
+        .bk-all, .bk-cover, .bk-cover-in { transform-box: view-box; transform-origin: 20px 20px; }
+        .bk-turn { transform-box: view-box; transform-origin: 20px 20px; }
+        .bk-light, .bk-ghost, .bk-p, .bk-spine, .bk-flow { transform-box: fill-box; transform-origin: 50% 50%; }
         .bk-edge { fill:none; stroke:var(--bk-edge); stroke-width:1.1; stroke-linejoin:round; stroke-linecap:round; }
         .bk-ink { fill:none; stroke:var(--bk-ink); stroke-width:0.9; stroke-linecap:round; }
-        .bk-dot { fill:var(--bk-glow); }
-        .bk-closed { opacity:0; animation: bk-closed 8s ease-in-out infinite; }
-        .bk-open { animation: bk-open 8s ease-in-out infinite; }
-        .bk-turn { opacity:0; transform-origin:0% 50%; animation: bk-turn 8s ease-in-out infinite; }
-        .bk-light { opacity:0; animation: bk-light 8s ease-out infinite; }
-        .bk-ghost { opacity:0; animation: bk-ghost 8s ease-out infinite; }
-        .bk-p { opacity:0; animation: bk-p 8s ease-out infinite; animation-delay: calc(var(--i) * 0.12s); }
-        .bk-keep { opacity:0; animation: bk-keep 8s ease-in-out infinite; animation-delay: calc(var(--i) * 0.5s); }
+        .bk-all { animation: bk-all 7s ease-in-out both; }
+        .bk-cover { animation: bk-cover 7s ease-in-out both; }
+        .bk-cover-in { opacity:0; animation: bk-cover-in 7s ease-in-out both; }
+        .bk-base { animation: bk-base 7s ease-in-out both; }
+        .bk-ink-r { animation: bk-ink-r 7s ease-in-out both; }
+        .bk-ink-l { animation: bk-ink-l 7s ease-in-out both; }
+        .bk-turn { opacity:0; animation: bk-turn 7s ease-in-out both; }
+        .bk-light { opacity:0; animation: bk-light 7s ease-out both; }
+        .bk-ghost { opacity:0; animation: bk-ghost 7s ease-out both; }
+        .bk-p { opacity:0; animation: bk-p 7s ease-out both; animation-delay: calc(var(--i) * 0.1s); }
+        .bk-keep { opacity:0; animation: bk-keep 7s ease-in-out both; animation-delay: calc(var(--i) * 0.25s); }
         .pf-ach-arc { position:absolute; left:0; right:-0.15em; bottom:-0.6em; height:0.55em; pointer-events:none; }
         .pf-ach-arc svg { display:block; width:100%; height:100%; overflow:visible; filter: drop-shadow(0 0 calc(var(--bk-gl, 0.6) * 2px) var(--bk-glow, #7aa0ff)); }
         .pf-ach-arc path { fill:none; stroke-width:1.4; stroke-linecap:round; vector-effect: non-scaling-stroke; }
         .pf-ach-arc .bk-ast-a { stop-color:var(--bk-glow, #7aa0ff); stop-opacity:0; } .pf-ach-arc .bk-ast-b { stop-color:var(--bk-glow, #7aa0ff); stop-opacity:1; }
-        .pf-ach-arc { opacity:0; transform-origin:0% 50%; animation: bk-arc 8s ease-in-out infinite; }
-        @keyframes bk-closed { 0% { opacity:0; transform:scale(0.7) translateY(2px); } 8%, 14% { opacity:1; transform:scale(1); } 24%, 100% { opacity:0; transform:scale(1.05); } }
-        @keyframes bk-open { 0%, 12% { opacity:0; transform:scale(0.8); } 24%, 90% { opacity:1; transform:scale(1); } 100% { opacity:0; transform:scale(0.9); } }
-        @keyframes bk-turn { 0%, 27% { opacity:0; transform:scaleX(1) skewY(0deg); } 30% { opacity:0.95; transform:scaleX(1) skewY(0deg); } 36% { opacity:0.95; transform:scaleX(0.1) skewY(-10deg); } 42% { opacity:0.9; transform:scaleX(-1) skewY(0deg); } 47%, 100% { opacity:0; transform:scaleX(-1); } }
-        @keyframes bk-light { 0%, 38% { opacity:0; transform:scale(0.4); } 48% { opacity:0.9; transform:scale(1); } 62%, 100% { opacity:0; transform:scale(1.35); } }
-        @keyframes bk-ghost { 0%, 50% { opacity:0; transform:scale(1); } 56% { opacity:0.6; transform:scale(1.08); } 70%, 100% { opacity:0; transform:scale(1.3); } }
-        @keyframes bk-p { 0%, 34% { opacity:0; transform:translate(0, 0) scale(0.4); } 46% { opacity:1; transform:translate(calc(var(--dx) * 0.4), calc(var(--dy) * 0.4)) scale(1); } 66%, 100% { opacity:0; transform:translate(var(--dx), var(--dy)) scale(0.6); } }
-        @keyframes bk-keep { 0%, 62% { opacity:0; } 70% { opacity:1; } 78% { opacity:0.45; } 86% { opacity:1; } 92% { opacity:0.9; } 100% { opacity:0; } }
-        @keyframes bk-arc { 0%, 8% { opacity:0; transform:scaleX(0.3); } 16% { opacity:0.45; transform:scaleX(0.8); } 56%, 70% { opacity:0.7; transform:scaleX(1); } 76%, 92% { opacity:1; transform:scaleX(1); } 100% { opacity:0; transform:scaleX(1); } }
+        .pf-ach-arc { opacity:0; transform-origin:0% 50%; animation: bk-arc 7s ease-in-out both; }
+        @keyframes bk-all { 0% { opacity:0; transform:translateX(-8px) scale(0.78); } 9%, 14% { opacity:1; transform:translateX(-8px) scale(1); } 28%, 100% { opacity:1; transform:translateX(0) scale(1); } }
+        @keyframes bk-cover { 0%, 14% { opacity:1; transform:scaleX(1); } 20% { opacity:1; transform:scaleX(0.02); } 20.1%, 100% { opacity:0; transform:scaleX(0.02); } }
+        @keyframes bk-cover-in { 0%, 20% { opacity:0; transform:scaleX(0.02); } 20.1% { opacity:1; transform:scaleX(0.02); } 28%, 100% { opacity:1; transform:scaleX(-1); } }
+        @keyframes bk-base { 0%, 18% { opacity:0; } 28%, 100% { opacity:1; } }
+        @keyframes bk-ink-r { 0%, 22% { opacity:0; } 30%, 100% { opacity:1; } }
+        @keyframes bk-ink-l { 0%, 27% { opacity:0; } 33%, 100% { opacity:1; } }
+        @keyframes bk-turn { 0%, 34% { opacity:0; transform:scaleX(1) skewY(0deg); } 36% { opacity:0.95; transform:scaleX(1) skewY(0deg); } 41% { opacity:0.95; transform:scaleX(0.1) skewY(-10deg); } 47% { opacity:0.9; transform:scaleX(-1) skewY(0deg); } 53%, 100% { opacity:0; transform:scaleX(-1); } }
+        @keyframes bk-light { 0%, 46% { opacity:0; transform:scale(0.4); } 56% { opacity:0.9; transform:scale(1); } 72%, 100% { opacity:0; transform:scale(1.35); } }
+        @keyframes bk-ghost { 0%, 56% { opacity:0; transform:scale(1); } 62% { opacity:0.6; transform:scale(1.08); } 78%, 100% { opacity:0; transform:scale(1.3); } }
+        @keyframes bk-p { 0%, 40% { opacity:0; transform:translate(0, 0) scale(0.4); } 54% { opacity:1; transform:translate(calc(var(--dx) * 0.4), calc(var(--dy) * 0.4)) scale(1); } 78%, 100% { opacity:0; transform:translate(var(--dx), var(--dy)) scale(0.6); } }
+        @keyframes bk-keep { 0%, 68% { opacity:0; } 78%, 100% { opacity:0.9; } }
+        @keyframes bk-arc { 0%, 12% { opacity:0; transform:scaleX(0.3); } 22% { opacity:0.55; transform:scaleX(0.85); } 50% { opacity:0.7; transform:scaleX(1); } 75%, 100% { opacity:1; transform:scaleX(1); } }
 
-        /* 학습가+(20시간) 책장: 작은 책장 실루엣(기둥 + 선반)에 책이 차례로 정렬되고, 빛이 한 번 흘러간 뒤 잔상이 사라지며 책이 꽂힌 완성 상태로 머문다 */
-        .bk-post { fill:var(--bk-edge); opacity:0.7; }
-        .bk-spine { opacity:0; animation: bk-spine 8s cubic-bezier(.3,.7,.3,1) infinite backwards; animation-delay: calc(var(--i) * 0.32s); }
-        .bk-lean { transform-origin:0% 100%; transform-box: fill-box; animation-name: bk-lean; }
-        .bk-flow { opacity:0; animation: bk-flow 8s ease-in-out infinite; }
-        @keyframes bk-spine { 0% { opacity:0; transform:translateY(7px); } 12%, 86% { opacity:1; transform:translateY(0); } 96%, 100% { opacity:0; transform:translateY(0); } }
-        @keyframes bk-lean { 0% { opacity:0; transform:translateY(5px) rotate(26deg); } 14% { opacity:1; transform:translateY(0) rotate(22deg); } 34% { transform:rotate(22deg); } 46%, 86% { opacity:1; transform:rotate(9deg); } 96%, 100% { opacity:0; transform:rotate(9deg); } }
-        @keyframes bk-flow { 0%, 30% { opacity:0; transform:translateX(0); } 38% { opacity:0.75; } 52% { opacity:0.75; transform:translateX(20px); } 58%, 100% { opacity:0; transform:translateX(22px); } }
+        /* 학습가+(20시간) 책장: 닉네임 밑줄이 선반이 되어 그 위에 책이 차례로 정렬되고, 빛이 한 번 흘러간 뒤 잔상이 사라진다. 마지막(책이 꽂히고 밑줄이 그어진) 상태 유지 */
+        .bk-spine { opacity:0; animation: bk-spine 7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 0.32s); }
+        .bk-lean { transform-origin:0% 100%; animation-name: bk-lean; }
+        .bk-flow { opacity:0; animation: bk-flow 7s ease-in-out both; }
+        @keyframes bk-spine { 0% { opacity:0; transform:translateY(7px); } 14%, 100% { opacity:1; transform:translateY(0); } }
+        @keyframes bk-lean { 0% { opacity:0; transform:translateY(5px) rotate(-30deg); } 14% { opacity:1; transform:translateY(0) rotate(-30deg); } 36% { transform:rotate(-30deg); } 50%, 100% { opacity:1; transform:rotate(-14deg); } }
+        @keyframes bk-flow { 0%, 30% { opacity:0; transform:translateX(0); } 38% { opacity:0.75; } 52% { opacity:0.75; transform:translateX(23px); } 58%, 100% { opacity:0; transform:translateX(25px); } }
 
         /* 이음(꾸준한 사람): 닉네임 위로 작은 점 세 개가 가는 선으로 이어지며 왼쪽부터 차례로 켜진다 */
         .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:-0.34em; height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
@@ -933,9 +942,10 @@
         @keyframes pf-streak-dot-breathe { 0%, 100% { opacity:0.55; } 50% { opacity:1; } }
         @media (prefers-reduced-motion: reduce) {
             .pf-ach-pen::after { animation: none; transform: scaleX(1); }
-            .bk-closed, .bk-turn, .bk-light, .bk-ghost, .bk-flow, .bk-p { animation: none !important; opacity: 0 !important; }
-            .bk-open, .bk-spine, .pf-ach-arc, .bk-keep { animation: none !important; opacity: 1 !important; transform: none !important; }
-            .bk-lean { transform: rotate(9deg) !important; }
+            .bk-cover, .bk-turn, .bk-light, .bk-ghost, .bk-flow, .bk-p { animation: none !important; opacity: 0 !important; }
+            .bk-all, .bk-base, .bk-ink-r, .bk-ink-l, .bk-spine, .pf-ach-arc, .bk-keep { animation: none !important; opacity: 1 !important; transform: none !important; }
+            .bk-cover-in { animation: none !important; opacity: 1 !important; transform: scaleX(-1) !important; }
+            .bk-lean { transform: rotate(-14deg) !important; }
             .pf-ach-dot, .pf-ach-finish30::after, .pf-ach-star4, .pf-ach-spark, .pf-streak-dot { animation: none !important; }
             .pf-ach-dot { opacity: 0.85; } .pf-ach-spark { opacity: 0; } .pf-streak-dot { opacity: 0.85; }
         }
@@ -8250,24 +8260,34 @@
             const grad = `<defs><linearGradient id="bkC${n}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="bk-st-a"/><stop offset="1" class="bk-st-b"/></linearGradient><linearGradient id="bkP${n}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="bk-st-pa"/><stop offset="1" class="bk-st-pb"/></linearGradient><radialGradient id="bkL${n}"><stop offset="0" class="bk-st-la"/><stop offset="1" class="bk-st-lb"/></radialGradient></defs>`;
             const dots = (list) => list.map((d, i) => `<circle class="bk-p" style="--i:${i};--dx:${d[3]}px;--dy:${d[4]}px" cx="${d[0]}" cy="${d[1]}" r="${d[2]}" fill="var(--bk-glow)"/>`).join('');
             const keeps = (list) => list.map((d, i) => `<circle class="bk-keep" style="--i:${i}" cx="${d[0]}" cy="${d[1]}" r="${d[2]}" fill="var(--bk-glow)"/>`).join('');
-            const arc = (flat) => `<i class="pf-ach-arc"><svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="bkA${n}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="0"><stop offset="0" class="bk-ast-a"/><stop offset="0.3" class="bk-ast-b"/><stop offset="1" class="bk-ast-b"/></linearGradient></defs><path d="${flat ? 'M0 5 L100 5' : 'M0 3 Q55 11 100 1'}" stroke="url(#bkA${n})"/></svg></i>`;
+            // 닉네임 밑줄: 책 넘김은 오른쪽 끝이 살짝 올라가는 호선, 책장은 직선(책이 서는 선반)
+            const arc = (flat) => `<i class="pf-ach-arc"><svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="bkA${n}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="0">${flat ? '<stop offset="0" class="bk-ast-b"/><stop offset="0.9" class="bk-ast-b"/><stop offset="1" class="bk-ast-a"/>' : '<stop offset="0" class="bk-ast-a"/><stop offset="0.3" class="bk-ast-b"/>'}</linearGradient></defs><path d="${flat ? 'M0 5 L100 5' : 'M0 3 Q55 11 100 1'}" stroke="url(#bkA${n})"/></svg></i>`;
             if (isBook) {
+                // 가운데 책등(x=20)을 기준으로 오른쪽 표지가 왼쪽으로 넘어가며(scaleX 1→-1) 펼쳐진다. 표지는 안쪽면(종이색)으로 바뀌며 왼쪽 쪽이 된다.
+                const rightPath = 'M20 12 Q28 8 37 10.5 V28.5 Q28 26 20 29.5 Z';
+                const coverPath = 'M20 11 Q28 7 37.6 9.5 V30.2 Q28 27 20 31 Z';
                 return `<i class="pf-ach-book"><svg viewBox="0 0 40 40" aria-hidden="true">${grad}<circle class="bk-light" cx="20" cy="20" r="18" fill="url(#bkL${n})"/>`
                     + `<path class="bk-edge bk-ghost" d="M20 12 Q12 8 3 10.5 V29 Q12 26.5 20 30 Q28 26.5 37 29 V10.5 Q28 8 20 12 Z"/>`
-                    + `<g class="bk-closed"><g class="bk-tilt"><rect x="11.5" y="6.5" width="17" height="25" rx="2.2" fill="url(#bkC${n})" stroke="var(--bk-edge)" stroke-width="1"/><rect x="11.5" y="6.5" width="3.6" height="25" rx="1.6" fill="rgba(10,25,90,0.35)"/><path class="bk-ink" style="stroke:rgba(255,255,255,0.75)" d="M18.5 13 H25 M18.5 16.5 H23.5"/><path d="M28.5 9 V30" stroke="rgba(255,255,255,0.55)" stroke-width="1"/></g></g>`
-                    + `<g class="bk-open"><path d="M20 12 Q12 8 3 10.5 V28.5 Q12 26 20 29.5 Z" fill="url(#bkP${n})" stroke="var(--bk-edge)" stroke-width="1" stroke-linejoin="round"/><path d="M20 12 Q28 8 37 10.5 V28.5 Q28 26 20 29.5 Z" fill="url(#bkP${n})" stroke="var(--bk-edge)" stroke-width="1" stroke-linejoin="round"/><path class="bk-ink" d="M6.5 15 Q12 13.5 17 15 M6.5 18.5 Q12 17 17 18.5 M6.5 22 Q12 20.5 17 22 M23 15 Q28 13.5 33.5 15 M23 18.5 Q28 17 33.5 18.5"/><path class="bk-edge" style="stroke-width:1.8" d="M2.5 30 Q12 27.5 20 31 Q28 27.5 37.5 30"/></g>`
+                    + `<g class="bk-all">`
+                    + `<path d="${rightPath}" fill="url(#bkP${n})" stroke="var(--bk-edge)" stroke-width="1" stroke-linejoin="round"/>`
+                    + `<path class="bk-ink bk-ink-r" d="M23 15 Q28 13.5 33.5 15 M23 18.5 Q28 17 33.5 18.5 M23 22 Q28 20.5 33.5 22"/>`
+                    + `<path class="bk-cover-in" d="${rightPath}" fill="url(#bkP${n})" stroke="var(--bk-edge)" stroke-width="1" stroke-linejoin="round"/>`
+                    + `<path class="bk-ink bk-ink-l" d="M6.5 15 Q12 13.5 17 15 M6.5 18.5 Q12 17 17 18.5 M6.5 22 Q12 20.5 17 22"/>`
+                    + `<path class="bk-edge bk-base" style="stroke-width:1.8" d="M2.5 30 Q12 27.5 20 31 Q28 27.5 37.5 30"/>`
+                    + `<g class="bk-cover"><path d="${coverPath}" fill="url(#bkC${n})" stroke="var(--bk-edge)" stroke-width="1" stroke-linejoin="round"/><path d="M20 11 Q22 10.4 23.6 10.3 V30.6 Q21.6 30.5 20 31 Z" fill="rgba(10,25,90,0.35)"/><path class="bk-ink" style="stroke:rgba(255,255,255,0.8)" d="M27 15 Q31 14 34 14.6 M27 18.5 Q30.5 17.6 33 18.2"/></g>`
                     + `<path class="bk-turn" d="M20 12 Q28 7 37 10 V28 Q28 25 20 29.5 Z" fill="url(#bkP${n})" stroke="var(--bk-pa)" stroke-width="0.8" stroke-linejoin="round"/>`
+                    + `</g>`
                     + dots([[5, 7, 0.9, -3, -4], [34, 6, 1.1, 4, -4], [37, 20, 0.8, 5, 1], [3, 22, 0.8, -5, 2], [28, 3, 0.7, 3, -5], [12, 3, 0.7, -2, -5]])
                     + keeps([[5, 9, 0.9], [35, 7, 1.1], [36, 21, 0.7]])
                     + `</svg></i>${arc(false)}`;
             }
+            // 책장: 책 바닥(y=36)이 닉네임 밑줄 위에 놓인다(밑줄 = 선반). 맨 오른쪽 책은 옆 책에 기대어 왼쪽으로 기운다.
             const bk = (i, x, y, w, h, extra, lines) => `<g class="bk-spine ${extra}" style="--i:${i}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="0.9" fill="url(#bkC${n})" stroke="var(--bk-edge)" stroke-width="0.8"/><path d="M${x + 0.9} ${y + 1} V${y + h - 1}" stroke="rgba(255,255,255,0.55)" stroke-width="0.7"/>${lines ? `<path d="M${x + 0.8} ${y + 4} H${x + w - 0.8} M${x + 0.8} ${y + h - 4} H${x + w - 0.8}" stroke="rgba(255,255,255,0.5)" stroke-width="0.7"/>` : ''}</g>`;
-            return `<i class="pf-ach-shelf"><svg viewBox="0 0 40 40" aria-hidden="true">${grad}<ellipse class="bk-light" cx="21" cy="26" rx="18" ry="14" fill="url(#bkL${n})"/>`
-                + `<rect class="bk-post" x="6" y="7" width="1.7" height="24"/><rect class="bk-post" x="4.5" y="31" width="29" height="1.6" rx="0.8"/>`
-                + bk(0, 10, 13, 4.6, 18, '', true) + bk(1, 15.6, 8, 5.6, 23, '', true) + bk(2, 22.4, 12, 4.6, 19, '', true) + bk(3, 28, 16, 4.4, 15, 'bk-lean', false)
-                + `<rect class="bk-flow" x="8" y="6" width="2.2" height="25" rx="1" fill="var(--bk-glow)"/>`
-                + dots([[9, 6, 0.9, -3, -4], [24, 4, 1, 2, -5], [34, 11, 0.9, 4, -3], [35, 29, 0.8, 4, 2], [5, 14, 0.7, -4, -2], [19, 3, 0.7, 0, -5]])
-                + keeps([[24, 5, 0.9], [34, 12, 0.9], [8, 7, 0.8]])
+            return `<i class="pf-ach-shelf"><svg viewBox="0 0 40 40" aria-hidden="true">${grad}<ellipse class="bk-light" cx="21" cy="30" rx="18" ry="14" fill="url(#bkL${n})"/>`
+                + bk(0, 8, 18, 4.6, 18, '', true) + bk(1, 13.6, 13, 5.6, 23, '', true) + bk(2, 20.4, 17, 4.6, 19, '', true) + bk(3, 31, 19, 4.4, 17, 'bk-lean', false)
+                + `<rect class="bk-flow" x="6" y="11" width="2.2" height="25" rx="1" fill="var(--bk-glow)"/>`
+                + dots([[7, 10, 0.9, -3, -4], [22, 8, 1, 2, -5], [34, 14, 0.9, 4, -3], [36, 30, 0.8, 4, 2], [4, 20, 0.7, -4, -2], [17, 7, 0.7, 0, -5]])
+                + keeps([[22, 9, 0.9], [34, 15, 0.9], [6, 11, 0.8]])
                 + `</svg></i>${arc(true)}`;
         }
 
