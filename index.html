@@ -463,10 +463,14 @@
         .feed-post-date { color: var(--text-muted); flex-shrink: 0; }
         .feed-post-title { font-size: 15.5px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
         .feed-post-body { font-size: 14px; color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-        /* 피드 미리보기: 글은 앞 3줄까지만(.feed-post-body), 본문이 사진으로 시작하면 그 사진만 3줄 높이(14px*1.55*3)로 축소한 썸네일로 보여준다 */
-        .feed-post-preview.has-thumb { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+        /* 피드 미리보기: 글은 앞 3줄까지만(.feed-post-body). 사진이 있으면 글 2줄 높이(14px*1.55*2)의 작은 썸네일만 옆에 보여주고,
+           글 + 사진이 6줄 높이 이상이 되면(글 4줄 이상) .thumb-hidden으로 사진을 빼고 글만 보여준다(fitFeedPreviews) */
+        .feed-post-preview.has-thumb { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
         .feed-post-preview.has-thumb .feed-post-body { flex: 1; min-width: 0; margin-bottom: 0; }
-        .feed-post-thumb { flex: none; height: calc(14px * 1.55 * 3); width: auto; max-width: 45%; border-radius: 8px; object-fit: cover; background: var(--surface-secondary); }
+        .feed-post-thumb-wrap { position: relative; flex: none; max-width: 30%; }
+        .feed-post-thumb { display: block; height: calc(14px * 1.55 * 2); width: auto; max-width: 100%; min-width: 30px; border-radius: 6px; object-fit: cover; background: var(--surface-secondary); }
+        .feed-post-thumb-count { position: absolute; right: 2px; bottom: 2px; font-size: 9.5px; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 4px; background: rgba(15,23,42,0.7); color: #fff; }
+        .feed-post-preview.thumb-hidden .feed-post-thumb-wrap { display: none; }
         .feed-post-footer { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
         .feed-post-footer > span:first-child { display: flex; align-items: center; gap: 16px; }
         .feed-comment-count { color: var(--text-muted); font-weight: 600; cursor: pointer; }
@@ -504,6 +508,7 @@
         .rich-toolbar button { min-width: 28px; height: 28px; padding: 0 6px; border: none; background: none; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-main); font-family: inherit; flex-shrink: 0; }
         .rich-toolbar button:hover { background: var(--hover-bg); }
         .rich-toolbar select { height: 28px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 12px; background: var(--input-bg); color: var(--text-main); font-family: inherit; flex-shrink: 0; }
+        .rich-fs-input { width: 46px; height: 26px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 12px; text-align: center; background: var(--input-bg); color: var(--text-main); font-family: inherit; flex-shrink: 0; padding: 0 2px; }
         .rich-color-input { width: 26px; height: 26px; border: none; padding: 0; background: none; cursor: pointer; flex-shrink: 0; }
         .rich-toolbar-sep { width: 1px; height: 18px; background: var(--border-color); margin: 0 3px; flex-shrink: 0; }
         .rich-img-size-label { font-size: 11px; color: var(--text-muted); margin-left: 2px; flex-shrink: 0; }
@@ -2221,7 +2226,6 @@
                     <div class="deco-preview-pane">
                         <div class="deco-preview-avatar-wrap"><div id="decorate-preview-avatar"></div></div>
                         <div id="decorate-preview-name" class="deco-preview-name"></div>
-                        <div id="decorate-preview-level" class="deco-preview-level"></div>
                         <div class="deco-equipped-title">현재 장착 효과</div>
                         <div id="decorate-equipped-tags" class="deco-equipped-tags"></div>
                     </div>
@@ -8717,7 +8721,6 @@
             // 여기서 보이는 모습과 실제로 적용됐을 때의 모습이 서로 달라지지 않는다.
             document.getElementById('decorate-preview-avatar').innerHTML = renderProfileAvatarHTML(previewAppearance, photo, undefined, false, isActiveNow);
             document.getElementById('decorate-preview-name').innerHTML = renderStyledName(displayName, previewAppearance, isActiveNow);
-            document.getElementById('decorate-preview-level').textContent = `Lv.${level} · ${title}`;
 
             // 현재 장착 중인 효과 요약 태그 (탭과 무관하게 전체 카테고리를 한눈에 보여준다)
             const tagsEl = document.getElementById('decorate-equipped-tags');
@@ -9649,29 +9652,46 @@
         //  - 본문이 사진으로 시작하면: 그 사진 한 장만 3줄 높이로 축소한 썸네일로 보여주고, 이어지는 글이 있으면 그 옆에 3줄까지 보여준다.
         // "처음이 글인지 사진인지"는 본문 순서(문서 순서)를 그대로 따라 첫 의미 있는 노드로 판단한다.
         function buildFeedPreview(post) {
-            let thumb = '';
+            let thumb = '', count = 0;
             const html = post && post.contentHTML && post.contentHTML.trim() ? post.contentHTML : '';
             if (html) {
                 const tmp = document.createElement('div');
                 tmp.innerHTML = sanitizeRichHTML(html);
-                const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-                for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-                    if (n.nodeType === Node.TEXT_NODE) { if ((n.nodeValue || '').trim()) break; continue; } // 글이 먼저 나왔다 -> 사진은 안 보여준다
-                    if (n.tagName === 'IMG' && n.getAttribute('src')) { thumb = n.getAttribute('src'); break; } // 사진이 먼저 나왔다
-                }
-            } else if (!((post && post.content) || '').trim()) {
-                // 레거시(첨부 방식) 글인데 본문 글이 아예 없으면, 첨부 사진이 첫 요소다
+                const imgs = [...tmp.querySelectorAll('img[src]')];
+                count = imgs.length;
+                if (imgs.length) thumb = imgs[0].getAttribute('src'); // 본문 어디에 있든 첫 사진을 작게 보여준다
+            }
+            if (!thumb) {
+                // 레거시(첨부 방식) 글의 첨부 사진
                 const imgs = getLegacyAttachedImages(post);
+                count = imgs.length;
                 if (imgs.length) thumb = imgs[0];
             }
-            return { thumb, text: richContentPreviewText(post, 'contentHTML', 'content', 400) };
+            return { thumb, count, text: richContentPreviewText(post, 'contentHTML', 'content', 400) };
         }
         function renderFeedPreview(post) {
-            const { thumb, text } = buildFeedPreview(post);
+            const { thumb, count, text } = buildFeedPreview(post);
             const bodyHtml = text ? `<p class="feed-post-body">${escapeNoticeText(text)}</p>` : '';
             if (!thumb) return bodyHtml;
-            return `<div class="feed-post-preview has-thumb"><img class="feed-post-thumb" src="${escapeNoticeText(thumb)}" loading="lazy" onerror="this.style.display='none'">${bodyHtml}</div>`;
+            const more = count > 1 ? `<span class="feed-post-thumb-count">+${count - 1}</span>` : '';
+            return `<div class="feed-post-preview has-thumb" data-fit-thumb="1"><span class="feed-post-thumb-wrap"><img class="feed-post-thumb" src="${escapeNoticeText(thumb)}" loading="lazy" onerror="this.style.display='none'">${more}</span>${bodyHtml}</div>`;
         }
+        // 사진은 목록에서 아주 작게(글 2줄 높이) 보여주되, 글 + 사진이 합쳐 6줄 높이 이상이 되면(= 글이 4줄 이상) 사진은 빼고 글만 보여준다.
+        // 줄 수는 실제로 그려진 글의 높이로 판단한다(화면 폭/글자 크기에 따라 달라지므로). 사진이 차지하는 줄 수만큼 글 영역이 좁아진 상태에서 잰다.
+        const FEED_THUMB_LINES = 2, FEED_MAX_LINES = 6;
+        function fitFeedPreviews(root) {
+            (root || document).querySelectorAll('.feed-post-preview[data-fit-thumb]').forEach(box => {
+                const body = box.querySelector('.feed-post-body');
+                if (!body) return; // 글이 없고 사진만 있는 글은 사진 그대로
+                const lh = parseFloat(getComputedStyle(body).lineHeight) || 21;
+                const h = body.scrollHeight; // 줄 수 제한(clamp)과 상관없이 전체 글 높이
+                if (!h) return; // 숨겨져 있어서 잴 수 없을 때는 그대로 둔다
+                const textLines = Math.round(h / lh);
+                box.classList.toggle('thumb-hidden', textLines + FEED_THUMB_LINES >= FEED_MAX_LINES);
+            });
+        }
+        let fitFeedTimer = null;
+        window.addEventListener('resize', () => { clearTimeout(fitFeedTimer); fitFeedTimer = setTimeout(() => fitFeedPreviews(), 150); });
 
         function renderPostImageGrid(images) {
             if (!images || images.length === 0) return '';
@@ -10277,6 +10297,7 @@
                 });
                 html += `</div>`;
                 container.innerHTML = html;
+                fitFeedPreviews(container); // 쪽 나누기가 글 높이를 재기 전에 사진 표시 여부(글 4줄 이상이면 사진 숨김)를 먼저 정한다
 
                 gmwResetPageIfQueryChanged('communityFeed', query);
                 gmwApplyPagination('communityFeed', container, '.feed-post');
@@ -10345,6 +10366,8 @@
         // 허용 태그/속성 화이트리스트 기반 sanitizer. contenteditable에서 나온 HTML만 통과시킨다.
         const RICH_ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','S','STRIKE','P','DIV','BR','SPAN','A','IMG','UL','OL','LI','BLOCKQUOTE']);
         const RICH_ALLOWED_STYLE_PROPS = new Set(['color', 'font-size', 'text-align', 'width', 'max-width', 'height', 'clear']);
+        const RICH_FONT_SIZE_MAP = { 1: 10, 2: 13, 3: 16, 4: 18, 5: 24, 6: 32, 7: 48 }; // 예전 <font size> 값 → px
+        const RICH_FONT_MIN = 8, RICH_FONT_MAX = 72;
         function sanitizeRichHTML(html) {
             if (!html) return '';
             const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
@@ -10357,6 +10380,20 @@
                 if (node.nodeType === Node.COMMENT_NODE) { node.remove(); return; }
                 if (node.nodeType !== Node.ELEMENT_NODE) return; // 텍스트 노드는 그대로 둔다
 
+                // execCommand('fontSize')가 만드는 <font size=1~7>은 허용 태그가 아니라 크기가 사라지므로, px 크기의 span으로 바꿔서 살린다.
+                if (node.tagName === 'FONT') {
+                    const span = node.ownerDocument.createElement('span');
+                    const sz = parseInt(node.getAttribute('size'), 10);
+                    const px = RICH_FONT_SIZE_MAP[sz];
+                    const col = node.getAttribute('color');
+                    let st = '';
+                    if (px) st += `font-size:${px}px;`;
+                    if (col && /^#?[0-9a-z]{3,20}$/i.test(col)) st += `color:${col};`;
+                    if (st) span.setAttribute('style', st);
+                    while (node.firstChild) span.appendChild(node.firstChild);
+                    node.replaceWith(span);
+                    node = span;
+                }
                 if (!RICH_ALLOWED_TAGS.has(node.tagName)) {
                     // 허용 안 된 태그(script, iframe 등)는 태그만 제거하고 내부 텍스트만 남긴다
                     while (node.firstChild) node.parentNode.insertBefore(node.firstChild, node);
@@ -10381,6 +10418,10 @@
                     if (name === 'style') {
                         const safeDecls = attr.value.split(';').map(d => d.trim()).filter(d => {
                             const prop = d.split(':')[0]?.trim().toLowerCase();
+                            if (prop === 'font-size') { // 글자 크기는 8~72px만(너무 크거나 이상한 값으로 화면이 깨지는 것을 막는다)
+                                const m = /^font-size\s*:\s*(\d+(?:\.\d+)?)px$/i.exec(d);
+                                return !!m && parseFloat(m[1]) >= RICH_FONT_MIN && parseFloat(m[1]) <= RICH_FONT_MAX;
+                            }
                             return RICH_ALLOWED_STYLE_PROPS.has(prop) && !/expression|url\(|javascript/i.test(d);
                         });
                         if (safeDecls.length) node.setAttribute('style', safeDecls.join('; '));
@@ -10435,10 +10476,9 @@
                     <button type="button" onclick="richExec('${targetId}','underline')" title="밑줄"><u>U</u></button>
                     <button type="button" onclick="richExec('${targetId}','strikeThrough')" title="취소선"><s>S</s></button>
                     <span class="rich-toolbar-sep"></span>
-                    <button type="button" onclick="richExec('${targetId}','fontSize','2')" title="글자 작게" style="font-size:11px;">가</button>
-                    <button type="button" onclick="richExec('${targetId}','fontSize','3')" title="글자 보통" style="font-size:13px;">가</button>
-                    <button type="button" onclick="richExec('${targetId}','fontSize','5')" title="글자 크게" style="font-size:16px;">가</button>
-                    <button type="button" onclick="richExec('${targetId}','fontSize','7')" title="글자 아주 크게" style="font-size:19px;">가</button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="richStepFontSize('${targetId}',-2)" title="글자 작게 (2px씩)" style="font-size:11px;">가−</button>
+                    <input type="number" class="rich-fs-input" min="8" max="72" step="1" value="14" onchange="richApplyFontSize('${targetId}', this.value)" title="글자 크기(px) — 직접 입력하거나 ▲▼로 자유롭게 조절 (8~72)">
+                    <button type="button" onmousedown="event.preventDefault()" onclick="richStepFontSize('${targetId}',2)" title="글자 크게 (2px씩)" style="font-size:15px;">가+</button>
                     <input type="color" onchange="richExec('${targetId}','foreColor', this.value)" title="글자색" class="rich-color-input">
                     <span class="rich-toolbar-sep"></span>
                     <button type="button" onclick="richExec('${targetId}','justifyLeft')" title="왼쪽 정렬">⯇</button>
@@ -10469,6 +10509,66 @@
             const el = document.getElementById(targetId);
             if (el) el.focus();
             document.execCommand(command, false, value || null);
+        };
+
+        // ---- 글자 크기 자유 조절 (8~72px) ----
+        // 크기 입력칸으로 포커스가 옮겨가면 에디터의 선택 영역이 사라지므로, 에디터 안의 마지막 선택 영역을 따로 기억해 둔다.
+        let richSavedRange = null, richSavedTarget = null;
+        document.addEventListener('selectionchange', () => {
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return;
+            const node = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
+            const ed = node && node.closest ? node.closest('[contenteditable="true"]') : null;
+            if (!ed || !ed.id || document.activeElement !== ed) return; // 포커스가 툴바 입력칸 등으로 옮겨간 뒤의 선택 변화는 무시
+            richSavedRange = sel.getRangeAt(0).cloneRange(); richSavedTarget = ed.id;
+            // 지금 커서/선택 위치의 글자 크기를 해당 툴바 입력칸에 보여준다
+            const input = document.querySelector(`.rich-toolbar[data-target="${ed.id}"] .rich-fs-input`);
+            if (input && document.activeElement !== input) {
+                // 선택 경계가 요소 사이에 걸쳐 있으면(예: span 전체 선택) 선택 안의 첫 글자가 속한 요소의 크기를 쓴다
+                let target = sel.getRangeAt(0).startContainer;
+                if (target.nodeType === 1) { target = target.childNodes[sel.getRangeAt(0).startOffset] || target; while (target.firstChild) target = target.firstChild; }
+                const el = target.nodeType === 1 ? target : target.parentElement;
+                input.value = Math.round(parseFloat(getComputedStyle(el || node).fontSize) || 14);
+            }
+        });
+        document.addEventListener('focusout', (e) => { // 에디터를 떠나는 순간의 선택 영역을 확실히 저장한다
+            const ed = e.target && e.target.closest ? e.target.closest('[contenteditable="true"]') : null;
+            const sel = window.getSelection();
+            if (ed && ed.id && sel && sel.rangeCount && ed.contains(sel.anchorNode)) { richSavedRange = sel.getRangeAt(0).cloneRange(); richSavedTarget = ed.id; }
+        });
+        window.richApplyFontSize = function(targetId, value) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            const px = Math.min(RICH_FONT_MAX, Math.max(RICH_FONT_MIN, Math.round(parseFloat(value) || 14)));
+            const input = document.querySelector(`.rich-toolbar[data-target="${targetId}"] .rich-fs-input`);
+            if (input) input.value = px;
+            el.focus();
+            const sel = window.getSelection();
+            if (richSavedRange && richSavedTarget === targetId && el.contains(richSavedRange.commonAncestorContainer)) { sel.removeAllRanges(); sel.addRange(richSavedRange); }
+            if (!sel.rangeCount || !el.contains(sel.anchorNode)) return;
+            if (sel.isCollapsed) {
+                // 선택한 글이 없으면: 이 위치부터 새로 입력하는 글에 적용(보이지 않는 공백이 든 span 안에 커서를 둔다)
+                document.execCommand('insertHTML', false, `<span style="font-size:${px}px">&#8203;</span>`);
+                return;
+            }
+            document.execCommand('fontSize', false, '7'); // 임시로 <font size=7>을 만들고, 아래에서 원하는 px의 span으로 바꾼다
+            const made = [];
+            el.querySelectorAll('font[size="7"]').forEach(f => {
+                const span = document.createElement('span');
+                span.style.fontSize = px + 'px';
+                while (f.firstChild) span.appendChild(f.firstChild);
+                span.querySelectorAll('[style*="font-size"]').forEach(c => { c.style.fontSize = ''; if (!c.getAttribute('style')) c.removeAttribute('style'); }); // 안쪽 span의 예전 크기가 덮어쓰지 않게
+                f.replaceWith(span);
+                made.push(span);
+            });
+            if (made.length) {
+                const r = document.createRange(); r.setStartBefore(made[0]); r.setEndAfter(made[made.length - 1]);
+                sel.removeAllRanges(); sel.addRange(r); richSavedRange = r.cloneRange(); richSavedTarget = targetId;
+            }
+        };
+        window.richStepFontSize = function(targetId, delta) {
+            const input = document.querySelector(`.rich-toolbar[data-target="${targetId}"] .rich-fs-input`);
+            richApplyFontSize(targetId, (parseInt(input && input.value, 10) || 14) + delta);
         };
 
         window.richInsertLink = function(targetId) {
@@ -11237,6 +11337,7 @@
             });
             html += `</div>`;
             container.innerHTML = html;
+            fitFeedPreviews(container);
         }
 
         function renderPokemonPostDetailView() {
