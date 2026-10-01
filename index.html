@@ -7494,7 +7494,7 @@
         // - 해금되어도 자동으로 적용되지 않는다 - 프로필 꾸미기에서 사용자가 직접 장착/해제해야 보인다.
         // - 새로운 XP 시스템이 아니다: 진행도는 이미 있는 데이터를 그대로 집계해서 계산한다.
         //     · 출석 연속일수  → users/{uid}/dailyMissions (attendance 필드) - Firebase 기준, 기기 무관하게 정확
-        //     · 게시글 합계    → posts + archive (authorId 기준) - Firebase 기준, 기기 무관하게 정확
+        //     · 게시글(활동왕) → posts + archive 중 내가 쓴 글 가운데 좋아요 2개 이상 받은 글 수 (authorId 기준) - Firebase 기준, 기기 무관하게 정확
         //     · 공부시간/할일연속/올클리어 → PlannerApp의 로컬 기록(state.records 등) - 이 브라우저 기준
         //       (플래너 기록 자체가 아직 기기별 로컬 저장이라, 최초 달성 시점의 Firebase 반영은 그 기록이 있는
         //        브라우저에서 로그인했을 때 이루어진다. 한 번 해금되면 "해금 여부"는 계정에 영구 저장되어
@@ -7506,7 +7506,7 @@
         const ACHIEVEMENTS = [
             { id: 'attendance3', icon: '🔥', label: '연속 출석 3일',              autoDeactivate: false },
             { id: 'attendance7', icon: '🔥', label: '연속 출석 7일',              autoDeactivate: true },
-            { id: 'activity10',  icon: '✒️', label: '활동왕 (게시글 10개)',       autoDeactivate: false },
+            { id: 'activity10',  icon: '✒️', label: '활동왕 (좋아요 2개 이상 받은 게시글 10개)',       autoDeactivate: false },
             { id: 'study10h',    icon: '📖', label: '학습가 (누적 공부 10시간)',  autoDeactivate: false },
             { id: 'study20h',    icon: '📚', label: '학습가+ (누적 공부 20시간)', autoDeactivate: false },
             { id: 'streak5',     icon: '✨', label: '꾸준한 사람 (할일완료 5일 연속)', autoDeactivate: true },
@@ -7537,11 +7537,21 @@
             return streak;
         }
 
-        // 내가 작성한 커뮤니티+아카이브 게시글 합계 (이미 구독 중인 posts/archive 캐시를 재사용한다 - 새로 읽지 않음)
+        // 활동왕 조건: "좋아요를 2개 이상 받은 내 게시글"이 10개 이상. (이미 구독 중인 posts/archive 캐시를 재사용한다 - 새로 읽지 않음)
+        // 좋아요 수는 목록/상세에 보이는 숫자(likeCount)를 그대로 쓰고, 옛 글처럼 likeCount가 없으면 likes 맵의 개수로 센다.
+        // 한번 해금된 업적은 이후 좋아요가 취소돼도 영구히 유지된다(evaluateAndSyncAchievements는 해금만 기록한다).
+        const ACTIVITY_MIN_LIKES = 2;
+        const ACTIVITY_POST_TARGET = 10;
+        function postLikeCountOf(item) {
+            if (!item) return 0;
+            if (typeof item.likeCount === 'number') return item.likeCount;
+            return item.likes ? Object.keys(item.likes).length : 0;
+        }
         function computeMyActivityCount() {
             if (!currentUser) return 0;
-            const postsCount = Object.values(latestPostsData || {}).filter(p => p && p.authorId === currentUser.uid).length;
-            const archiveCount = Object.values(latestArchiveData || {}).filter(a => a && a.authorId === currentUser.uid).length;
+            const isLikedEnough = item => item && item.authorId === currentUser.uid && postLikeCountOf(item) >= ACTIVITY_MIN_LIKES;
+            const postsCount = Object.values(latestPostsData || {}).filter(isLikedEnough).length;
+            const archiveCount = Object.values(latestArchiveData || {}).filter(isLikedEnough).length;
             return postsCount + archiveCount;
         }
 
@@ -7555,7 +7565,7 @@
             return {
                 attendance3: attendanceStreak >= 3,
                 attendance7: attendanceStreak >= 7,
-                activity10: activityCount >= 10,
+                activity10: activityCount >= ACTIVITY_POST_TARGET,
                 study10h: studySeconds >= 10 * 3600,
                 study20h: studySeconds >= 20 * 3600,
                 streak5: taskStreak >= 5,
@@ -7838,7 +7848,7 @@
                 // unlockedAchievements가 아예 없으면(null/undefined) "검증할 수 없는 화면"이다 - 커뮤니티/아카이브/댓글/친구 프로필처럼
                 // 다른 사람의 장착 값을 보여주는 곳은 상대의 업적 목록(users/{uid}/achievements)을 읽지 않으므로, 상대가 장착해 둔 대로
                 // 그대로 보여준다(장착 자체는 본인의 프로필 꾸미기에서 해금 여부를 검증한 뒤에만 저장된다).
-                // 예전에는 이 경우 항상 "미해금"으로 취급해서 활동 업적 효과(게시글 10개 등)가 본인 꾸미기 창 밖에서는 전혀 안 보였다.
+                // 예전에는 이 경우 항상 "미해금"으로 취급해서 활동 업적 효과(활동왕 등)가 본인 꾸미기 창 밖에서는 전혀 안 보였다.
                 if (unlockedAchievements == null) return true;
                 return !!unlockedAchievements[opt.achievementId];
             }
