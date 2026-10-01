@@ -755,7 +755,6 @@
         /* 레이어 순서: Aura(wrap의 box-shadow, 항상 맨 뒤) < 프레임 링(z-index:2) < 프로필 사진(z-index:10)
            < 프레임 장식(별/크리스탈/과목 문자/오빗 등, z-index:20) < 온라인 점(z-index:30).
            즉 장식은 사진보다 항상 앞에 보인다 - 사진 뒤에 숨어서 가려지지 않는다. */
-        .pf-frame-outer-ring { position:absolute; border-radius:50%; pointer-events:none; box-sizing:border-box; z-index:20; }
         .pf-frame-deco { position:absolute; font-size:11px; line-height:1; pointer-events:none; filter: drop-shadow(0 0 2px rgba(0,0,0,0.25)); z-index:20; transform: translate(-50%, -50%); }
         .pf-frame-wave-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
         .pf-frame-orbit-wrap { position:absolute; inset:0; pointer-events:none; z-index:20; }
@@ -767,7 +766,6 @@
         /* 과목 프레임 문자 전용 - Bold + 얇은 검정 외곽선(밝은 프레임 위에서도 또렷하게 보이도록) */
         .pf-frame-deco-text { font-weight: 800; text-shadow: 0.6px 0 0 rgba(0,0,0,0.55), -0.6px 0 0 rgba(0,0,0,0.55), 0 0.6px 0 rgba(0,0,0,0.55), 0 -0.6px 0 rgba(0,0,0,0.55); }
         /* 온라인 점(z-index:30)과 겹치지 않도록 우하단(se)은 쓰지 않는다 */
-        .pf-frame-outer-ring-gradient { -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); }
         .pf-frame-orbit-dot { position:absolute; width:5px; height:5px; margin:-2.5px 0 0 -2.5px; border-radius:50%; }
         @keyframes pf-frame-orbit-spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         .pf-frame-orbit-wrap.spin { animation: pf-frame-orbit-spin 9s linear infinite; }
@@ -7676,12 +7674,11 @@
 
         const APPEARANCE_CATALOG = {
             // 프레임은 "모양(frameStyle)"과 "색상(frameColor)" 두 축으로 분리되어 서로 자유롭게 조합할 수 있다
-            // (예: 이중 링 + 골드, 오빗 링 + 레인보우). 사진은 항상 원형/선명 그대로 유지되고, 아래 모양들은
+            // (예: 점선 링 + 골드, 오빗 링 + 블루). 사진은 항상 원형/선명 그대로 유지되고, 아래 모양들은
             // 전부 사진 "바깥쪽"(테두리 링·장식·글로우)에만 그려진다.
             frameStyle: {
                 basic:       { unlockLevel: 1,  label: '기본 링',           shape: 'basic', group: 'basic' },
                 dotted:      { starter: true, unlockLevel: 1,  label: '점선 링',           shape: 'dotted', group: 'basic' },
-                double:      { unlockLevel: 2,  label: '이중 링',           shape: 'double', group: 'basic' },
                 wave:        { unlockLevel: 5,  label: '물결 링',           shape: 'wave', group: 'decorative' },
                 cornerStars: { unlockLevel: 6,  label: '별 링',             shape: 'basic', group: 'decorative', decorations: fourPointDecorations('✦') },
                 segmented:   { unlockLevel: 7, label: '세그먼트 링',       shape: 'segmented', group: 'premium' },
@@ -7703,9 +7700,8 @@
                 ] },
                 science:     { unlockLevel: 17, label: 'Science Frame',   shape: 'basic', group: 'subject', decorations: quadrantDecorations(['Na', 'Cl', 'H₂', 'CO₂']) },
                 neonRing:    { unlockLevel: 7, label: '네온 링',          shape: 'neon', group: 'premium' },
-                orbital:     { unlockLevel: 13, label: '오빗 링',          shape: 'orbital', group: 'decorative' },
-                premiumRing: { unlockLevel: 15, label: '프리미엄 다중 링', shape: 'premium', group: 'premium' }
-                // 폐기: 홀로그램, Electric - 더 이상 카탈로그에 없으므로 이미 이 값을 쓰고 있던 사용자도
+                orbital:     { unlockLevel: 13, label: '오빗 링',          shape: 'orbital', group: 'decorative' }
+                // 폐기: 홀로그램, Electric, 이중 링, 프리미엄 다중 링 - 더 이상 카탈로그에 없으므로 이미 이 값을 쓰고 있던 사용자도
                 // computeEffectiveAppearance()의 "해금 안 됐거나 존재하지 않는 값 → 안전한 기본값 폴백" 로직에 의해
                 // 자동으로 기본 링으로 대체된다 (Firebase 데이터나 다른 cosmetic에는 영향 없음).
             },
@@ -7970,7 +7966,7 @@
             const shape = frameStyleOpt.shape || 'basic';
             const frameGradient = frameColorOpt.gradient || null; // 프레임 색상에서는 항상 null (Rainbow 삭제됨) - 다른 색상 카테고리가 나중에 그라데이션을 쓰게 되더라도 대비해 구조는 남겨둔다
             const frameColorCss = frameColorOpt.color || 'var(--border-color)';
-            const ringWidth = (shape === 'double' || shape === 'premium') ? 2 : 3;
+            const ringWidth = 3;
             let frameStyle;
             if (shape === 'segmented') {
                 frameStyle = `border:${ringWidth}px solid transparent; background-image: linear-gradient(var(--card-bg), var(--card-bg)), repeating-conic-gradient(${frameColorCss} 0deg 24deg, transparent 24deg 36deg); background-origin: border-box; background-clip: padding-box, border-box;`;
@@ -7981,7 +7977,6 @@
             }
             if (shape === 'neon') frameStyle += ` box-shadow:0 0 10px 2px ${frameGradient ? RAINBOW_PALETTE[2] : frameColorCss};`; // 레인보우면 팔레트 색으로 - frameColorCss(단색)로 fallback해서 어두워지지 않도록
             const frameDecorations = frameStyleOpt.decorations || []; // 별/크리스탈/과목 문양 등 사진 바깥 작은 장식 (작은 아바타에서는 생략)
-            const frameExtraRings = shape === 'double' ? 1 : (shape === 'premium' ? 2 : 0); // 이중/다중 링용 바깥 링 개수
             const frameOrbit = shape === 'orbital';
             const frameShape = shape; // 'wave'인지 여부는 렌더 함수에서 SVG로 그릴지 판단하는 데 쓰인다
 
@@ -8032,7 +8027,7 @@
                 frameClass: `pf-frame-ring ${anim.anim || ''}`.trim(),
                 frameStyle, frameShape,
                 frameAnimShadowColor: anim.shadowColor || '',
-                frameDecorations, frameExtraRings, frameOrbit, frameColorCss,
+                frameDecorations, frameOrbit, frameColorCss,
                 frameIsGradient: !!frameGradient, // true면 레인보우 - 보조 링/장식/오빗도 검정 fallback 대신 무지개 색을 써야 한다
                 badgeIcons: badges.map(b => b.icon).filter(Boolean),
                 prefixIcons: achSetIcons.prefix ? [achSetIcons.prefix] : [],
@@ -8046,7 +8041,7 @@
         }
 
         // 프로필 사진 하나를 프레임/글로우/오라/온라인 상태까지 포함해 그려주는 공용 렌더 함수.
-        // small=true면 댓글/작성자 같은 아주 작은 아바타용으로, 이중 링·장식·오빗 등은 생략하고
+        // small=true면 댓글/작성자 같은 아주 작은 아바타용으로, 장식·오빗 등은 생략하고
         // (너무 작은 영역에 여러 장식이 겹치면 오히려 지저분해지고 카드 레이아웃과 부딪히므로) 프레임 색상만 간소하게 보여준다.
         function renderProfileAvatarHTML(appearance, photoUrl, isOnline, small, activeChecker) {
             const v = buildAppearanceVisuals(appearance, activeChecker);
@@ -8060,22 +8055,13 @@
             const dotHtml = typeof isOnline === 'boolean' ? `<span class="pf-online-dot" style="background:${isOnline ? '#22c55e' : '#9ca3af'};"></span>` : '';
             const frameAnimVars = v.frameAnimShadowColor ? ` --pf-anim-shadow-a:0 0 6px 1px ${v.frameAnimShadowColor}; --pf-anim-shadow-b:0 0 16px 4px ${v.frameAnimShadowColor};` : '';
 
-            // 프레임 "모양" 장식: 이중/다중 링, 별·크리스탈·과목 문양 등 작은 장식, 오빗 링. 전부 사진 바깥에만 그려지고,
+            // 프레임 "모양" 장식: 별·크리스탈·과목 문양 등 작은 장식, 오빗 링. 전부 사진 바깥에만 그려지고,
             // 온라인 점(우하단, z-index:2로 항상 최상단)과 겹치더라도 z-index 때문에 점이 항상 위에 보인다.
             // 모든 장식은 "각도(angle)" 하나로 통일해서 위치를 계산한다(12/3/6/9시의 4개든, 과목 프레임의 7~10개든 동일한 방식).
             // frameColorCss는 레인보우일 때 실제 단일 색상이 없으므로(그라데이션이라), 검정으로 fallback되는 대신
             // 보조 요소(외부 링/장식/오빗 점) 각각에 RAINBOW_PALETTE에서 색을 하나씩 배분한다.
             let decoHtml = '';
             if (!small) {
-                for (let i = 0; i < v.frameExtraRings; i++) {
-                    const ringInset = -4 - i * 4;
-                    if (v.frameIsGradient) {
-                        const rotate = i * 45; // 링마다 시작 각도를 살짝 달리해서 겹쳐도 단조롭지 않게 한다
-                        decoHtml += `<span class="pf-frame-outer-ring pf-frame-outer-ring-gradient" style="inset:${ringInset}px; background: conic-gradient(from ${rotate}deg, ${RAINBOW_PALETTE.join(', ')}, ${RAINBOW_PALETTE[0]});"></span>`;
-                    } else {
-                        decoHtml += `<span class="pf-frame-outer-ring" style="inset:${ringInset}px; border:1.5px solid ${v.frameColorCss};"></span>`;
-                    }
-                }
                 v.frameDecorations.forEach((d, i) => {
                     // 레인보우 프레임 색상은 폐기되었으므로 항상 frameColorCss 하나로 통일한다.
                     const decoColor = v.frameColorCss;
