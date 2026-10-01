@@ -7444,7 +7444,7 @@
         const ACHIEVEMENTS = [
             { id: 'attendance3', icon: '🔥', label: '연속 출석 3일',              autoDeactivate: false },
             { id: 'attendance7', icon: '🔥', label: '연속 출석 7일',              autoDeactivate: true },
-            { id: 'activity10',  icon: '🪭', label: '활동왕 (게시글 10개)',       autoDeactivate: false },
+            { id: 'activity10',  icon: '✒️', label: '활동왕 (게시글 10개)',       autoDeactivate: false },
             { id: 'study10h',    icon: '📖', label: '학습가 (누적 공부 10시간)',  autoDeactivate: false },
             { id: 'study20h',    icon: '📚', label: '학습가+ (누적 공부 20시간)', autoDeactivate: false },
             { id: 'streak5',     icon: '✨', label: '꾸준한 사람 (할일완료 5일 연속)', autoDeactivate: true },
@@ -7563,7 +7563,10 @@
         const RAINBOW_PALETTE = ['#f87171', '#fbbf24', '#34d399', '#38bdf8', '#a855f7'];
 
         // 카테고리별 해금 카탈로그.
-        // - "레벨 해금" 항목(unlockLevel)은 항상 해금 레벨 오름차순으로 먼저 나열한다(레벨 폴백 계산이 이 순서에 의존한다).
+        // - "레벨 해금" 항목(unlockLevel)은 항상 해금 레벨 오름차순으로 먼저 나열한다(화면에는 항상 레벨순으로 정렬해서 보여준다).
+        // - 해금 레벨 설계: Lv.1에는 "시작 선택지"(starter:true)만 연다(프레임 모양 2, 프레임 색 2, 이름 효과 3, Glow 2) -
+        //   처음 가입해도 자기 스타일을 고를 수 있게. 일반 효과는 Lv.20 안에서 대부분 열리고(Lv.21~30은 경험치 곡선만 계속 올라간다),
+        //   희소한 효과는 활동 업적(achievementId)으로 따로 해금한다.
         // - "활동 업적 해금" 항목(achievementId)은 그 뒤에 나열한다. 레벨처럼 자동 적용되지 않고,
         //   사용자가 프로필 꾸미기에서 직접 선택해야만 적용된다(해금되어도 자동 장착되지 않음).
         // - badge/specialEffect는 다중 선택 카테고리다(여러 개 동시 장착 가능). 나머지는 단일 선택이다.
@@ -7597,45 +7600,45 @@
             // 전부 사진 "바깥쪽"(테두리 링·장식·글로우)에만 그려진다.
             frameStyle: {
                 basic:       { unlockLevel: 1,  label: '기본 링',           shape: 'basic', group: 'basic' },
-                dotted:      { unlockLevel: 3,  label: '점선 링',           shape: 'dotted', group: 'basic' },
-                double:      { unlockLevel: 5,  label: '이중 링',           shape: 'double', group: 'basic' },
-                wave:        { unlockLevel: 8,  label: '물결 링',           shape: 'wave', group: 'decorative' },
-                cornerStars: { unlockLevel: 9,  label: '별 링',             shape: 'basic', group: 'decorative', decorations: fourPointDecorations('✦') },
-                segmented:   { unlockLevel: 11, label: '세그먼트 링',       shape: 'segmented', group: 'premium' },
+                dotted:      { starter: true, unlockLevel: 1,  label: '점선 링',           shape: 'dotted', group: 'basic' },
+                double:      { unlockLevel: 2,  label: '이중 링',           shape: 'double', group: 'basic' },
+                wave:        { unlockLevel: 5,  label: '물결 링',           shape: 'wave', group: 'decorative' },
+                cornerStars: { unlockLevel: 6,  label: '별 링',             shape: 'basic', group: 'decorative', decorations: fourPointDecorations('✦') },
+                segmented:   { unlockLevel: 7, label: '세그먼트 링',       shape: 'segmented', group: 'premium' },
                 // 다이아몬드 링 + 크리스탈 링을 하나로 통합 - 8개의 보석이 불규칙한 각도로 원을 이뤄 "보석으로 만들어진 프레임" 느낌을 준다.
                 // 크리스탈 다이아몬드 링: 정확히 4개, 12/3/6/9시(0/90/180/270°)에만 배치한다 (임의 개수/위치 금지).
                 // decoStyle:'crystal'로 표시된 장식은 텍스트 ◇가 아니라 facet/highlight가 있는 작은 CSS 결정체 모양으로 렌더링된다.
-                crystalDiamond: { unlockLevel: 14, label: '크리스탈 다이아몬드 링', shape: 'basic', group: 'decorative', decorations: [0, 90, 180, 270].map(angle => ({ angle, decoStyle: 'crystal' })) },
+                crystalDiamond: { unlockLevel: 8, label: '크리스탈 다이아몬드 링', shape: 'basic', group: 'decorative', decorations: [0, 90, 180, 270].map(angle => ({ angle, decoStyle: 'crystal' })) },
                 // 과목별 문자는 프레임 전체를 도배하지 않고 정확히 4개만, 3시~6시(0°~90°) 구간에만 배치한다.
-                korean:      { unlockLevel: 6,  label: '한글 문양 프레임',  shape: 'basic', group: 'subject', decorations: quadrantDecorations(['가', '나', '다', '라']) },
+                korean:      { unlockLevel: 3,  label: '한글 문양 프레임',  shape: 'basic', group: 'subject', decorations: quadrantDecorations(['가', '나', '다', '라']) },
                 english:     { unlockLevel: 10, label: 'Alphabet Frame',   shape: 'basic', group: 'subject', decorations: quadrantDecorations(['𝖂', '𝖔', '𝖗', '𝖉']) },
-                math:        { unlockLevel: 15, label: 'Formula Frame',    shape: 'basic', group: 'subject', decorations: quadrantDecorations(['π', 'Σ', '√', '∞']) },
+                math:        { unlockLevel: 12, label: 'Formula Frame',    shape: 'basic', group: 'subject', decorations: quadrantDecorations(['π', 'Σ', '√', '∞']) },
                 // Atlas는 다른 과목과 달리 실제 동서남북 방위와 정확히 대응한다: N=12시(-90°), E=3시(0°), S=6시(90°), W=9시(180°).
                 // 나침반처럼 보여야 하므로 다른 과목 문자와 달리 크기/회전 흔들림(jitter)을 주지 않고, 글자 크기도 더 작게(compact) 표시한다.
-                social:      { unlockLevel: 21, label: 'Atlas Frame',      shape: 'basic', group: 'subject', decorations: [
+                social:      { unlockLevel: 14, label: 'Atlas Frame',      shape: 'basic', group: 'subject', decorations: [
                     { icon: 'N', angle: -90, textDeco: true, jitter: false, compact: true },
                     { icon: 'E', angle: 0,   textDeco: true, jitter: false, compact: true },
                     { icon: 'S', angle: 90,  textDeco: true, jitter: false, compact: true },
                     { icon: 'W', angle: 180, textDeco: true, jitter: false, compact: true }
                 ] },
-                science:     { unlockLevel: 28, label: 'Science Frame',   shape: 'basic', group: 'subject', decorations: quadrantDecorations(['Na', 'Cl', 'H₂', 'CO₂']) },
-                neonRing:    { unlockLevel: 17, label: '네온 링',          shape: 'neon', group: 'premium' },
-                orbital:     { unlockLevel: 20, label: '오빗 링',          shape: 'orbital', group: 'decorative' },
-                premiumRing: { unlockLevel: 24, label: '프리미엄 다중 링', shape: 'premium', group: 'premium' }
+                science:     { unlockLevel: 17, label: 'Science Frame',   shape: 'basic', group: 'subject', decorations: quadrantDecorations(['Na', 'Cl', 'H₂', 'CO₂']) },
+                neonRing:    { unlockLevel: 7, label: '네온 링',          shape: 'neon', group: 'premium' },
+                orbital:     { unlockLevel: 13, label: '오빗 링',          shape: 'orbital', group: 'decorative' },
+                premiumRing: { unlockLevel: 15, label: '프리미엄 다중 링', shape: 'premium', group: 'premium' }
                 // 폐기: 홀로그램, Electric - 더 이상 카탈로그에 없으므로 이미 이 값을 쓰고 있던 사용자도
                 // computeEffectiveAppearance()의 "해금 안 됐거나 존재하지 않는 값 → 안전한 기본값 폴백" 로직에 의해
                 // 자동으로 기본 링으로 대체된다 (Firebase 데이터나 다른 cosmetic에는 영향 없음).
             },
             frameColor: {
                 basic:   { unlockLevel: 1,  label: '기본',   color: null },
-                blue:    { unlockLevel: 3,  label: '블루',   color: '#38bdf8' },
-                mint:    { unlockLevel: 5,  label: '민트',   color: '#2dd4bf' },
-                orange:  { unlockLevel: 7,  label: '오렌지', color: '#fb923c' },
-                red:     { unlockLevel: 8,  label: '레드',   color: '#ef4444' },
-                pink:    { unlockLevel: 9,  label: '핑크',   color: '#f472b6' },
-                purple:  { unlockLevel: 12, label: '퍼플',   color: '#c084fc' },
-                silver:  { unlockLevel: 13, label: '실버',   color: '#cbd5e1' },
-                gold:    { unlockLevel: 15, label: '골드',   color: '#fbbf24' }
+                blue:    { starter: true, unlockLevel: 1,  label: '블루',   color: '#38bdf8' },
+                mint:    { unlockLevel: 4,  label: '민트',   color: '#2dd4bf' },
+                orange:  { unlockLevel: 4,  label: '오렌지', color: '#fb923c' },
+                red:     { unlockLevel: 6,  label: '레드',   color: '#ef4444' },
+                pink:    { unlockLevel: 6,  label: '핑크',   color: '#f472b6' },
+                purple:  { unlockLevel: 8, label: '퍼플',   color: '#c084fc' },
+                silver:  { unlockLevel: 9, label: '실버',   color: '#cbd5e1' },
+                gold:    { unlockLevel: 10, label: '골드',   color: '#fbbf24' }
                 // 프레임 색상에서 Rainbow는 완전히 삭제되었다. 기존에 frameColor:"rainbow"를 저장해 둔 사용자는
                 // computeEffectiveAppearance()의 "카탈로그에 없는 값 → 안전한 기본값 폴백" 로직에 의해 자동으로
                 // 기본 색상으로 대체된다(다른 cosmetic/레벨/업적 데이터는 전혀 건드리지 않는다).
@@ -7643,20 +7646,20 @@
             },
             animation: {
                 static:      { unlockLevel: 1,  label: '정적',            anim: '' },
-                shimmer:     { unlockLevel: 10, label: 'Shimmer',         anim: 'pf-anim-shimmer' },
+                shimmer:     { unlockLevel: 3, label: 'Shimmer',         anim: 'pf-anim-shimmer' },
                 breathing:   { unlockLevel: 13, label: 'Breathing Glow', anim: 'pf-anim-breathing', shadowColor: 'rgba(168,85,247,0.5)' },
-                rainbowFlow: { unlockLevel: 22, label: 'Rainbow Flow',   anim: 'pf-anim-rainbow' }
+                rainbowFlow: { unlockLevel: 14, label: 'Rainbow Flow',   anim: 'pf-anim-rainbow' }
                 // 폐기: Electric - 카탈로그에서 제거. 기존에 이 값을 쓰던 사용자는 자동으로 "정적"으로 폴백된다.
             },
             glow: {
                 none:   { unlockLevel: 1,  label: '없음',        color: null },
-                mint:   { unlockLevel: 5,  label: 'Mint Glow',   color: 'rgba(45,212,191,0.35)' },
-                sky:    { unlockLevel: 7,  label: 'Sky Glow',    color: 'rgba(56,189,248,0.35)' },
-                violet: { unlockLevel: 11, label: 'Violet Glow', color: 'rgba(168,85,247,0.35)' },
-                rose:   { unlockLevel: 14, label: 'Rose Glow',   color: 'rgba(244,63,94,0.35)' },
-                gold:   { unlockLevel: 18, label: 'Gold Glow',   color: 'rgba(251,191,36,0.4)' },
+                mint:   { starter: true, unlockLevel: 1,  label: 'Mint Glow',   color: 'rgba(45,212,191,0.35)' },
+                sky:    { unlockLevel: 3,  label: 'Sky Glow',    color: 'rgba(56,189,248,0.35)' },
+                violet: { unlockLevel: 5, label: 'Violet Glow', color: 'rgba(168,85,247,0.35)' },
+                rose:   { unlockLevel: 8, label: 'Rose Glow',   color: 'rgba(244,63,94,0.35)' },
+                gold:   { unlockLevel: 12, label: 'Gold Glow',   color: 'rgba(251,191,36,0.4)' },
                 achAttendance7: { achievementId: 'attendance7', label: '🔥 연속출석 7일 Glow',    color: 'rgba(239,68,68,0.4)' },
-                achActivity10:  { achievementId: 'activity10',  label: '🪭 활동왕 Glow',          color: 'rgba(34,197,94,0.35)' },
+                achActivity10:  { achievementId: 'activity10',  label: '✒️ 활동왕 Glow',          color: 'rgba(34,197,94,0.35)' },
                 achStudy10h:    { achievementId: 'study10h',    label: '📖 학습가 Glow',          color: 'rgba(45,212,191,0.35)' },
                 achStudy20h:    { achievementId: 'study20h',    label: '📚 학습가+ Glow',         color: 'rgba(6,182,212,0.4)' },
                 achAllClear30:  { achievementId: 'allClear30',  label: '🌟 올클리어 레전드 Glow', color: 'rgba(251,191,36,0.45)' }
@@ -7664,26 +7667,26 @@
             aura: {
                 none:        { unlockLevel: 1,  label: '없음',           color: null, animated: false },
                 softBlue:    { unlockLevel: 9,  label: 'Soft Blue Aura', color: 'rgba(56,189,248,0.3)',  animated: false },
-                mintAura:    { unlockLevel: 16, label: 'Mint Aura',      color: 'rgba(45,212,191,0.3)',  animated: false },
-                purpleAura:  { unlockLevel: 21, label: 'Purple Aura',   color: 'rgba(168,85,247,0.32)', animated: true },
-                goldenAura:  { unlockLevel: 26, label: 'Golden Aura',   color: 'rgba(251,191,36,0.35)', animated: true },
+                mintAura:    { unlockLevel: 11, label: 'Mint Aura',      color: 'rgba(45,212,191,0.3)',  animated: false },
+                purpleAura:  { unlockLevel: 13, label: 'Purple Aura',   color: 'rgba(168,85,247,0.32)', animated: true },
+                goldenAura:  { unlockLevel: 17, label: 'Golden Aura',   color: 'rgba(251,191,36,0.35)', animated: true },
                 // Rainbow Aura 버그 수정: 예전에는 단색 rgba(핑크) 하나만 깔려 있어서 사실상 "핑크 오라"와 다를 게 없었다.
                 // colors(배열)를 쓰면 여러 색의 box-shadow를 겹쳐서(층마다 반경을 다르게) 진짜 여러 색 광원이 퍼지는 것처럼 보이게 한다.
-                rainbowAura: { unlockLevel: 30, label: 'Rainbow Aura',  colors: RAINBOW_PALETTE, animated: true }
+                rainbowAura: { unlockLevel: 20, label: 'Rainbow Aura',  colors: RAINBOW_PALETTE, animated: true }
             },
             // 다중 선택: 배지는 여러 개 동시에 달 수 있다 (최대 4개까지만 화면에 표시).
             badge: {
-                star:    { unlockLevel: 10, label: '별 배지',       icon: '⭐' },
-                medal:   { unlockLevel: 13, label: '메달 배지',     icon: '🎖️' },
-                diamond: { unlockLevel: 17, label: '다이아몬드 배지', icon: '💎' },
-                trophy:  { unlockLevel: 20, label: '트로피 배지',   icon: '🏆' },
-                crown:   { unlockLevel: 24, label: '왕관 배지',     icon: '👑' },
-                legend:  { unlockLevel: 30, label: '레전드 배지',   icon: '🌟' },
+                star:    { unlockLevel: 5, label: '별 배지',       icon: '⭐' },
+                medal:   { unlockLevel: 10, label: '메달 배지',     icon: '🎖️' },
+                diamond: { unlockLevel: 10, label: '다이아몬드 배지', icon: '💎' },
+                trophy:  { unlockLevel: 14, label: '트로피 배지',   icon: '🏆' },
+                crown:   { unlockLevel: 17, label: '왕관 배지',     icon: '👑' },
+                legend:  { unlockLevel: 20, label: '레전드 배지',   icon: '🌟' },
                 // 흑백 인포그래픽 스타일의 기하학적 심볼 배지 (grayscale 필터로 렌더링됨 - .pf-badge CSS 참고)
-                starGeo:    { unlockLevel: 11, label: '별 심볼 ✦',    icon: '✦' },
-                diamondGeo: { unlockLevel: 19, label: '다이아몬드 심볼 ◈', icon: '◈' },
-                sunGeo:     { unlockLevel: 23, label: '태양 심볼 ☼',  icon: '☼' },
-                hexGeo:     { unlockLevel: 27, label: '헥사곤 심볼 ⬢', icon: '⬢' },
+                starGeo:    { unlockLevel: 8, label: '별 심볼 ✦',    icon: '✦' },
+                diamondGeo: { unlockLevel: 12, label: '다이아몬드 심볼 ◈', icon: '◈' },
+                sunGeo:     { unlockLevel: 15, label: '태양 심볼 ☼',  icon: '☼' },
+                hexGeo:     { unlockLevel: 18, label: '헥사곤 심볼 ⬢', icon: '⬢' },
                 achAllClear5:  { achievementId: 'allClear5',  label: '⭐ 올클리어 5회',    icon: '⭐' },
                 achAllClear15: { achievementId: 'allClear15', label: '⭐ 올클리어 15회',   icon: '⭐' },
                 achAllClear30: { achievementId: 'allClear30', label: '🌟 올클리어 레전드', icon: '🌟' },
@@ -7693,38 +7696,38 @@
             nameEffect: {
                 none:     { unlockLevel: 1,  label: '기본' },
                 // 이름 효과는 전부 최소 Lv.10부터 해금된다 (기본/없음 상태만 예외).
-                blue:     { unlockLevel: 10, label: 'Blue Glow',   color: '#38bdf8' },
-                cyan:     { unlockLevel: 10, label: 'Cyan Glow',   color: '#22d3ee' },
-                green:    { unlockLevel: 10, label: 'Green Glow',  color: '#34d399' },
-                orange:   { unlockLevel: 10, label: 'Orange Glow', color: '#fb923c' },
+                blue:     { starter: true, unlockLevel: 1, label: 'Blue Glow',   color: '#38bdf8' },
+                cyan:     { unlockLevel: 3, label: 'Cyan Glow',   color: '#22d3ee' },
+                green:    { starter: true, unlockLevel: 1, label: 'Green Glow',  color: '#34d399' },
+                orange:   { unlockLevel: 3, label: 'Orange Glow', color: '#fb923c' },
                 // "움직이는" 이름 효과 - 텍스트 자체는 절대 움직이지 않는다. text-shadow 밝기 변화(pulse) 또는
                 // gradient의 background-position 이동(flow)만 사용한다. prefers-reduced-motion에서는 정적으로 고정된다.
-                redPulse:    { unlockLevel: 13, label: 'Red Pulse',    color: '#ef4444', pulse: true },
-                orangePulse: { unlockLevel: 13, label: 'Orange Pulse', color: '#fb923c', pulse: true },
-                greenPulse:  { unlockLevel: 13, label: 'Green Pulse',  color: '#34d399', pulse: true },
-                cyanPulse:   { unlockLevel: 13, label: 'Cyan Pulse',   color: '#22d3ee', pulse: true },
-                pink:        { unlockLevel: 16, label: 'Pink Glow',   color: '#f472b6' },
-                purple:      { unlockLevel: 16, label: 'Purple Glow', color: '#a855f7' },
-                bluePulse:   { unlockLevel: 16, label: 'Blue Pulse',   color: '#38bdf8', pulse: true },
-                purplePulse: { unlockLevel: 16, label: 'Purple Pulse', color: '#a855f7', pulse: true },
-                gold:        { unlockLevel: 19, label: 'Gold Glow',   color: '#fbbf24' },
-                gradient:    { unlockLevel: 19, label: 'Gradient Text', gradient: ['#6366f1', '#a855f7', '#f59e0b'] },
-                pinkPulse:   { unlockLevel: 19, label: 'Pink Pulse',   color: '#f472b6', pulse: true },
-                goldShimmer: { unlockLevel: 19, label: 'Gold Shimmer', gradient: ['#fbbf24', '#fef08a', '#fbbf24'], flow: true },
-                rainbow:     { unlockLevel: 22, label: 'Rainbow Text',  gradient: RAINBOW_PALETTE },
-                rainbowFlow: { unlockLevel: 22, label: 'Rainbow Flow', gradient: RAINBOW_PALETTE, flow: true },
+                redPulse:    { unlockLevel: 6, label: 'Red Pulse',    color: '#ef4444', pulse: true },
+                orangePulse: { unlockLevel: 4, label: 'Orange Pulse', color: '#fb923c', pulse: true },
+                greenPulse:  { unlockLevel: 4, label: 'Green Pulse',  color: '#34d399', pulse: true },
+                cyanPulse:   { unlockLevel: 6, label: 'Cyan Pulse',   color: '#22d3ee', pulse: true },
+                pink:        { unlockLevel: 8, label: 'Pink Glow',   color: '#f472b6' },
+                purple:      { unlockLevel: 8, label: 'Purple Glow', color: '#a855f7' },
+                bluePulse:   { unlockLevel: 9, label: 'Blue Pulse',   color: '#38bdf8', pulse: true },
+                purplePulse: { unlockLevel: 9, label: 'Purple Pulse', color: '#a855f7', pulse: true },
+                gold:        { unlockLevel: 11, label: 'Gold Glow',   color: '#fbbf24' },
+                gradient:    { unlockLevel: 10, label: 'Gradient Text', gradient: ['#6366f1', '#a855f7', '#f59e0b'] },
+                pinkPulse:   { unlockLevel: 11, label: 'Pink Pulse',   color: '#f472b6', pulse: true },
+                goldShimmer: { unlockLevel: 12, label: 'Gold Shimmer', gradient: ['#fbbf24', '#fef08a', '#fbbf24'], flow: true },
+                rainbow:     { unlockLevel: 15, label: 'Rainbow Text',  gradient: RAINBOW_PALETTE },
+                rainbowFlow: { unlockLevel: 16, label: 'Rainbow Flow', gradient: RAINBOW_PALETTE, flow: true },
                 // ===== 프리즘/솔라/루나/아이스/싱귤래리티 계열 - 색상 흐름 + 전용 애니메이션 조합으로 정체성을 명확히 준다 =====
-                prismBase:  { unlockLevel: 25, label: 'Prism Flow (Void→Cyan→White)', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s' },
-                solarBloom: { unlockLevel: 25, label: 'Solar Bloom', gradient: ['#fbbf24', '#fff7ed'], bloom: true },
-                iceFlow:    { unlockLevel: 25, label: 'Ice Flow', gradient: ['#38bdf8', '#f0f9ff'], flow: true, flowDuration: '6s' },
-                prismSweep: { unlockLevel: 27, label: 'Prism Sweep', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true },
-                lunarSweep: { unlockLevel: 27, label: 'Lunar Prism Sweep', gradient: ['#cbd5e1', '#4338ca', '#312e81'], flow: true, flowDuration: '6s', sweep: true, sweepColor: 'rgba(203,213,225,0.85)' },
-                prismRefraction: { unlockLevel: 29, label: 'Prism Refraction', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, refraction: true },
-                prismCrystal:    { unlockLevel: 29, label: 'Crystal Spark', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, sparkle: true },
-                singularity:     { unlockLevel: 30, label: 'Singularity', gradient: ['#000000', '#7c3aed', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '7s', sweep: true, refraction: true, sparkle: true, flash: true },
+                prismBase:  { unlockLevel: 17, label: 'Prism Flow (Void→Cyan→White)', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s' },
+                solarBloom: { unlockLevel: 17, label: 'Solar Bloom', gradient: ['#fbbf24', '#fff7ed'], bloom: true },
+                iceFlow:    { unlockLevel: 17, label: 'Ice Flow', gradient: ['#38bdf8', '#f0f9ff'], flow: true, flowDuration: '6s' },
+                prismSweep: { unlockLevel: 18, label: 'Prism Sweep', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true },
+                lunarSweep: { unlockLevel: 18, label: 'Lunar Prism Sweep', gradient: ['#cbd5e1', '#4338ca', '#312e81'], flow: true, flowDuration: '6s', sweep: true, sweepColor: 'rgba(203,213,225,0.85)' },
+                prismRefraction: { unlockLevel: 19, label: 'Prism Refraction', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, refraction: true },
+                prismCrystal:    { unlockLevel: 19, label: 'Crystal Spark', gradient: ['#0a0a0a', '#0e7490', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '6s', sweep: true, sparkle: true },
+                singularity:     { unlockLevel: 20, label: 'Singularity', gradient: ['#000000', '#7c3aed', '#22d3ee', '#f8fafc'], flow: true, flowDuration: '7s', sweep: true, refraction: true, sparkle: true, flash: true },
                 achAttendance3: { achievementId: 'attendance3', label: '🔥 연속출석 3일 (주황)',     color: '#f97316' },
                 achAttendance7: { achievementId: 'attendance7', label: '🔥 연속출석 7일 (레드 Glow)', color: '#ef4444' },
-                achActivity10:  { achievementId: 'activity10',  label: '🪭 활동왕 (초록)',           color: '#22c55e' },
+                achActivity10:  { achievementId: 'activity10',  label: '✒️ 활동왕 (초록)',           color: '#22c55e' },
                 achStudy10h:    { achievementId: 'study10h',    label: '📖 학습가 (청록 Glow)',      color: '#14b8a6' },
                 achStudy20h:    { achievementId: 'study20h',    label: '📚 학습가+ (시안 네온)',     color: '#06b6d4' },
                 achStreak5:     { achievementId: 'streak5',     label: '✨ 꾸준한 사람 (보라)',      color: '#a855f7' }
@@ -7732,7 +7735,7 @@
             // 다중 선택: 닉네임 앞/뒤에 붙는 작은 특수 아이콘. 전부 활동 업적 전용이다(레벨로는 해금되지 않음).
             specialEffect: {
                 achAttendance7: { achievementId: 'attendance7', label: '🔥 불꽃 (연속출석 7일)',   icon: '🔥', position: 'prefix' },
-                achActivity10:  { achievementId: 'activity10',  label: '🪭 팬 (활동왕)',           icon: '🪭', position: 'suffix' },
+                achActivity10:  { achievementId: 'activity10',  label: '✒️ 펜 (활동왕)',           icon: '✒️', position: 'suffix' },
                 achStreak5:     { achievementId: 'streak5',     label: '✨ 반짝임 (꾸준한 사람)',   icon: '✨', position: 'prefix' }
             }
         };
@@ -7741,10 +7744,19 @@
         // 이 레벨에서 해금된 "레벨 기반" 항목 중 가장 높은 등급을 반환한다.
         // (활동 업적 항목은 unlockLevel이 없으므로 `level >= undefined` 비교가 항상 false가 되어 자동으로 폴백 후보에서 제외된다 -
         //  즉 활동 업적 cosmetic은 사용자가 명시적으로 선택했을 때만 적용되고, 레벨 폴백값으로는 절대 자동 선택되지 않는다.)
+        // - starter:true 항목(Lv.1부터 고를 수 있는 "시작 선택지")은 자동 적용 후보에서 뺀다. 이런 항목은 새로 가입한 사람이
+        //   직접 골라서 자기 스타일을 만들 수 있게 열어둔 것이지, 아무것도 안 고른 사람에게 기본으로 씌워지면 안 된다.
+        // - 같은 레벨에 여러 개가 해금되면 카탈로그에 먼저 적힌 쪽이 아니라 "해금 레벨이 가장 높은 것"을 고르고,
+        //   레벨이 같으면 나중에 적힌 쪽을 고른다.
         function highestUnlockedKey(categoryKey, level) {
             const catalog = APPEARANCE_CATALOG[categoryKey];
             let result = Object.keys(catalog)[0];
-            Object.keys(catalog).forEach(k => { if (level >= catalog[k].unlockLevel) result = k; });
+            let bestLevel = -Infinity;
+            Object.keys(catalog).forEach(k => {
+                const opt = catalog[k];
+                if (opt.starter || !(level >= opt.unlockLevel)) return;
+                if (opt.unlockLevel >= bestLevel) { result = k; bestLevel = opt.unlockLevel; }
+            });
             return result;
         }
 
