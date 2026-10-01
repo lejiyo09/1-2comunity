@@ -924,30 +924,27 @@
         @keyframes pf-ach-spark-anim { 0%, 70%, 100% { opacity:0; transform:scale(0.4); } 82% { opacity:1; transform:scale(1.1); } 92% { opacity:0; transform:scale(0.6); } }
 
         /* --- 연속 출석 Streak Effect: 장착/해금이 아니라 "현재 연속 출석 일수"를 자동으로 보여주는 독립 레이어 ---
-           2일=작은 빛점 2개와 짧은 곡선 · 3일=이어진 곡선 · 5일=더 긴 곡선+잔광 · 7일=닉네임을 거의 한 바퀴 두르는 궤적.
+           3일=작은 빛점 2개와 짧은 곡선 · 4일=이어진 곡선 · 5일=더 긴 곡선+잔광 · 7일=닉네임을 거의 한 바퀴 두르는 궤적.
            곡선은 닉네임을 감싸는 타원(.pf-streak-orbit)의 테두리 일부만 마스크로 드러내고, 빛점은 같은 타원 위에 퍼센트로 배치한다.
            테마별로 대비를 맞추려고 라이트 테마는 한 단계 진한 색을 쓴다. */
         .pf-streak { --sk-c: #5aa9ff; --sk-dot: #cfe6ff; }
-        .pf-streak-t3 { --sk-c: #2dd4bf; --sk-dot: #c9fbf2; }
+        .pf-streak-t4 { --sk-c: #2dd4bf; --sk-dot: #c9fbf2; }
         .pf-streak-t5 { --sk-c: #a78bfa; --sk-dot: #e4dcff; }
         .pf-streak-t7 { --sk-c: #fbbf24; --sk-dot: #fff0bf; }
         body:not(.gmw-site-dark) .pf-streak { --sk-c: #2b7fe0; --sk-dot: #2b7fe0; }
-        body:not(.gmw-site-dark) .pf-streak-t3 { --sk-c: #0d9488; --sk-dot: #0d9488; }
+        body:not(.gmw-site-dark) .pf-streak-t4 { --sk-c: #0d9488; --sk-dot: #0d9488; }
         body:not(.gmw-site-dark) .pf-streak-t5 { --sk-c: #7c5cf0; --sk-dot: #7c5cf0; }
         body:not(.gmw-site-dark) .pf-streak-t7 { --sk-c: #d99a06; --sk-dot: #d99a06; }
         .pf-streak-orbit { position:absolute; inset:-0.42em -0.95em; pointer-events:none; z-index:0; border-radius:50%; }
         /* 업적 세트 연출(책/책장의 왼쪽 그림, 펜과 밑줄, 닉네임 아래 선)이 함께 있을 때는 궤도를 더 크게 잡아, 연출이 궤도 선·빛점과 겹치지 않고 궤도 안쪽에 들어오게 한다 */
         .pf-streak.has-ach > .pf-ach { z-index: 1; }
-        .pf-streak-gap-l { display:inline-block; margin-right:1.1em; }
-        .pf-streak-gap-r { display:inline-block; margin-left:1.1em; }
-        .pf-streak-gap-l.ach { margin-right:1.5em; } .pf-streak-gap-r.ach { margin-left:1.5em; }
         .pf-streak.has-ach .pf-streak-orbit { inset:-0.62em -1.35em -1em -1.35em; }
         .pf-streak-orbit::before, .pf-streak-orbit::after { content:''; position:absolute; inset:0; border-radius:50%; border:1px solid var(--sk-c);
             -webkit-mask-image: conic-gradient(from var(--sk-from, 0deg), transparent 0deg, #000 16deg, #000 calc(var(--sk-span, 90deg) - 16deg), transparent var(--sk-span, 90deg), transparent 360deg);
             mask-image: conic-gradient(from var(--sk-from, 0deg), transparent 0deg, #000 16deg, #000 calc(var(--sk-span, 90deg) - 16deg), transparent var(--sk-span, 90deg), transparent 360deg); }
         .pf-streak-orbit::after { display:none; }
-        .pf-streak-t2 .pf-streak-orbit { --sk-from: 232deg; --sk-span: 76deg; }
-        .pf-streak-t3 .pf-streak-orbit { --sk-from: 188deg; --sk-span: 190deg; }
+        .pf-streak-t3 .pf-streak-orbit { --sk-from: 232deg; --sk-span: 76deg; }
+        .pf-streak-t4 .pf-streak-orbit { --sk-from: 188deg; --sk-span: 190deg; }
         .pf-streak-t5 .pf-streak-orbit { --sk-from: 100deg; --sk-span: 160deg; }
         .pf-streak-t5 .pf-streak-orbit::after { display:block; --sk-from: 20deg; --sk-span: 90deg; opacity:0.35; border-style:dotted; }
         .pf-streak-t7 .pf-streak-orbit { --sk-from: 292deg; --sk-span: 322deg; filter: drop-shadow(0 0 2.5px var(--sk-c)); }
@@ -8354,16 +8351,16 @@
             }
         }
 
-        // 연속 출석 Streak Effect (정확히 4단계: 2일 / 3일 / 5일 / 7일 이상). 2일 미만이면 효과 없음.
+        // 연속 출석 Streak Effect (정확히 4단계: 3일 / 4일 / 5일 / 7일 이상). 3일 미만이면 효과 없음.
         // 장착/해금이 아니라 "현재 연속 출석 일수"만으로 자동 결정되고, 끊기면 일수가 0이 되어 곧바로 사라진다.
         function streakTierFor(days) {
             const d = Number(days) || 0;
-            return d >= 7 ? 7 : (d >= 5 ? 5 : (d >= 3 ? 3 : (d >= 2 ? 2 : 0)));
+            return d >= 7 ? 7 : (d >= 5 ? 5 : (d >= 4 ? 4 : (d >= 3 ? 3 : 0)));
         }
         // 각 단계의 빛점: [타원 위 각도(0=오른쪽, 시계방향), 지름 px, 옅은 점 여부]
         const STREAK_DOTS = {
-            2: [[158, 3.5], [204, 3]],
-            3: [[188, 4], [140, 3], [262, 2.6]],
+            3: [[158, 3.5], [204, 3]],
+            4: [[188, 4], [140, 3], [262, 2.6]],
             5: [[162, 4], [124, 3.4], [62, 3], [22, 4], [322, 2, true], [218, 2, true]],
             7: [[354, 4], [42, 3], [118, 3.6], [200, 3], [284, 2.6], [326, 2, true]]
         };
@@ -8398,15 +8395,9 @@
             // 업적 세트의 이름 연출(펜선/집중선/이음/완주 표시)은 이름 전체를 감싸는 래퍼에 붙인다 - 레벨 이름 효과와 겹쳐도 서로 영향을 주지 않는다.
             if (v.achSet) nameHtml = `<span class="pf-ach pf-ach-${v.achSet}">${nameHtml}${achievementNameExtras(v.achSet)}</span>`;
             // Streak Effect는 업적 세트와도 독립이라 가장 바깥에서 한 번 더 감싼다(둘 다 있어도 서로 가리지 않게 궤도는 뒤쪽 레이어).
+            // 접두/접미 아이콘과 배지도 궤도 안쪽에 들어오도록, 궤도는 닉네임 + 아이콘 + 배지 전체를 감싼다.
             const streakTier = streakTierFor(appearance && appearance.streakDays);
-            if (streakTier) nameHtml = `<span class="pf-streak pf-streak-t${streakTier}${v.achSet ? ' has-ach' : ''}" title="연속 출석 ${Number(appearance.streakDays) || 0}일">${streakOrbitHTML(streakTier)}${nameHtml}</span>`;
-            // 연속 출석 궤도는 닉네임 좌우로 튀어나오므로, 같은 줄의 앞(접두 아이콘)·뒤(접미 아이콘/배지) 이모지가 궤도와 겹치지 않도록 그만큼 간격을 띄운다.
-            if (streakTier) {
-                const gap = v.achSet ? ' ach' : '';
-                const before = prefix ? `<span class="pf-streak-gap-l${gap}">${prefix}</span>` : '';
-                const after = (suffix || badgeHtml) ? `<span class="pf-streak-gap-r${gap}">${suffix}${badgeHtml}</span>` : '';
-                return `${before}${nameHtml}${after}`;
-            }
+            if (streakTier) return `<span class="pf-streak pf-streak-t${streakTier}${v.achSet ? ' has-ach' : ''}" title="연속 출석 ${Number(appearance.streakDays) || 0}일">${streakOrbitHTML(streakTier)}${prefix}${nameHtml}${suffix}${badgeHtml}</span>`;
             return `${prefix}${nameHtml}${suffix}${badgeHtml}`;
         }
 
@@ -8742,7 +8733,7 @@
             if (decorateOperatorMode) {
                 if (!opPanel) { opPanel = document.createElement('div'); opPanel.id = 'decorate-operator-panel'; opPanel.className = 'deco-operator-panel'; tabsHost.parentNode.insertBefore(opPanel, tabsHost); }
                 opPanel.innerHTML = `<div class="deco-operator-title">🛠 운영자 테스트 모드 — 모든 꾸미기가 열려 있고, 적용해도 이 기기에서만 보여요(다른 사람·서버에는 반영 안 됨)</div>
-                    <div class="deco-operator-row"><span>연속 출석 효과</span>${[[0, '끔'], [2, '2일'], [3, '3일'], [5, '5일'], [7, '7일']].map(([d, l]) => `<button type="button" class="deco-operator-btn ${decorateOperatorStreak === d ? 'active' : ''}" onclick="setDecorateOperatorStreak(${d})">${l}</button>`).join('')}</div>`;
+                    <div class="deco-operator-row"><span>연속 출석 효과</span>${[[0, '끔'], [3, '3일'], [4, '4일'], [5, '5일'], [7, '7일']].map(([d, l]) => `<button type="button" class="deco-operator-btn ${decorateOperatorStreak === d ? 'active' : ''}" onclick="setDecorateOperatorStreak(${d})">${l}</button>`).join('')}</div>`;
             } else if (opPanel) { opPanel.remove(); }
 
             // 카테고리 탭
@@ -8816,8 +8807,8 @@
                 const myStreak = dailyMissionsLoaded ? computeAttendanceStreak() : 0;
                 const myTier = streakTierFor(myStreak);
                 html += `<div style="font-size:12px; color:var(--text-muted); background:var(--surface-secondary); border:1px solid var(--border-color); border-radius:10px; padding:8px 10px; margin-bottom:10px; line-height:1.5;">
-                    <b style="color:var(--text-main);">연속 출석 효과</b>는 따로 장착하지 않아도 <b>현재 연속 출석 일수</b>에 따라 닉네임에 자동으로 나타나요(2·3·5·7일 단계). 연속이 끊기면 사라지고, 다시 이어가면 돌아와요.
-                    <div style="margin-top:4px;">지금 연속 출석 <b style="color:var(--text-main);">${myStreak}일</b> → ${myTier ? `${myTier}일 단계 효과 적용 중` : '효과 없음 (2일부터 시작)'}</div>
+                    <b style="color:var(--text-main);">연속 출석 효과</b>는 따로 장착하지 않아도 <b>현재 연속 출석 일수</b>에 따라 닉네임에 자동으로 나타나요(3·4·5·7일 단계). 연속이 끊기면 사라지고, 다시 이어가면 돌아와요.
+                    <div style="margin-top:4px;">지금 연속 출석 <b style="color:var(--text-main);">${myStreak}일</b> → ${myTier ? `${myTier}일 단계 효과 적용 중` : '효과 없음 (3일부터 시작)'}</div>
                 </div>`;
                 html += `<div class="deco-source-label">🏆 활동 업적 세트 <span style="font-weight:500; opacity:0.75;">· 레벨 효과(프레임/색/Glow/이름)와 함께 쓸 수 있어요</span></div>`;
                 html += `<div class="${gridClass}">${levelKeys.concat(achKeys).map(renderOptionCard).join('')}</div>`;
