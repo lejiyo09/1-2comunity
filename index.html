@@ -833,18 +833,39 @@
         @keyframes pf-ach-pen-draw { 0% { transform: scaleX(0); opacity:1; } 30%, 74% { transform: scaleX(1); opacity:1; } 100% { transform: scaleX(1); opacity:0; } }
         .pf-ach-icon { display:inline-block; font-size:0.82em; vertical-align:0.02em; }
 
-        /* 집중선(학습가): 닉네임 왼쪽에 가늘게 선 세로선과 아주 작은 광점. 20시간은 같은 모양이 두 줄 + 작은 궤도로 한 단계 완성된다 */
-        .pf-ach-focus10 { padding-left: 0.6em; }
-        .pf-ach-focus10::before { content:''; position:absolute; left:0.12em; top:0.08em; bottom:0.12em; width:1.5px; border-radius:1px;
-            background: linear-gradient(180deg, rgba(34,211,238,0), #22d3ee 28%, #22d3ee 72%, rgba(34,211,238,0)); animation: pf-ach-focus-line 5s ease-in-out infinite; }
-        .pf-ach-focus10::after { content:''; position:absolute; left:0.02em; bottom:-0.2em; width:4px; height:4px; border-radius:50%; background:#22d3ee; box-shadow: 0 0 4px rgba(34,211,238,0.8); animation: pf-ach-focus-dot 5s ease-in-out infinite; }
-        .pf-ach-focus20 { padding-left: 0.95em; }
-        .pf-ach-focus20::before { content:''; position:absolute; left:0.12em; top:0.04em; bottom:0.08em; width:0.32em; border-left:1.5px solid #22d3ee; border-right:1.5px solid #22d3ee; border-radius:1px; opacity:0.95;
-            -webkit-mask: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent); mask: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent); animation: pf-ach-focus-line 5s ease-in-out infinite; }
-        .pf-ach-orbit { position:absolute; left:-0.62em; top:0.18em; width:1.15em; height:1.25em; pointer-events:none; border-radius:50%; border:1px solid transparent; border-bottom-color:#e0b04a; border-left-color:#22d3ee; transform: rotate(-24deg); opacity:0.85; }
-        .pf-ach-orbit::after { content:''; position:absolute; right:-1px; bottom:12%; width:4px; height:4px; border-radius:50%; background:#f0b94a; box-shadow:0 0 5px rgba(240,185,74,0.85); }
-        @keyframes pf-ach-focus-line { 0%, 100% { opacity:0.6; } 50% { opacity:1; } }
-        @keyframes pf-ach-focus-dot { 0%, 100% { opacity:0.55; } 50% { opacity:1; } }
+        /* 학습가(10시간) 책 넘김: 닉네임 왼쪽에 작은 책이 나타나 펼쳐지고, 페이지가 한 장 넘어가며 은은한 빛이 퍼진 뒤 잔상이 사라지고
+           "펼쳐진 작은 책 + 닉네임 아래 얇은 호선" 완성 상태로 머문다. 20시간(책장)은 같은 시각 언어로 한 단계 더 완성된 형태. */
+        .pf-ach-focus10 { padding-left: 1.65em; }
+        .pf-ach-focus20 { padding-left: 1.7em; }
+        .pf-ach-book, .pf-ach-shelf { --bk-line:#4f6bed; --bk-page:rgba(109,139,255,0.20); --bk-glow:#8fa8ff; position:absolute; left:0; top:50%; width:1.5em; height:1.1em; margin-top:-0.52em; pointer-events:none; }
+        body.gmw-site-dark .pf-ach-book, body.gmw-site-dark .pf-ach-shelf { --bk-line:#8fa8ff; --bk-page:rgba(143,168,255,0.22); --bk-glow:#c4d2ff; }
+        .pf-ach-book svg, .pf-ach-shelf svg { display:block; width:100%; height:100%; overflow:visible; }
+        .pf-ach-book svg *, .pf-ach-shelf svg * { transform-box: fill-box; }
+        .bk-line { fill:none; stroke:var(--bk-line); stroke-width:1.4; stroke-linejoin:round; stroke-linecap:round; }
+        .bk-pagefill { fill:var(--bk-page); stroke:var(--bk-line); stroke-width:1.2; stroke-linejoin:round; }
+        .bk-closed { transform-origin:50% 50%; opacity:0; animation: bk-closed 7s ease-in-out infinite; }
+        .bk-open { transform-origin:50% 50%; animation: bk-open 7s ease-in-out infinite; }
+        .bk-turn { transform-origin:0% 50%; opacity:0; animation: bk-turn 7s ease-in-out infinite; }
+        .bk-light { fill:var(--bk-glow); transform-origin:50% 50%; opacity:0; animation: bk-light 7s ease-out infinite; }
+        .bk-ghost { fill:none; stroke:var(--bk-glow); stroke-width:1; transform-origin:50% 50%; opacity:0; animation: bk-ghost 7s ease-out infinite; }
+        .pf-ach-arc { position:absolute; left:6%; right:6%; bottom:-0.32em; height:0.3em; pointer-events:none; border-bottom:1.5px solid var(--bk-arc, #4f6bed); border-radius:0 0 50% 50% / 0 0 100% 100%; transform-origin:50% 50%; animation: bk-arc 7s ease-in-out infinite; }
+        body.gmw-site-dark .pf-ach-arc { --bk-arc:#8fa8ff; }
+        @keyframes bk-closed { 0% { opacity:0; transform:scale(0.7); } 10%, 20% { opacity:1; transform:scale(1); } 30%, 100% { opacity:0; transform:scale(1); } }
+        @keyframes bk-open { 0%, 18% { opacity:0; transform:scale(0.85); } 32%, 90% { opacity:1; transform:scale(1); } 100% { opacity:0; transform:scale(0.85); } }
+        @keyframes bk-turn { 0%, 36% { opacity:0; transform:scaleX(1); } 40% { opacity:1; transform:scaleX(1); } 52% { opacity:1; transform:scaleX(-1); } 58%, 100% { opacity:0; transform:scaleX(-1); } }
+        @keyframes bk-light { 0%, 48% { opacity:0; transform:scale(0.3); } 56% { opacity:0.55; transform:scale(1.1); } 70%, 100% { opacity:0; transform:scale(1.4); } }
+        @keyframes bk-ghost { 0%, 56% { opacity:0; transform:scale(1); } 62% { opacity:0.7; transform:scale(1.05); } 78%, 100% { opacity:0; transform:scale(1.35); } }
+        @keyframes bk-arc { 0%, 55% { opacity:0; transform:scaleX(0.2); } 70%, 90% { opacity:1; transform:scaleX(1); } 100% { opacity:0; transform:scaleX(1); } }
+
+        /* 학습가+(20시간) 책장: 작은 책장 실루엣 안에서 책등이 차례로 서고, 빛이 한 번 흘러간 뒤 잔상이 사라지며 책이 꽂힌 완성 상태로 머문다 */
+        .bk-frame { fill:none; stroke:var(--bk-line); stroke-width:1.2; stroke-linejoin:round; opacity:0.55; }
+        .bk-shelfline { stroke:var(--bk-line); stroke-width:1.5; stroke-linecap:round; }
+        .bk-spine { transform-origin:50% 100%; opacity:0; animation: bk-spine 8s cubic-bezier(.3,.7,.3,1) infinite backwards; animation-delay: calc(var(--i) * 0.28s); }
+        .bk-flow { fill:var(--bk-glow); opacity:0; animation: bk-flow 8s ease-in-out infinite; }
+        .bk-sghost { fill:none; stroke:var(--bk-glow); stroke-width:1; opacity:0; transform-origin:50% 100%; animation: bk-sghost 8s ease-out infinite; }
+        @keyframes bk-spine { 0% { opacity:0; transform:scaleY(0.05); } 10%, 86% { opacity:1; transform:scaleY(1); } 96%, 100% { opacity:0; transform:scaleY(1); } }
+        @keyframes bk-flow { 0%, 18% { opacity:0; transform:translateX(0); } 24% { opacity:0.6; } 40% { opacity:0.6; transform:translateX(17px); } 46%, 100% { opacity:0; transform:translateX(19px); } }
+        @keyframes bk-sghost { 0%, 38% { opacity:0; transform:scaleY(1); } 44% { opacity:0.7; transform:scaleY(1.06); } 60%, 100% { opacity:0; transform:scaleY(1.2); } }
 
         /* 이음(꾸준한 사람): 닉네임 위로 작은 점 세 개가 가는 선으로 이어지며 왼쪽부터 차례로 켜진다 */
         .pf-ach-chain::before { content:''; position:absolute; left:7%; right:7%; top:-0.34em; height:1px; pointer-events:none; background: linear-gradient(90deg, rgba(167,139,250,0), rgba(167,139,250,0.55), rgba(167,139,250,0)); }
@@ -902,7 +923,9 @@
         @keyframes pf-streak-dot-breathe { 0%, 100% { opacity:0.55; } 50% { opacity:1; } }
         @media (prefers-reduced-motion: reduce) {
             .pf-ach-pen::after { animation: none; transform: scaleX(1); }
-            .pf-ach-focus10::before, .pf-ach-focus10::after, .pf-ach-focus20::before, .pf-ach-dot, .pf-ach-finish30::after, .pf-ach-star4, .pf-ach-spark, .pf-streak-dot { animation: none !important; }
+            .bk-closed, .bk-turn, .bk-light, .bk-ghost, .bk-flow, .bk-sghost { animation: none !important; opacity: 0 !important; }
+            .bk-open, .bk-spine, .pf-ach-arc { animation: none !important; opacity: 1 !important; transform: none !important; }
+            .pf-ach-dot, .pf-ach-finish30::after, .pf-ach-star4, .pf-ach-spark, .pf-streak-dot { animation: none !important; }
             .pf-ach-dot { opacity: 0.85; } .pf-ach-spark { opacity: 0; } .pf-streak-dot { opacity: 0.85; }
         }
         .profile-thumb-level { font-size: 10.5px; font-weight: 700; margin-top: 9px; } /* 닉네임 주변 연출(Streak 궤도 등)이 아래 레벨 줄과 겹치지 않도록 넉넉한 간격 */
@@ -7866,8 +7889,8 @@
             achievementSet: {
                 none:    { unlockLevel: 1, label: '없음', icon: '', desc: '' },
                 pen:     { achievementId: 'activity10', label: '펜',              icon: '✒️', desc: '닉네임 아래 펜으로 그은 듯한 짧은 선',                 setIcons: { suffix: '✒️' } },
-                focus10: { achievementId: 'study10h',   label: '집중선 · 10시간', icon: '│',  desc: '닉네임 옆에 가늘게 선 집중선과 작은 광점' },
-                focus20: { achievementId: 'study20h',   label: '집중선 · 20시간', icon: '‖',  desc: '집중선이 두 줄이 되고 작은 궤도가 더해져요' },
+                focus10: { achievementId: 'study10h',   label: '책 넘김 · 10시간', icon: '◎',  desc: '닉네임 옆 작은 책이 펼쳐지고 페이지가 넘어가요' },
+                focus20: { achievementId: 'study20h',   label: '책장 · 20시간', icon: '◎',  desc: '작은 책장에 책이 차례로 꽂히고 빛이 흘러요' },
                 chain:   { achievementId: 'streak5',    label: '이음',            icon: '⋯',  desc: '닉네임 위로 작은 점 세 개가 차례로 이어져요' },
                 finish5: { achievementId: 'allClear5',  label: '완주 · 5회',      icon: '✓',  desc: '작은 완료 표시와 가는 금빛 선' },
                 finish15:{ achievementId: 'allClear15', label: '완주 · 15회',     icon: '✓',  desc: '더 길고 선명해진 선과 끝의 작은 반짝임' },
@@ -8212,7 +8235,8 @@
         // 업적 세트/Streak의 추가 요소(닉네임 주변의 작은 선·점). 전부 absolute라 글자 위치에는 영향이 없다.
         function achievementNameExtras(setKey) {
             switch (setKey) {
-                case 'focus20': return '<i class="pf-ach-orbit"></i>';
+                case 'focus10': return '<i class="pf-ach-book"><svg viewBox="0 0 28 20" aria-hidden="true"><circle class="bk-light" cx="14" cy="10" r="9"/><path class="bk-ghost" d="M14 5 Q8 3 2 5 V16 Q8 14 14 16 Q20 14 26 16 V5 Q20 3 14 5 Z"/><g class="bk-closed"><rect class="bk-pagefill" x="8.5" y="3" width="11" height="14" rx="1.6"/><path class="bk-line" d="M11.5 3.5 V16.5"/></g><g class="bk-open"><path class="bk-pagefill" d="M14 5 Q8 3 2 5 V16 Q8 14 14 16 Z"/><path class="bk-pagefill" d="M14 5 Q20 3 26 5 V16 Q20 14 14 16 Z"/><path class="bk-line" d="M5 8.5 Q8.5 7.5 11.5 8.5 M5 11.5 Q8.5 10.5 11.5 11.5"/></g><path class="bk-pagefill bk-turn" d="M14 5 Q20 3 26 5 V16 Q20 14 14 16 Z"/></svg></i><i class="pf-ach-arc"></i>';
+                case 'focus20': return '<i class="pf-ach-shelf"><svg viewBox="0 0 28 20" aria-hidden="true"><rect class="bk-frame" x="2" y="2" width="24" height="16" rx="1.6"/><g><rect class="bk-sghost" x="5" y="6" width="3.4" height="11"/><rect class="bk-sghost" x="9.6" y="8" width="3.4" height="9"/><rect class="bk-sghost" x="14.2" y="5" width="3.4" height="12"/><rect class="bk-sghost" x="18.8" y="9" width="3.4" height="8"/></g><rect class="bk-spine" style="--i:0" x="5" y="6" width="3.4" height="11" rx="0.6" fill="#4f6bed"/><rect class="bk-spine" style="--i:1" x="9.6" y="8" width="3.4" height="9" rx="0.6" fill="#7d96ff"/><rect class="bk-spine" style="--i:2" x="14.2" y="5" width="3.4" height="12" rx="0.6" fill="#3b52c9"/><rect class="bk-spine" style="--i:3" x="18.8" y="9" width="3.4" height="8" rx="0.6" fill="#f0b94a"/><rect class="bk-flow" x="3" y="4" width="2.2" height="13" rx="1"/><path class="bk-shelfline" d="M2.5 17.5 H25.5"/></svg></i>';
                 case 'chain': return '<i class="pf-ach-dot a"></i><i class="pf-ach-dot b"></i><i class="pf-ach-dot c"></i>';
                 case 'finish5': return '<i class="pf-ach-check"></i>';
                 case 'finish15': return '<i class="pf-ach-check"></i><i class="pf-ach-star4 end"></i>';
