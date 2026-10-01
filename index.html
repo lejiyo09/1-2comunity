@@ -864,6 +864,7 @@
         .bk-turn { opacity:0; animation: bk-turn 7s ease-in-out both; }
         .pf-ach-arc { position:absolute; left:0; right:-0.15em; bottom:-0.2em; height:0.55em; pointer-events:none; }
         .pf-ach-focus10 .pf-ach-arc { bottom:-0.32em; }
+        .pf-ach-focus20 .pf-ach-arc { animation-name: bk-arc-shelf; }
         .pf-ach-arc svg { display:block; width:100%; height:100%; overflow:visible; filter: drop-shadow(0 0 calc(var(--bk-gl, 0.6) * 2px) var(--bk-glow, #7aa0ff)); }
         .pf-ach-arc path { fill:none; stroke-width:1.4; stroke-linecap:round; vector-effect: non-scaling-stroke; }
         .pf-ach-arc .bk-ast-a { stop-color:var(--bk-glow, #7aa0ff); stop-opacity:0; } .pf-ach-arc .bk-ast-b { stop-color:var(--bk-glow, #7aa0ff); stop-opacity:1; }
@@ -875,7 +876,8 @@
         @keyframes bk-ink-r { 0%, 22% { opacity:0; } 30%, 100% { opacity:1; } }
         @keyframes bk-ink-l { 0%, 27% { opacity:0; } 33%, 100% { opacity:1; } }
         @keyframes bk-turn { 0%, 34% { opacity:0; transform:scaleX(1) skewY(0deg); } 36% { opacity:0.95; transform:scaleX(1) skewY(0deg); } 41% { opacity:0.95; transform:scaleX(0.1) skewY(-10deg); } 47% { opacity:0.9; transform:scaleX(-1) skewY(0deg); } 53%, 100% { opacity:0; transform:scaleX(-1); } }
-        @keyframes bk-arc { 0%, 12% { opacity:0; transform:scaleX(0.3); } 22% { opacity:0.55; transform:scaleX(0.85); } 50% { opacity:0.7; transform:scaleX(1); } 75%, 100% { opacity:1; transform:scaleX(1); } }
+        @keyframes bk-arc { 0%, 50% { opacity:0; transform:scaleX(0.05); } 54% { opacity:1; transform:scaleX(0.1); } 80%, 100% { opacity:1; transform:scaleX(1); } }
+        @keyframes bk-arc-shelf { 0%, 12% { opacity:0; transform:scaleX(0.3); } 22% { opacity:0.55; transform:scaleX(0.85); } 50% { opacity:0.7; transform:scaleX(1); } 75%, 100% { opacity:1; transform:scaleX(1); } }
 
         /* 학습가+(20시간) 책장: 닉네임 밑줄이 선반이 되어 그 위에 책이 차례로 정렬되고. 마지막(책이 꽂히고 밑줄이 그어진) 상태 유지 */
         .bk-spine { opacity:0; animation: bk-spine 7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 0.32s); }
@@ -892,7 +894,7 @@
         @keyframes pf-ach-dot-on { 0%, 100% { opacity:0.25; } 25%, 55% { opacity:1; box-shadow: 0 0 4px rgba(167,139,250,0.9); } }
 
         /* 완주(올클리어): 왼쪽에서 작은 마름모 파츠가 나타나고 → 닉네임 아래로 완료선이 쭉 그어진 뒤 → 마지막에 오른쪽 끝(글자 바깥)에 체크가 붙는다. 한 번만 재생되고 마지막 상태 유지.
-           단계가 올라갈수록 선이 길어지고 체크가 커지며(5회=짧은 선+작은 체크 / 15회=긴 선+강화된 체크+작은 잔광 / 30회=거의 닿는 선+선명한 체크+빛 조각), 색은 파랑→보라→금빛이다. */
+           단계가 올라갈수록 체크가 커지고 빛 조각이 늘어나며(3회=완료선+작은 체크 / 5회=강화된 체크+빛 조각 2개 / 9회=선명한 체크+빛 조각 5개+빛 조각), 색은 파랑→보라→금빛이다. */
         .pf-ach-finish5, .pf-ach-finish15, .pf-ach-finish30 { --fc:#2b7fe0; --fc2:#6db3ff; padding-left:0.8em; padding-right:1.4em; line-height:1.3; }
         .pf-ach-finish15 { --fc:#7c5cf0; --fc2:#b9a2ff; }
         .pf-ach-finish30 { --fc:#d99a1f; --fc2:#ffd76a; }
@@ -902,8 +904,9 @@
         .pf-ach-finish5::after, .pf-ach-finish15::after, .pf-ach-finish30::after { content:''; position:absolute; left:0.6em; right:1.9em; bottom:-3px; height:1.8px; pointer-events:none; border-radius:2px;
             background: linear-gradient(90deg, var(--fc) 0%, var(--fc2) 82%, var(--fc2) 100%); filter: drop-shadow(0 0 2px var(--fc));
             transform-origin: left center; transform: scaleX(0); animation: pf-ach-fline 4.4s ease-in-out both; }
-        .pf-ach-finish15::after { right:0.9em; height:2.1px; }
-        .pf-ach-finish30::after { right:0.4em; height:2.5px; }
+        .pf-ach-finish5::after, .pf-ach-finish15::after, .pf-ach-finish30::after { right:0.4em; }
+        .pf-ach-finish15::after { height:2.1px; }
+        .pf-ach-finish30::after { height:2.5px; }
         .pf-ach-fdia { position:absolute; left:0.05em; bottom:calc(-1.9px - 0.27em); width:0.54em; height:0.54em; pointer-events:none; background: linear-gradient(135deg, var(--fc2), var(--fc)); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
             filter: drop-shadow(0 0 2px var(--fc)); animation: pf-ach-fdia 4.4s ease-out both; transform-origin: 50% 50%; }
         .pf-ach-fcheck { position:absolute; right:0.05em; bottom:calc(-1.9px - 0.14em); width:0.95em; height:0.95em; pointer-events:none; filter: drop-shadow(0 0 3px var(--fc));
@@ -918,7 +921,7 @@
         @keyframes pf-ach-fcheck { 0%, 62% { clip-path: inset(0 100% 0 0); opacity:0; transform:scale(0.7); } 64% { opacity:1; } 80%, 100% { clip-path: inset(-20% -20% -20% -20%); opacity:1; transform:scale(1); } }
         @keyframes pf-ach-fspk { 0%, 78% { opacity:0; transform:scale(0.3); } 92%, 100% { opacity:0.9; transform:scale(1); } }
 
-        /* 사진 주변(최소): 올클리어 30회에만 가장자리에 아주 작은 반짝임 두 개 */
+        /* 사진 주변(최소): 올클리어 9회에만 가장자리에 아주 작은 반짝임 두 개 */
         .pf-ach-spark { position:absolute; width:6px; height:6px; pointer-events:none; z-index:25; opacity:0; background:#fff1c2;
             clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: pf-ach-spark-anim 4.6s ease-in-out infinite; }
         @keyframes pf-ach-spark-anim { 0%, 70%, 100% { opacity:0; transform:scale(0.4); } 82% { opacity:1; transform:scale(1.1); } 92% { opacity:0; transform:scale(0.6); } }
@@ -7623,9 +7626,9 @@
             { id: 'study10h',    icon: '◎', label: '학습가 (누적 공부 10시간)',  autoDeactivate: false },
             { id: 'study20h',    icon: '◎', label: '학습가+ (누적 공부 20시간)', autoDeactivate: false },
             { id: 'streak5',     icon: '⋯', label: '꾸준한 사람 (할일완료 5일 연속)', autoDeactivate: true },
-            { id: 'allClear5',   icon: '✓', label: '올클리어 5회',              autoDeactivate: false },
-            { id: 'allClear15',  icon: '✓', label: '올클리어 15회',             autoDeactivate: false },
-            { id: 'allClear30',  icon: '✓', label: '올클리어 30회',    autoDeactivate: false }
+            { id: 'allClear5',   icon: '✓', label: '올클리어 3회',              autoDeactivate: false },
+            { id: 'allClear15',  icon: '✓', label: '올클리어 5회',              autoDeactivate: false },
+            { id: 'allClear30',  icon: '✓', label: '올클리어 9회',     autoDeactivate: false }
         ];
 
         function dateKeyFor(d) {
@@ -7702,9 +7705,9 @@
                 study10h: studySeconds >= 10 * 3600,
                 study20h: studySeconds >= 20 * 3600,
                 streak5: taskStreak >= 5,
-                allClear5: allClearCount >= 5,
-                allClear15: allClearCount >= 15,
-                allClear30: allClearCount >= 30
+                allClear5: allClearCount >= 3,   // id는 저장된 해금 기록과의 호환을 위해 그대로 두고 기준 횟수만 3/5/9회로 낮췄다(낮추기만 하므로 기존 해금은 모두 유지)
+                allClear15: allClearCount >= 5,
+                allClear30: allClearCount >= 9
             };
         }
 
@@ -7944,9 +7947,9 @@
                 focus10: { achievementId: 'study10h',   label: '책 넘김 · 10시간', icon: '◎',  desc: '닉네임 옆 작은 책이 펼쳐지고 페이지가 넘어가요' },
                 focus20: { achievementId: 'study20h',   label: '책장 · 20시간', icon: '◎',  desc: '작은 책장에 책이 차례로 꽂혀요' },
                 chain:   { achievementId: 'streak5',    label: '이음',            icon: '⋯',  desc: '닉네임 위로 작은 점 세 개가 차례로 이어져요' },
-                finish5: { achievementId: 'allClear5',  label: '완주 · 5회',      icon: '✓',  desc: '짧은 완료선과 작은 체크가 닉네임 옆에 남아요' },
-                finish15:{ achievementId: 'allClear15', label: '완주 · 15회',     icon: '✓',  desc: '완료선이 길어지고 체크와 작은 잔광이 더해져요' },
-                finish30:{ achievementId: 'allClear30', label: '완주 · 30회',     icon: '✓',  desc: '거의 이어진 완료선과 선명한 체크, 금빛 조각' }
+                finish5: { achievementId: 'allClear5',  label: '완주 · 3회',      icon: '✓',  desc: '완료선이 그어지고 작은 체크가 닉네임 옆에 남아요' },
+                finish15:{ achievementId: 'allClear15', label: '완주 · 5회',      icon: '✓',  desc: '체크가 강화되고 작은 빛 조각 2개가 더해져요' },
+                finish30:{ achievementId: 'allClear30', label: '완주 · 9회',      icon: '✓',  desc: '가장 선명한 체크와 금빛 빛 조각 5개까지 완성돼요' }
             }
         };
         const APPEARANCE_CATEGORY_LABELS = { frameStyle: '프레임 모양', frameColor: '프레임 색상', animation: '테두리 애니메이션', glow: 'Glow', badge: '배지', aura: 'Aura', nameEffect: '이름 효과', achievementSet: '업적 세트' };
@@ -8250,7 +8253,7 @@
         // 업적 세트별 "사진 주변" 연출. 전부 사진 바깥쪽(링/장식/작은 입자)에만 그려지고 사진 자체는 건드리지 않는다.
         // 이름 연출(펜선/집중선/이음/완주 표시)은 renderStyledName()과 CSS(.pf-ach-*)가 맡는다.
         function buildAchievementAvatarLayer(setKey) {
-            // 사진 주변 연출은 올클리어 30회에만, 가장자리에 아주 작은 반짝임 두 개. 나머지 세트는 닉네임 연출만 쓴다.
+            // 사진 주변 연출은 올클리어 9회에만, 가장자리에 아주 작은 반짝임 두 개. 나머지 세트는 닉네임 연출만 쓴다.
             if (setKey === 'finish30') return '<span class="pf-ach-spark" style="right:2px; top:12px;"></span><span class="pf-ach-spark" style="left:3px; bottom:14px; animation-delay:2.3s;"></span>';
             return '';
         }
@@ -8295,14 +8298,14 @@
                 + `<path d="M1.4 14.6 L5.9 10.4" stroke="var(--bk-edge)" stroke-width="0.4" fill="none"/></svg></i>`;
         }
 
-        // 완주 연출 마크업: 왼쪽 마름모 파츠 + (CSS ::after 완료선) + 오른쪽 끝 체크 + 단계별 빛 조각. tier 1=5회, 2=15회, 3=30회.
+        // 완주 연출 마크업: 왼쪽 마름모 파츠 + (CSS ::after 완료선) + 오른쪽 끝 체크 + 단계별 빛 조각. tier 1=3회, 2=5회, 3=9회(내부 id는 allClear5/15/30·finish5/15/30 그대로).
         function pfFinishMarkup(tier) {
             const n = ++__pfBkSeq;
             const check = `<i class="pf-ach-fcheck"><svg viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="bkF${n}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="var(--fc)"/><stop offset="1" stop-color="var(--fc2)"/></linearGradient></defs><path d="M1.6 11.6 L4.8 9.4 L8.1 12.9 L15.8 2.2 L18.6 4.3 L8.5 17.6 Z" fill="url(#bkF${n})"/></svg></i>`;
             const spk = (x, y, sz, dot) => `<i class="pf-ach-fspk${dot ? ' dot' : ''}" style="--x:${x}em;--y:${y}em;--s:${sz}em"></i>`;
             let extra = '';
             if (tier === 2) extra = spk(-0.35, 0.55, 0.2) + spk(0.1, -0.2, 0.13, true);
-            if (tier === 3) extra = spk(-0.45, 0.7, 0.26) + spk(-0.2, 0.2, 0.14, true) + spk(0.15, 0.62, 0.16) + spk(-0.55, -0.1, 0.12, true);
+            if (tier === 3) extra = spk(-0.35, 0.55, 0.2) + spk(0.1, -0.2, 0.13, true) + spk(-0.5, 0.78, 0.26) + spk(-0.22, 0.24, 0.14, true) + spk(0.18, 0.66, 0.16);
             return `<i class="pf-ach-fdia"></i>${check}${extra}`;
         }
 
@@ -15808,7 +15811,7 @@
         return streak;
       } catch (e) { return 0; }
     }
-    // 올클리어(하루 할 일 전부 완료) 누적 횟수. allClear5/15/30 업적에 사용된다.
+    // 올클리어(하루 할 일 전부 완료) 누적 횟수. allClear5/15/30(실제 기준 3/5/9회) 업적에 사용된다.
     function getAllClearCount() {
       try { return Object.keys(state.allClearDates || {}).length; } catch (e) { return 0; }
     }
