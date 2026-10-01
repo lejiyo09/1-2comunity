@@ -3845,6 +3845,7 @@
         // 비로그인 상태에서 쓰기 동작(글쓰기/좋아요/댓글 등)을 시도하면 requireLogin()이 여기에
         // "로그인 성공하면 이어서 할 일"을 담아두고, 로그인 완료 시점에 자동으로 실행한다.
         let pendingAction = null;
+        let xpCloudLoaded = false; // 이 계정의 실제 XP(users/{uid}/xp)를 Firebase에서 한 번이라도 받아왔는지 - 받아오기 전의 로컬 값으로 거울을 덮어쓰지 않기 위한 표시
         let unsubscribeXpCloudSync = null; // Firebase → 로컬 XP 실시간 동기화 해제 함수 (계정 전환/로그아웃 시 해제)
         let unsubscribeDailyMissions = null; // 일일 미션(users/{uid}/dailyMissions 전체) 실시간 구독 해제 함수
         let dailyMissionsAllCache = {}; // 날짜별 미션 완료 상태 전체 캐시 { 'YYYY-MM-DD': {attendance:true, ...}, ... } (연속 출석 계산에도 재사용)
@@ -3962,7 +3963,7 @@
             if (typeof unsubscribeXpCloudSync === 'function') { unsubscribeXpCloudSync(); unsubscribeXpCloudSync = null; }
             if (typeof unsubscribeDailyMissions === 'function') { unsubscribeDailyMissions(); unsubscribeDailyMissions = null; }
             if (typeof unsubscribeAchievements === 'function') { unsubscribeAchievements(); unsubscribeAchievements = null; }
-            dailyMissionsAllCache = {}; myAchievementsUnlocked = {};
+            dailyMissionsAllCache = {}; myAchievementsUnlocked = {}; xpCloudLoaded = false;
             if (window.PlannerApp && window.PlannerApp.resetLocalXPDisplay) window.PlannerApp.resetLocalXPDisplay(); // 로그아웃은 인증 상태만 종료 - Firebase에는 아무것도 쓰지 않고 화면 표시만 초기화
             currentUser = null; currentUserInfo = null; isAdmin = false; isFounder = false; isSubAdmin = false; isTeacherAccount = false; isOperator = false; isRestrictedViewer = false; canPostNotice = false; canWriteSchedule = false; canManageSeats = false; canManageShortcuts = false; isListeningToPosts = false; isListeningToSquad = false; signOut(auth);
         });
@@ -4146,10 +4147,14 @@
                 const v = snap.val();
                 if (typeof v === 'number') {
                     if (window.PlannerApp && window.PlannerApp.setXPFromCloud) window.PlannerApp.setXPFromCloud(v);
+                    xpCloudLoaded = true;
+                    syncOwnXpMirror();
                 } else if (!migrating) {
                     migrating = true;
                     migrateOrInitUserXP(uid).then((xp) => {
                         if (window.PlannerApp && window.PlannerApp.setXPFromCloud) window.PlannerApp.setXPFromCloud(xp);
+                        xpCloudLoaded = true;
+                        syncOwnXpMirror();
                     });
                 }
             }, (err) => {
@@ -7748,7 +7753,14 @@
         function isCosmeticOptionUnlocked(cat, key, level, unlockedAchievements) {
             const opt = APPEARANCE_CATALOG[cat] && APPEARANCE_CATALOG[cat][key];
             if (!opt) return false;
-            if (opt.achievementId) return !!(unlockedAchievements && unlockedAchievements[opt.achievementId]);
+            if (opt.achievementId) {
+                // unlockedAchievements가 아예 없으면(null/undefined) "검증할 수 없는 화면"이다 - 커뮤니티/아카이브/댓글/친구 프로필처럼
+                // 다른 사람의 장착 값을 보여주는 곳은 상대의 업적 목록(users/{uid}/achievements)을 읽지 않으므로, 상대가 장착해 둔 대로
+                // 그대로 보여준다(장착 자체는 본인의 프로필 꾸미기에서 해금 여부를 검증한 뒤에만 저장된다).
+                // 예전에는 이 경우 항상 "미해금"으로 취급해서 활동 업적 효과(게시글 10개 등)가 본인 꾸미기 창 밖에서는 전혀 안 보였다.
+                if (unlockedAchievements == null) return true;
+                return !!unlockedAchievements[opt.achievementId];
+            }
             return level >= (opt.unlockLevel || 1);
         }
 
@@ -7776,7 +7788,6 @@
         // 저장된 장착 값(savedAppearance)이 있으면 그것을 쓰되, 실제로 해금되지 않은 값이면
         // (클라이언트/서버 값이 조작되었거나, 업적을 잃어버린 경우 등) 항상 안전한 기본값으로 대체한다.
         function computeEffectiveAppearance(level, savedAppearance, unlockedAchievements) {
-            unlockedAchievements = unlockedAchievements || {};
             const result = {};
             Object.keys(APPEARANCE_CATALOG).forEach(cat => {
                 if (isMultiSelectCategory(cat)) {
@@ -7790,6 +7801,15 @@
                 result[cat] = (chosen && catalog[chosen] && isCosmeticOptionUnlocked(cat, chosen, level, unlockedAchievements)) ? chosen : fallback;
             });
             return result;
+        }
+
+        // 학생 번호 기준으로 "화면에 보여줄" 꾸미기 값을 계산하는 공용 함수 (프로필 카드/모달/온라인 현황/커뮤니티 작성자 등).
+        // 내 프로필은 Firestore profiles의 xp(거울 값)가 아직 안 써졌거나 오래됐을 수 있으므로, 실제 XP(users/{uid}/xp)를 그대로 쓴다.
+        function getStudentAppearance(num, sData) {
+            sData = sData || {};
+            let xp = sData.xp || 0;
+            if (num && num === getMyStudentNum() && xpCloudLoaded && window.PlannerApp && window.PlannerApp.getXP) xp = window.PlannerApp.getXP();
+            return getProfileAppearance(xp, sData.appearance);
         }
 
         function getProfileAppearance(xp, savedAppearance, unlockedAchievements) {
@@ -8102,6 +8122,20 @@
             try {
                 await setDoc(doc(fdb, 'profiles', `student_${num}`), payload, { merge: true });
             } catch (e) { console.warn('프로필 저장 실패:', e); }
+        }
+
+        // 내 실제 XP(users/{uid}/xp)와 Firestore profiles/student_{num}.xp(다른 사람이 내 레벨을 볼 때 쓰는 거울 값)를 맞춘다.
+        // 예전에는 XP가 "바뀔 때만" 거울을 갱신해서, 이미 XP가 있던 계정이나 거울 쓰기가 한 번 실패했던 계정은
+        // 다른 사람 화면에서 계속 Lv.1(효과 없음)로 보였다. 로그인 직후/프로필 목록 수신 시에도 어긋나 있으면 바로잡는다.
+        // (Firebase 값을 받아오기 전의 로컬 값으로 덮어쓰지 않도록 xpCloudLoaded일 때만 동작한다.)
+        function syncOwnXpMirror() {
+            if (!xpCloudLoaded || !window.PlannerApp || !window.PlannerApp.getXP) return;
+            const num = getMyStudentNum();
+            if (!num) return;
+            const xp = window.PlannerApp.getXP();
+            const mirrored = (profilesData[`student_${num}`] || {}).xp;
+            if (mirrored === xp) return;
+            writeOwnProfileDoc(num, { xp });
         }
 
         // addXP()가 호출될 때마다 실행된다: 사이드바 갱신 + 레벨업 감지 + (본인 프로필이 있는 경우) Firestore profiles에 xp 미러링.
@@ -8453,7 +8487,7 @@
             for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) {
                 const name = resolveStudentDisplayName(i) || `${i}번`;
                 const sData = profilesData[`student_${i}`] || {};
-                const appearance = getProfileAppearance(sData.xp || 0, sData.appearance);
+                const appearance = getStudentAppearance(i, sData);
                 const styledName = renderStyledName(name, appearance, null, escapeNoticeText); // 온라인 현황도 이름 효과/배지가 그대로 보이도록 공용 렌더러 사용
                 const status = getPresenceStatusForNumber(i);
                 const row = `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:var(--text-main);"><span style="width:8px; height:8px; border-radius:50%; background:${PRESENCE_STATUS_COLORS[status]}; flex-shrink:0;"></span>${i}번 ${styledName}</div>`;
@@ -9338,7 +9372,7 @@
             const p = parseIdentityFromOriginal(authorOriginal);
             if (p && p.grade === '1' && p.ban === '2' && p.number >= 1 && p.number <= 26) {
                 const sData = profilesData[`student_${p.number}`] || {};
-                return getProfileAppearance(sData.xp || 0, sData.appearance);
+                return getStudentAppearance(p.number, sData);
             }
             return getProfileAppearance(0, null); // 담임/타반 등은 기본값(효과 없음)으로 표시
         }
@@ -13713,13 +13747,14 @@
         function listenToProfiles() {
             onSnapshot(collection(fdb, 'profiles'), (snap) => {
                 profilesData = fsSnapshotToMap(snap);
+                syncOwnXpMirror();
                 const gridEl = document.getElementById('profile-card-grid'); 
                 if(gridEl) gridEl.innerHTML = '';
                 for(let i = 1; i <= 26; i++) {
                     const sData = profilesData[`student_${i}`] || {};
                     const displayName = isRestrictedViewer ? (FIXED_PROFILE_ROSTER[i] || `${i}번`) : (sData.name || '미등록');
                     const thumbPhoto = isRestrictedViewer ? 'https://via.placeholder.com/150' : (sData.photo || 'https://via.placeholder.com/150');
-                    const appearance = getProfileAppearance(sData.xp || 0, sData.appearance);
+                    const appearance = getStudentAppearance(i, sData);
                     const nameHtml = renderStyledName(displayName, appearance);
                     const levelLine = `<div class="profile-thumb-level" style="color:var(--primary);">Lv.${appearance.level} · ${appearance.title}</div>`;
                     const isOn = typeof isNumberOnline === 'function' && isNumberOnline(i);
@@ -13765,7 +13800,7 @@
             onSnapshot(doc(fdb, 'profiles', `student_${num}`), (snap) => {
                 const sData = snap.exists() ? snap.data() : {};
                 document.getElementById('modal-img').src = isRestrictedViewer ? 'https://via.placeholder.com/150' : (sData.photo || 'https://via.placeholder.com/150');
-                const appearance = getProfileAppearance(sData.xp || 0, sData.appearance);
+                const appearance = getStudentAppearance(num, sData);
                 document.getElementById('modal-level-line').textContent = `Lv.${appearance.level} · ${appearance.title}`;
                 const nameInput = document.getElementById('modal-name-input');
                 if (isRestrictedViewer) {
