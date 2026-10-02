@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>페이지를 찾을 수 없어요</title>
+<script>
+    // 호스팅(Render 등)에 "/app/* → /index.html 재작성" 규칙이 없을 때의 안전장치:
+    // /app/<id> 주소로 들어온 요청이면 메인 화면으로 보내면서, 원래 주소를 ?gmw_route= 로 넘긴다(index.html 이 주소창을 복원한다).
+    (function () {
+        var p = location.pathname;
+        if (/^\/app\/[a-z0-9]{6,12}(\/run)?\/?$/.test(p)) location.replace('/?gmw_route=' + encodeURIComponent(p));
+    })();
+</script>
+<style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; min-height: 100vh; margin: 0; align-items: center; justify-content: center; background: #f4f6fb; color: #1f2937; text-align: center; }
+    a { color: #2f6fed; font-weight: 700; }
+</style>
+</head>
+<body>
+    <div>
+        <div style="font-size:48px;">🧭</div>
+        <h1 style="font-size:20px;">페이지를 찾을 수 없어요</h1>
+        <p><a href="/">홈으로 돌아가기</a></p>
+    </div>
+</body>
+</html>
