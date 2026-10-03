@@ -1,9 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <link rel="icon" href="./assets/icon-192.png" type="image/png">
-    <link rel="apple-touch-icon" href="./assets/icon-192.png">
-    <link rel="manifest" href="./manifest.webmanifest">
+    <script>
+        // 호스팅에 "모든 경로 → index.html" 재작성 규칙이 없으면 /app/<id> 요청은 404.html 로 가고, 그 페이지가 "/?gmw_route=/app/<id>"로 되돌려 보낸다.
+        // 여기서 주소창을 원래 주소(/app/<id>)로 복원해서, 앱스토어 라우터가 평소처럼 /app/<id> 를 읽게 한다.
+        (function () { try { var r = new URLSearchParams(location.search).get('gmw_route'); if (r && /^\/app\/[a-z0-9]{6,12}(\/run)?\/?$/.test(r)) history.replaceState(null, '', r); } catch (e) {} })();
+    </script>
+    <link rel="icon" href="/assets/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+    <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#2f6fed">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -345,6 +350,7 @@
 
         /* --- 5.0 모바일 하단 네비게이션 (기본은 숨김, 768px 이하에서만 표시) --- */
         .mobile-bottom-nav { display: none; }
+        .mb-menu-overlay, .mb-menu-sheet { display: none; } /* 모바일 폭(아래 미디어 쿼리)에서만 쓰인다 */
         @media (max-width: 768px) {
             .sidebar { width: 260px; margin-left: -260px; transition: margin-left 0.28s ease; }
             .sidebar.mobile-open { margin-left: 0; width: 260px; box-shadow: 0 0 0 100vmax rgba(15,23,42,0.45); }
@@ -368,7 +374,40 @@
             }
             .mobile-bottom-nav .mb-item span.mb-icon { font-size: 19px; line-height: 1; }
             .mobile-bottom-nav .mb-item.active { color: var(--primary); }
+            .mobile-bottom-nav .mb-item.open { color: var(--primary); }
+
+            /* --- 모바일 '메뉴' 시트: 오른쪽 아래(메뉴 버튼 위)에서 위로 쭉 펼쳐진다 --- */
+            .mb-menu-overlay { display:none; position:fixed; inset:0; z-index:190; background:rgba(15,23,42,0.28); opacity:0; transition:opacity .2s ease; }
+            .mb-menu-overlay.open { display:block; opacity:1; }
+            .mb-menu-sheet { display:none; position:fixed; right:10px; z-index:195; width:min(316px, calc(100vw - 20px)); max-height:calc(100vh - 150px); max-height:calc(100dvh - 150px); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+                background:var(--card-bg); border:1px solid var(--border-color); border-radius:20px; padding:10px 10px 8px; box-shadow:0 14px 40px rgba(15,23,42,0.28); transform-origin:bottom right; }
+            .mb-menu-sheet.open { display:block; animation:mb-sheet-pop .26s cubic-bezier(.2,.9,.3,1.1) both; }
+            .mb-menu-sheet.closing { display:block; animation:mb-sheet-out .16s ease-in both; pointer-events:none; }
+            @keyframes mb-sheet-pop { from { opacity:0; transform:translateY(18px) scale(.92); } to { opacity:1; transform:none; } }
+            @keyframes mb-sheet-out { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(12px) scale(.96); } }
+            /* 항목은 버튼에 가까운 아래쪽부터 위로 차례로 올라온다(--i 가 클수록 위쪽 = 늦게) */
+            .mb-sheet-in { animation:mb-sheet-item .3s cubic-bezier(.2,.9,.3,1) both; animation-delay:calc(var(--i) * 32ms + 40ms); }
+            @keyframes mb-sheet-item { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+            .mb-sheet-head { display:flex; align-items:center; gap:10px; padding:8px 8px 10px; border-bottom:1px solid var(--border-color); margin-bottom:6px; }
+            .mb-sheet-head-main { flex:1; min-width:0; }
+            .mb-sheet-nick { font-size:14px; font-weight:800; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            .mb-sheet-role { font-size:11.5px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            .mb-sheet-mini { flex:none; border:1px solid var(--border-color); background:var(--surface-secondary); color:var(--text-main); border-radius:10px; padding:7px 10px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+            .mb-sheet-mini.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+            .mb-sheet-section { padding:6px 4px 2px; }
+            .mb-sheet-title { font-size:11px; font-weight:800; color:var(--text-muted); letter-spacing:.2px; padding:2px 6px 6px; }
+            .mb-sheet-chips { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+            .mb-sheet-list { display:flex; flex-direction:column; gap:2px; }
+            .mb-sheet-item { display:flex; align-items:center; gap:10px; width:100%; border:none; background:transparent; color:var(--text-main); font-family:inherit; font-size:14px; font-weight:600; text-align:left; padding:11px 10px; border-radius:12px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+            .mb-sheet-item:active { background:var(--hover-bg); }
+            .mb-sheet-item.active { background:var(--primary-soft); color:var(--primary); }
+            .mb-sheet-item .mb-sheet-ico { font-size:18px; width:24px; text-align:center; flex:none; }
+            .mb-sheet-chip { justify-content:center; text-align:center; padding:10px 6px; font-size:13px; background:var(--surface-secondary); }
+            .mb-sheet-foot { display:flex; gap:6px; padding:8px 4px 2px; margin-top:6px; border-top:1px solid var(--border-color); }
+            .mb-sheet-foot .mb-sheet-item { justify-content:center; padding:10px 6px; font-size:13px; background:var(--surface-secondary); }
+            .mb-sheet-foot .mb-sheet-item.danger { color:#dc2626; }
         }
+        @media (prefers-reduced-motion: reduce) { .mb-menu-sheet.open, .mb-menu-sheet.closing, .mb-sheet-in { animation:none !important; } }
 
         /* 메인 & 탭 컨트롤 */
         .main { padding: 40px; overflow-y: auto; margin-left: 78px; width: calc(100% - 78px); box-sizing: border-box; min-height: 100vh; transition: margin-left 0.25s cubic-bezier(.4,0,.2,1), width 0.25s cubic-bezier(.4,0,.2,1); }
@@ -376,6 +415,11 @@
            예전 4.0처럼 본문 영역이 사이드바 폭만큼 오른쪽으로 밀려나게 한다 (모바일 드로어 방식과는 무관하므로 데스크톱 폭에서만 적용). */
         @media (min-width: 769px) {
             .sidebar.pinned-expanded ~ .main { margin-left: 260px; width: calc(100% - 260px); }
+        }
+        /* ⚠️ 위쪽(모바일 하단 네비게이션 쪽) 미디어 쿼리에도 같은 규칙이 있었지만, 이 기본 .main 규칙이 더 뒤에 나와서 모바일에서도 덮어써졌다
+           (왼쪽 78px 여백 + 40px 패딩 → 폰에서 본문 폭이 232px 정도로 줄어 글이 여러 줄로 꺾였다). 기본 규칙 뒤에서 다시 모바일 값을 적용한다. */
+        @media (max-width: 768px) {
+            .main { margin-left: 0; width: 100%; padding: 18px 14px 92px; }
         }
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
@@ -471,6 +515,75 @@
         .feed-post-thumb { display: block; height: calc(14px * 1.55 * 2); width: auto; max-width: 100%; min-width: 30px; border-radius: 6px; object-fit: cover; background: var(--surface-secondary); }
         .feed-post-thumb-count { position: absolute; right: 2px; bottom: 2px; font-size: 9.5px; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 4px; background: rgba(15,23,42,0.7); color: #fff; }
         .feed-post-preview.thumb-hidden .feed-post-thumb-wrap { display: none; }
+
+        /* ===== 앱스토어 ===== */
+        #tab-appstore .as-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+        #tab-appstore .as-header, #tab-appstore .as-run-bar { padding-right: 56px; } /* 오른쪽 위에 떠 있는 알림 버튼과 겹치지 않게 */
+        #tab-appstore .as-btn-new { width:auto; margin-top:0; padding:10px 18px; font-size:13.5px; }
+        .as-toolbar { margin: 4px 0 12px; }
+        .as-toolbar .community-search-input { width:100%; max-width:none; }
+        .as-cats { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px; -webkit-overflow-scrolling:touch; }
+        .as-cat { flex:none; padding:7px 14px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-secondary); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+        .as-cat:hover { background:var(--hover-bg); }
+        .as-cat.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .as-section { margin-top:18px; }
+        .as-section-title { font-size:16px; font-weight:800; color:var(--text-main); margin-bottom:10px; }
+        .as-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+        .as-card { position:relative; display:flex; gap:14px; align-items:flex-start; padding:14px; border:1px solid var(--border-color); border-radius:16px; background:var(--card-bg); cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; min-width:0; }
+        .as-card:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+        .as-card-body { flex:1; min-width:0; }
+        .as-name { font-size:15px; font-weight:800; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .as-desc { font-size:12.5px; color:var(--text-secondary); line-height:1.45; margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+        .as-meta { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:11px; color:var(--text-muted); margin-top:8px; }
+        .as-card-edit { position:absolute; top:8px; right:8px; border:none; background:var(--surface-secondary); border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:13px; }
+        .as-icon-img { flex:none; border-radius:22%; object-fit:cover; background:var(--surface-secondary); display:block; }
+        .as-icon-fallback { flex:none; border-radius:22%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
+        .as-chip { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--primary-soft); color:var(--primary); vertical-align:middle; }
+        .as-chip-warn { background:#fee2e2; color:#b91c1c; }
+        .as-empty { text-align:center; color:var(--text-muted); font-size:13.5px; padding:40px 16px; }
+        .as-detail { margin-top:6px; }
+        .as-detail-top { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
+        .as-detail-info { flex:1; min-width:220px; }
+        .as-detail-name { font-size:22px; font-weight:800; color:var(--text-main); margin:0; word-break:break-word; }
+        .as-detail-sub { font-size:13px; color:var(--text-secondary); margin-top:4px; }
+        .as-stats { display:flex; flex-wrap:wrap; gap:6px 22px; margin-top:12px; }
+        .as-stats div { display:flex; flex-direction:column; min-width:64px; }
+        .as-stats b { font-size:14px; color:var(--text-main); }
+        .as-stats span { font-size:11px; color:var(--text-muted); }
+        .as-actions { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 14px; }
+        .as-actions .auth-btn { width:auto; margin-top:0; padding:10px 22px; }
+        .as-desc-full { font-size:14px; color:var(--text-main); line-height:1.65; word-break:break-word; }
+        .as-link-row { margin-top:14px; font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
+        .as-link-row code { background:var(--surface-secondary); padding:2px 6px; border-radius:6px; }
+        .as-versions { display:flex; flex-direction:column; gap:10px; }
+        .as-version { border-left:3px solid var(--primary); padding:2px 0 2px 12px; }
+        .as-version b { font-size:13.5px; color:var(--text-main); margin-right:8px; }
+        .as-version span { font-size:11.5px; color:var(--text-muted); }
+        .as-version p { font-size:13px; color:var(--text-secondary); margin:3px 0 0; line-height:1.5; }
+        .as-run-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .as-run-title { flex:1; min-width:0; font-size:15px; font-weight:800; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .as-run-note { font-size:11.5px; color:var(--text-muted); margin-bottom:8px; }
+        .as-run-stage { height:calc(100vh - 190px); min-height:420px; border:1px solid var(--border-color); border-radius:14px; overflow:hidden; background:#ffffff !important; backdrop-filter:none !important; }
+        .as-run-stage:fullscreen { height:100vh; border-radius:0; }
+        .as-run-frame { width:100%; height:100%; border:0; display:block; background:#ffffff; color-scheme:light; }
+        .as-form { margin-top:6px; max-width:720px; }
+        .as-form-title { font-size:20px; font-weight:800; margin-bottom:14px; color:var(--text-main); }
+        .as-label { display:block; font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:14px; }
+        .as-label .auth-input, .as-label .auth-select { margin-top:6px; margin-bottom:0; }
+        .as-textarea { min-height:84px; resize:vertical; font-family:inherit; }
+        .as-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .as-hint { font-size:11.5px; color:var(--text-muted); font-weight:500; }
+        .as-label .as-hint { display:block; margin-top:4px; }
+        .as-label > .as-hint:first-of-type { display:inline; }
+        .as-icon-pick { display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:wrap; font-weight:500; }
+        .as-check { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--text-main); margin-bottom:14px; }
+        .as-limits { font-size:11.5px; color:var(--text-muted); background:var(--surface-secondary); border-radius:10px; padding:10px 12px; line-height:1.55; margin-bottom:14px; }
+        .as-error { background:#fee2e2; color:#b91c1c; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; margin-bottom:12px; }
+        .as-form-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+        .as-form-actions .auth-btn { width:auto; margin-top:0; padding:10px 26px; }
+        .as-form-actions > div { display:flex; gap:8px; }
+        .as-danger { color:#dc2626 !important; border-color:#fecaca !important; }
+        @media (max-width: 640px) { .as-row { grid-template-columns:1fr; } .as-grid { grid-template-columns:1fr; } .as-run-stage { height:calc(100vh - 230px); } }
         .feed-post-footer { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
         .feed-post-footer > span:first-child { display: flex; align-items: center; gap: 16px; }
         .feed-comment-count { color: var(--text-muted); font-weight: 600; cursor: pointer; }
@@ -603,6 +716,24 @@
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
+        /* ===== 모바일(세로) 화면 조정: 홈 위젯/카드 가독성 =====
+           - 6칸 그리드에서 위젯마다 "span 2/4" 같은 칸 수가 박혀 있어서, 모바일처럼 1열로 줄이면 span 때문에 보이지 않는 추가 열이 생기고
+             그만큼 카드 폭이 줄어들었다(반 설문 카드가 다른 카드보다 좁던 원인). 모바일에서는 모든 위젯이 한 줄 전체를 쓰도록 span 을 무시한다.
+           - 카드 안쪽 여백/글씨/간격을 좁은 화면에 맞게 줄여 글이 여러 줄로 꺾이는 것을 줄인다. */
+        @media (max-width: 768px) {
+            .dashboard-grid { gap: 12px; margin-bottom: 14px; }
+            .dashboard-grid > * { grid-column: 1 / -1 !important; }
+            .card { padding: 16px 16px 15px; border-radius: 18px; }
+            .card-title { font-size: 15.5px; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+            .header { margin-bottom: 14px; }
+            .header h1 { font-size: 21px; margin-bottom: 4px; letter-spacing: -0.4px; }
+            .header p { font-size: 13px; line-height: 1.45; }
+            .home-section-header { margin-bottom: 8px; }
+            #tab-home .home-section { margin-bottom: 4px; }
+            #home-popular-posts { grid-template-columns: 1fr !important; gap: 8px !important; }
+            #home-sections-container .card .widget-text, #home-sections-container .card .meal-desc { font-size: 13.5px; line-height: 1.5; }
+            #home-layout-edit-toolbar { flex-wrap: wrap; }
+        }
         /* 반 공용 일정 - 태그 필터 팝오버 (버튼 바로 아래에 붙는 compact popup) */
         .tag-filter-popover {
             position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
@@ -2067,8 +2198,8 @@
             <div class="sidebar-menu-container">
                 <div class="sidebar-header">
                     <div class="sidebar-logo">
-                        <img class="sidebar-logo-collapsed" src="./assets/logo-collapsed.png" alt="1-2 Community 로고">
-                        <img class="sidebar-logo-expanded" src="./assets/logo-wide.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <img class="sidebar-logo-collapsed" src="/assets/logo-collapsed.png" alt="1-2 Community 로고">
+                        <img class="sidebar-logo-expanded" src="/assets/logo-wide.png" alt="1-2 Community 로고" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <span class="sidebar-logo-fallback-text" style="display:none; font-size:16px; font-weight:800; letter-spacing:-0.3px; background:linear-gradient(90deg, var(--brand-navy), var(--brand-blue)); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;">1-2</span>
                     </div>
                 </div>
@@ -2111,7 +2242,7 @@
                 </div>
 
                 <!-- 5.0 신규 사이드바 정보구조: 홈 / 커뮤니티(자유게시판·공지사항·설문·친구들) / 학습(플래너·학습기록·통계) /
-                     자료실(공부·기타·클라우드) / MixTape / 게임 / 아카이브 / 내 프로필. 평소엔 아이콘만(Compact), hover 시 전체 펼침(Expanded). -->
+                     자료실(공부·기타·클라우드) / MixTape / 앱스토어 / 아카이브 / 내 프로필. 평소엔 아이콘만(Compact), hover 시 전체 펼침(Expanded). -->
                 <nav class="sidebar-nav" style="flex: 1 0 auto; display:flex; flex-direction:column;">
                     <div class="nav-item active" data-tab="home" onclick="switchTab('home')"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></div>
 
@@ -2154,7 +2285,7 @@
                     </div>
 
                     <div class="nav-item" data-tab="mixtape" id="nav-mixtape" onclick="switchTab('mixtape')"><span class="nav-icon">🎵</span><span class="nav-label">1-2 Music</span></div>
-                    <div class="nav-item" data-tab="pokemon" id="nav-pokemon" onclick="switchTab('pokemon')"><span class="nav-icon">🎮</span><span class="nav-label">게임</span></div>
+                    <div class="nav-item" data-tab="appstore" id="nav-appstore" onclick="openAppStore()"><span class="nav-icon">🧩</span><span class="nav-label">앱스토어</span></div>
 
                     <div class="nav-group" id="nav-group-myprofile">
                         <div class="nav-group-header" onclick="toggleNavGroup('myprofile')">
@@ -2185,11 +2316,15 @@
         <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
             <div class="mb-item active" data-tab="home" onclick="switchTab('home')"><span class="mb-icon">🏠</span>홈</div>
             <div class="mb-item" data-tab="community" onclick="switchTab('community')"><span class="mb-icon">👥</span>커뮤니티</div>
+            <div class="mb-item" data-tab="appstore" onclick="openAppStore()"><span class="mb-icon">🧩</span>앱스토어</div>
             <div class="mb-item" data-tab="materials" onclick="switchTab('materials')"><span class="mb-icon">🗂</span>자료실</div>
-            <div class="mb-item" data-tab="mixtape" onclick="switchTab('mixtape')"><span class="mb-icon">🎵</span>1-2 Music</div>
+            <div class="mb-item" data-tab="mixtape" onclick="switchTab('mixtape')"><span class="mb-icon">🎵</span>음악</div>
             <div class="mb-item" data-tab="profile" onclick="switchTab('profile')"><span class="mb-icon">👤</span>프로필</div>
-            <div class="mb-item" id="mb-menu-btn"><span class="mb-icon">☰</span>메뉴</div>
+            <div class="mb-item" id="mb-menu-btn" role="button" aria-haspopup="true" aria-expanded="false" aria-controls="mb-menu-sheet"><span class="mb-icon">☰</span><span class="mb-menu-label">메뉴</span></div>
         </nav>
+        <!-- 모바일 '메뉴' 시트: 메뉴 버튼 바로 위(오른쪽)에서 항목이 아래→위로 차례로 올라온다. 내용은 열 때마다 사이드바(.sidebar-nav)에서 만들어서 메뉴가 바뀌어도 자동으로 따라간다. -->
+        <div id="mb-menu-overlay" class="mb-menu-overlay"></div>
+        <div id="mb-menu-sheet" class="mb-menu-sheet" role="menu" aria-hidden="true"></div>
 
         <!-- 나의 성장 (XP/레벨/프로필 효과) 모달 - 어느 탭에서나 사이드바에서 열 수 있어야 하므로 tab-content 밖에 둔다 -->
         <div id="growth-modal" class="modal-overlay" style="display:none;">
@@ -2330,7 +2465,7 @@
                             <span style="font-size:11.5px; color:var(--text-main); font-weight:600;">기본1</span>
                         </button>
                         <button class="bg-preset-option" data-preset="default2" onclick="setActiveBackgroundPreset('default2')" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:84px; padding:6px; border-radius:12px; border:2px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; font-family:inherit;">
-                            <span style="width:100%; height:48px; border-radius:8px; overflow:hidden; background:#dbeafe;"><img src="./assets/bg-preset2-light.webp" style="width:100%; height:100%; object-fit:cover; display:block;"></span>
+                            <span style="width:100%; height:48px; border-radius:8px; overflow:hidden; background:#dbeafe;"><img src="/assets/bg-preset2-light.webp" style="width:100%; height:100%; object-fit:cover; display:block;"></span>
                             <span style="font-size:11.5px; color:var(--text-main); font-weight:600;">기본2</span>
                         </button>
                         <button class="bg-preset-option" data-preset="custom" onclick="setActiveBackgroundPreset('custom')" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:84px; padding:6px; border-radius:12px; border:2px solid var(--border-color); background:var(--surface-secondary); cursor:pointer; font-family:inherit;">
@@ -3076,124 +3211,9 @@
               </div>
             </div>
 
-            <div id="tab-pokemon" class="tab-content">
-                <div class="header"><h1>게임 🎮</h1><p>우리 반이 함께 즐기는 게임 공간</p></div>
-                <div id="pokemon-secure-content" style="display: none;">
-                    <div class="card" style="margin-bottom: 24px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
-                            <div class="card-title" style="margin-bottom: 0;">🎮 게임 플레이</div>
-                            <button id="btn-add-game" onclick="openGameModal(null)" class="auth-btn" style="display:none; width:auto; padding:8px 16px; font-size:13px; margin-top:0;">➕ 게임 추가</button>
-                        </div>
-                        <div id="games-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:16px;"></div>
-                    </div>
-
-                    <div class="card" style="margin-bottom: 24px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                            <div class="card-title" style="margin-bottom: 0;">🗂️ 게임 커뮤니티</div>
-                            <button id="btn-manage-categories" onclick="openCategoryManageModal()" class="btn-sub" style="display:none; padding: 6px 12px; font-size:12px;">⚙️ 카테고리 관리</button>
-                        </div>
-                        <div id="pokemon-category-filters" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
-                    </div>
-
-                    <div class="card" style="margin-bottom: 24px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div class="card-title" style="margin-bottom: 0;">📝 커뮤니티 글쓰기</div>
-                            <button class="auth-btn" style="width: auto; padding: 8px 18px; font-size: 13px; margin-top: 0;" onclick="startNewPokemonPost()">✏️ 새 글 작성하기</button>
-                        </div>
-                        <div id="pokemon-post-form" style="display: none; margin-top: 16px;">
-                            <div class="community-back-link" onclick="closePokemonCompose()">← 게임 커뮤니티</div>
-                            <select id="pokemon-post-category" class="auth-select" style="margin-bottom: 10px;"></select>
-                            <input type="text" id="pokemon-post-title" class="community-compose-input" placeholder="제목을 입력하세요" style="margin-bottom: 10px;">
-                            <div id="pokemon-post-content-toolbar-slot"></div>
-                            <div id="pokemon-post-content" class="rich-editable" contenteditable="true" data-placeholder="내용을 입력하세요"></div>
-                            <div class="community-compose-footer">
-                                <button class="btn-sub" onclick="closePokemonCompose()">취소</button>
-                                <button class="community-post-btn" onclick="handlePokemonPostSubmit()">게시하기</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="pokemon-feed-view">
-                        <div class="notice-hub-toolbar">
-                            <div class="community-tabs">
-                                <button class="community-tab active" data-tab="all" onclick="setPokemonSortTab('all')">전체</button>
-                                <button class="community-tab" data-tab="popular" onclick="setPokemonSortTab('popular')">인기</button>
-                            </div>
-                            <input type="text" id="pokemon-search-input" class="community-search-input" placeholder="🔎 게시글 검색" oninput="renderPokemonPosts()">
-                        </div>
-                        <div id="pokemon-posts-container"></div>
-                    </div>
-                    <div id="pokemon-detail-view" style="display:none;"></div>
-                </div>
-                <div id="pokemon-locked-content" style="display: none;">
-                    <div class="card" style="text-align: center; padding: 50px 20px; border-color: #f87171;">
-                        <span style="font-size: 50px;">🔒</span>
-                        <h2 style="margin-top: 20px; color: #dc2626;">접근 권한이 없습니다</h2>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 게임 관리 모달 (커뮤니티 엔지니어 / 창시자 전용) -->
-            <div id="game-modal" class="modal-overlay" style="display: none;">
-                <div class="modal-card" style="max-width: 440px;">
-                    <span class="close-btn" onclick="closeGameModal()">&times;</span>
-                    <h3 id="game-modal-title" style="margin-bottom: 15px;">게임 추가</h3>
-                    <div style="display:flex; flex-direction:column; gap:10px;">
-                        <div>
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">게임 이름</label>
-                            <input type="text" id="game-input-title" class="auth-input" placeholder="예: 포켓몬 챔피언스">
-                        </div>
-                        <div>
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">설명</label>
-                            <input type="text" id="game-input-desc" class="auth-input" placeholder="게임에 대한 짧은 설명">
-                        </div>
-                        <div>
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">플레이 URL</label>
-                            <input type="text" id="game-input-url" class="auth-input" placeholder="https://...">
-                        </div>
-                        <div>
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">배경 이미지 (imgbb 등 이미지 URL)</label>
-                            <div style="display:flex; gap:6px;">
-                                <input type="text" id="game-input-bg" class="auth-input" style="margin-bottom:0;" placeholder="https://i.ibb.co/... (비워두면 기본 배경)">
-                                <button type="button" class="btn-sub" style="flex-shrink:0; padding:0 12px;" onclick="document.getElementById('game-input-bg-file').click()">📷 업로드</button>
-                                <input type="file" id="game-input-bg-file" accept="image/*" style="display:none;" onchange="uploadGameBgImage(this)">
-                            </div>
-                            <div id="game-bg-upload-status" style="font-size:11px; color:var(--text-muted); margin-top:4px;"></div>
-                        </div>
-                        <div>
-                            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">기본 배경 색상 (배경 이미지가 없을 때 사용)</label>
-                            <input type="color" id="game-input-color" class="auth-input" style="padding:4px; height:38px;" value="#3b82f6">
-                        </div>
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1;">
-                                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">표시 순서</label>
-                                <input type="number" id="game-input-order" class="auth-input" value="0">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">상태</label>
-                                <select id="game-input-enabled" class="auth-select">
-                                    <option value="true">활성</option>
-                                    <option value="false">비활성</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button onclick="saveGame()" class="auth-btn" style="margin-top:5px;">💾 저장</button>
-                        <button id="game-delete-btn" onclick="deleteGameFromModal()" class="auth-btn" style="display:none; background:#ef4444; margin-top:0;">🗑️ 이 게임 삭제</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 카테고리 관리 모달 (커뮤니티 엔지니어 / 창시자 전용) -->
-            <div id="category-modal" class="modal-overlay" style="display: none;">
-                <div class="modal-card" style="max-width: 400px;">
-                    <span class="close-btn" onclick="closeCategoryModal()">&times;</span>
-                    <h3 style="margin-bottom: 15px;">게임 커뮤니티 카테고리 관리</h3>
-                    <div id="category-manage-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
-                    <div style="display:flex; gap:8px;">
-                        <input type="text" id="category-input-new" class="auth-input" placeholder="새 카테고리 이름" style="flex:1;">
-                        <button onclick="addCategory()" class="auth-btn" style="width:auto; padding:10px 16px; margin-top:0;">추가</button>
-                    </div>
-                </div>
+            <!-- 앱스토어: HTML 웹앱(단일 .html / .zip)을 올려 게시하고 /app/<id> 에서 격리된 sandbox 로 실행·다운로드한다. 화면은 모듈 스크립트(앱스토어)가 #as-root 에 그린다. -->
+            <div id="tab-appstore" class="tab-content">
+                <div id="as-root"></div>
             </div>
 
             <div id="tab-squad" class="tab-content">
@@ -4037,7 +4057,7 @@
         let canManageSeats = false; // 랜덤 자리 배치: 커뮤니티 엔지니어(관리자)/반장/부반장/담임선생님만 셔플·개별 자리 수정 가능
         let canManageShortcuts = false; // 홈 바로가기: 커뮤니티 엔지니어(관리자)/반장/부반장/담임선생님만 추가·수정·삭제 가능
         let isTeacherAccount = false;
-        let isRestrictedViewer = false; // 1-2 담임선생님 + 타반 학생: 게임/커뮤니티 접근 불가, 프로필은 열람만 가능(사진 기본, 설명/댓글 비공개)
+        let isRestrictedViewer = false; // 1-2 담임선생님 + 타반 학생: 커뮤니티 접근 불가, 프로필은 열람만 가능(사진 기본, 설명/댓글 비공개)
         const TEACHER_ACCOUNT_EMAILS = ["nassir@hanilgo.cnehs.kr", "20261240@hanilgo.cnehs.kr"];
 
         // --- "1230 운영자" 권한: 최고관리자(isAdmin)/부관리자(isSubAdmin)와는 별개의 "콘텐츠 운영자" 등급 ---
@@ -4068,17 +4088,6 @@
             else el.textContent = nick;
         }
         const getAuthorOriginal = () => currentUserInfo ? `${currentUserInfo.number}번` : "익명";
-
-        // POKEMON_CHAMPIONS_URL에 실제 게임 주소를 입력하면
-        // 포켓몬 챔피언스 플레이 버튼이 해당 게임으로 연결됩니다.
-        const POKEMON_CHAMPIONS_URL = "https://1-2pocketmon-champions-beta.netlify.app/";
-
-        function updatePokemonChampionsButton() {
-            const button = document.getElementById('pokemon-play-button');
-            if (!button) return;
-            button.innerHTML = "▶ 플레이";
-            button.onclick = window.playPokemonChampions;
-        }
 
         // --- 시간 표시 유틸 ---
         function formatPostTime(ts) {
@@ -4177,7 +4186,6 @@
                 ['post-content-toolbar-slot', 'post-content'],
                 ['notice-form-content-toolbar-slot', 'notice-form-content'],
                 ['poll-form-desc-toolbar-slot', 'poll-form-desc'],
-                ['pokemon-post-content-toolbar-slot', 'pokemon-post-content'],
             ];
             slots.forEach(([slotId, targetId]) => {
                 const slot = document.getElementById(slotId);
@@ -4223,12 +4231,89 @@
         sidebar.addEventListener('mouseenter', restoreSidebarScroll); // 데스크톱 마우스로 펼칠 때
 
         // 5.0 모바일: 하단 '메뉴' 버튼으로 사이드바를 드로어처럼 열고, 바깥(반투명 오버레이) 클릭 시 닫는다.
+        // (모바일 하단 '메뉴' 버튼은 이제 왼쪽 드로어 대신, 버튼 바로 위에서 항목이 차례로 올라오는 시트(#mb-menu-sheet)를 연다.)
         const mbMenuBtn = document.getElementById('mb-menu-btn');
-        if (mbMenuBtn) {
-            mbMenuBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('mobile-open');
-                if (sidebar.classList.contains('mobile-open')) restoreSidebarScroll();
+        const mbSheet = document.getElementById('mb-menu-sheet');
+        const mbOverlay = document.getElementById('mb-menu-overlay');
+        function closeMobileMenu(immediate) {
+            if (!mbSheet || !mbSheet.classList.contains('open')) return;
+            mbOverlay.classList.remove('open');
+            mbMenuBtn.classList.remove('open'); mbMenuBtn.setAttribute('aria-expanded', 'false');
+            mbMenuBtn.querySelector('.mb-icon').textContent = '☰';
+            mbSheet.setAttribute('aria-hidden', 'true');
+            mbSheet.classList.remove('open');
+            if (!immediate) { mbSheet.classList.add('closing'); setTimeout(() => mbSheet.classList.remove('closing'), 170); }
+        }
+        // 사이드바 DOM 에서 지금 보이는 메뉴를 그대로 읽어 시트를 만든다(로그인/게스트/권한에 따라 숨겨진 항목은 자동으로 빠진다).
+        function buildMobileMenu() {
+            const visible = (el) => !!el && getComputedStyle(el).display !== 'none';
+            const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const actions = []; // index → 눌렀을 때 실행할 원래 사이드바 요소
+            const make = (el, cls, withIcon) => {
+                const label = (el.querySelector('.nav-label') || el).textContent.trim();
+                const icon = el.querySelector('.nav-icon');
+                actions.push(el);
+                return `<button type="button" class="mb-sheet-item ${cls || ''} ${el.classList.contains('active') ? 'active' : ''}" role="menuitem" data-mb="${actions.length - 1}">${withIcon && icon ? `<span class="mb-sheet-ico">${esc(icon.textContent.trim())}</span>` : ''}<span>${esc(label)}</span></button>`;
+            };
+            const blocks = []; // 위에서 아래 순서의 덩어리들(애니메이션은 아래쪽부터 시작)
+            const profileCard = document.getElementById('user-profile-card'), guestCard = document.getElementById('guest-login-card');
+            if (visible(profileCard)) {
+                const nick = (document.getElementById('profile-nick-text') || {}).textContent || '';
+                const role = (document.getElementById('profile-role-text') || {}).textContent || '';
+                blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">👤 ${esc(nick.trim())}</div><div class="mb-sheet-role">${esc(role.trim())}</div></div><button type="button" class="mb-sheet-mini" data-mb-act="nick">✏️ 닉네임</button></div>`);
+            } else if (visible(guestCard)) {
+                blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">로그인하지 않았어요</div><div class="mb-sheet-role">글쓰기·좋아요는 로그인이 필요해요</div></div><button type="button" class="mb-sheet-mini primary" data-mb-act="login">🔑 로그인</button></div>`);
+            }
+            document.querySelectorAll('.sidebar-nav > *').forEach((node) => {
+                if (!visible(node)) return;
+                if (node.classList.contains('nav-item')) {
+                    blocks.push(`<div class="mb-sheet-list">${make(node, '', true)}</div>`);
+                } else if (node.classList.contains('nav-group')) {
+                    const header = node.querySelector('.nav-group-header');
+                    const items = [...node.querySelectorAll('.nav-group-items > .nav-item')].filter(visible);
+                    if (!items.length) return;
+                    const title = `${header.querySelector('.nav-icon').textContent.trim()} ${header.querySelector('.nav-label').textContent.trim()}`;
+                    blocks.push(`<div class="mb-sheet-section"><div class="mb-sheet-title">${esc(title)}</div><div class="mb-sheet-chips">${items.map(it => make(it, 'mb-sheet-chip', false)).join('')}</div></div>`);
+                }
             });
+            const foot = [];
+            ['btn-open-settings', 'btn-logout'].forEach((id) => { const el = document.getElementById(id); if (visible(el)) foot.push(make(el, id === 'btn-logout' ? 'danger' : '', true)); });
+            if (foot.length) blocks.push(`<div class="mb-sheet-foot">${foot.join('')}</div>`);
+            // 아래쪽 덩어리일수록 먼저(--i 작게) 올라오도록 인덱스를 뒤집어 각 덩어리를 감싼다
+            mbSheet.innerHTML = blocks.map((html, idx) => `<div class="mb-sheet-in" style="--i:${blocks.length - 1 - idx}">${html}</div>`).join('');
+            mbSheet._actions = actions;
+        }
+        function openMobileMenu() {
+            buildMobileMenu();
+            const nav = document.getElementById('mobile-bottom-nav');
+            const h = nav ? nav.getBoundingClientRect().height : 62;
+            mbSheet.style.bottom = (h + 12) + 'px';
+            mbSheet.style.maxHeight = `calc(100dvh - ${h + 80}px)`;
+            mbSheet.scrollTop = 0;
+            mbSheet.classList.remove('closing'); mbSheet.classList.add('open'); mbSheet.setAttribute('aria-hidden', 'false');
+            mbOverlay.classList.add('open');
+            mbMenuBtn.classList.add('open'); mbMenuBtn.setAttribute('aria-expanded', 'true');
+            mbMenuBtn.querySelector('.mb-icon').textContent = '✕';
+        }
+        if (mbMenuBtn && mbSheet) {
+            mbMenuBtn.addEventListener('click', () => { if (window.innerWidth > 768) return; mbSheet.classList.contains('open') ? closeMobileMenu() : openMobileMenu(); });
+            mbOverlay.addEventListener('click', () => closeMobileMenu());
+            mbSheet.addEventListener('click', (e) => {
+                const act = e.target.closest('[data-mb-act]');
+                if (act) {
+                    closeMobileMenu();
+                    if (act.dataset.mbAct === 'login' && window.showLoginScreen) window.showLoginScreen();
+                    if (act.dataset.mbAct === 'nick' && window.setNickname) window.setNickname();
+                    return;
+                }
+                const btn = e.target.closest('[data-mb]');
+                if (!btn) return;
+                const el = (mbSheet._actions || [])[Number(btn.dataset.mb)];
+                closeMobileMenu();
+                if (el) setTimeout(() => el.click(), 60); // 시트가 닫히기 시작한 뒤 원래 메뉴 동작 실행
+            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMobileMenu(true); });
+            window.addEventListener('resize', () => { if (window.innerWidth > 768) closeMobileMenu(true); });
         }
         sidebar.addEventListener('click', (e) => {
             if (e.target === sidebar && window.innerWidth <= 768) sidebar.classList.remove('mobile-open');
@@ -4267,7 +4352,7 @@
         const NAV_GROUP_OF_TAB = { community:'community', meal:'school', timetable:'school', schedule:'school', exam:'school', cleaning:'school', squad:'school', seat:'school', planner:'study' };
 
         window.switchTab = function(tabId) {
-            if (isRestrictedViewer && (tabId === 'community' || tabId === 'pokemon')) { tabId = 'home'; }
+            if (isRestrictedViewer && tabId === 'community') { tabId = 'home'; }
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             const target = document.getElementById(`tab-${tabId}`);
             if(target) target.classList.add('active');
@@ -4482,14 +4567,14 @@
                         
                         document.getElementById('welcome-title').innerText = isTeacherAccount ? "1-2 담임선생님, 반가워요! 🏠" : `${d.grade}학년 ${d.ban}반 반가워요! 🏠`;
                         
-                        ['community', 'materials', 'exam', 'seat', 'profile', 'pokemon'].forEach(id => {
+                        ['community', 'materials', 'exam', 'seat', 'profile'].forEach(id => {
                             const canView = is2Ban || isRestrictedViewer;
                             document.getElementById(`${id}-secure-content`).style.display = canView ? 'block' : 'none';
                             document.getElementById(`${id}-locked-content`).style.display = canView ? 'none' : 'block';
                         });
 
-                        // 1-2 담임선생님 & 타반 학생 계정에게는 게임 / 커뮤니티만 완전히 숨긴다 (2반 아카이브·프로필 등은 열람 가능)
-                        ['nav-community', 'nav-pokemon'].forEach(id => {
+                        // 1-2 담임선생님 & 타반 학생 계정에게는 커뮤니티만 완전히 숨긴다 (2반 아카이브·프로필 등은 열람 가능)
+                        ['nav-community'].forEach(id => {
                             const el = document.getElementById(id);
                             if (el) el.style.display = isRestrictedViewer ? 'none' : '';
                         });
@@ -4498,13 +4583,11 @@
                             if (el) el.style.display = isRestrictedViewer ? 'none' : '';
                         });
                         if (isRestrictedViewer) {
-                            ['community', 'pokemon'].forEach(id => {
+                            ['community'].forEach(id => {
                                 const sec = document.getElementById(`${id}-secure-content`); if (sec) sec.style.display = 'none';
                                 const lock = document.getElementById(`${id}-locked-content`); if (lock) lock.style.display = 'none';
                             });
                         }
-
-                        updatePokemonChampionsButton();
 
                         listenToProfiles(); renderCurrentDuty(); renderHomeTimetable(); fetchMeals(); fetchWeather(); listenToHomeWidgets(); renderTimetableTable(); listenToNotices(); listenToPolls(); renderWeeklyReportSummary(); renderCurrentPeriodWidget(); renderDailyMissionsWidget(); setupPresence(); listenToPresence(); listenToSharedSchedule(); listenToPersonalSchedule(); listenToShortcuts();
                         // NEIS 학사일정 자동 동기화: 세션당 한 번만 시도하고, 브라우저별로 최근 동기화 후 일정 시간 내면 건너뛴다.
@@ -4517,11 +4600,8 @@
                             // listenToPosts/listenToArchiveStudy/listenToArchiveEtc/loadSupabaseMaterials는
                             // 게스트 모드에서 이미 구독했을 수 있으니(isListeningToGuestReadable) 중복 구독하지 않는다.
                             if (!isListeningToGuestReadable) { listenToPosts(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials(); isListeningToGuestReadable = true; }
-                            listenToArchive(); listenToExamNotes(); listenToCalendar(); listenToSeating(); listenToPokemonPosts(); listenToGames(); listenToGameCategories();
+                            listenToArchive(); listenToExamNotes(); listenToCalendar(); listenToSeating();
                             isListeningToPosts = true;
-                        } else if (is2Ban) {
-                            // 이미 리스닝 중이더라도 로그인 정보가 갱신되며 isAdmin이 바뀔 수 있으므로 버튼 표시 등을 다시 그려준다
-                            renderGames(); renderCategoryFilters();
                         }
                         if (!isListeningToSquad) { listenToSquad(); isListeningToSquad = true; }
                 }
@@ -4548,7 +4628,7 @@
         });
 
         // ===== 게스트(비로그인) 열람 모드 =====
-        // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/게임/플래너/프로필/자리 등은 그대로 로그인 필요.
+        // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/플래너/프로필/자리 등은 그대로 로그인 필요.
         function applyGuestUI() {
             document.getElementById('user-profile-card').style.display = 'none';
             document.getElementById('guest-login-card').style.display = 'block';
@@ -4578,6 +4658,14 @@
             const canDismiss = !currentUser && auth.currentUser && auth.currentUser.isAnonymous;
             document.getElementById('auth-container-close').style.display = canDismiss ? 'block' : 'none';
             document.getElementById('auth-container').style.display = 'flex';
+        };
+        // 앱스토어 모듈(별도 <script type="module">)이 로그인 상태를 쓰기 위한 최소한의 브리지.
+        // 게스트(익명) 세션은 currentUser 가 null 이므로 "진짜 로그인한 사용자"만 user()로 보인다.
+        window.__gmwAuth = {
+            user: () => currentUser,
+            token: async () => (currentUser ? currentUser.getIdToken() : null),
+            login: (cb) => showLoginScreen(cb),
+            displayName: () => getAuthorName()
         };
         window.hideLoginScreen = function() {
             // 사용자가 로그인 위젯을 스스로 닫으면(X 버튼 등), 하려던 작업도 취소된 것으로 본다 -
@@ -6113,7 +6201,7 @@
         const BG_DARK_DIM_KEY = 'hanilgo_bg_dark_dim';
         const BG_DARK_DIM_DEFAULT = 35;
         const BACKGROUND_PRESETS = {
-            default2: { light: './assets/bg-preset2-light.webp', dark: './assets/bg-preset2-dark.webp' }
+            default2: { light: '/assets/bg-preset2-light.webp', dark: '/assets/bg-preset2-dark.webp' }
         };
         function openBgDB() {
             return new Promise((resolve, reject) => {
@@ -8531,7 +8619,7 @@
             writeOwnProfileDoc(num, { nickname: want });
         }
 
-        // 프로필(닉네임/꾸미기/레벨/연속 출석)이 바뀌면 이미 그려진 글·아카이브·포켓몬 글·사이드바 이름도 새 값으로 다시 그린다.
+        // 프로필(닉네임/꾸미기/레벨/연속 출석)이 바뀌면 이미 그려진 글·아카이브·사이드바 이름도 새 값으로 다시 그린다.
         // 매 스냅샷마다 다시 그리면 댓글을 쓰는 중에 입력이 날아가므로, 작성자 표시에 영향을 주는 값이 실제로 바뀐 때만, 입력 중이 아닐 때만 그린다.
         let authorViewsSig = null, authorViewsTimer = null;
         function authorViewsSignature() {
@@ -8556,7 +8644,6 @@
             safe(() => renderSidebarNick());
             safe(() => { if (Object.keys(latestPostsData || {}).length) renderPostsList(latestPostsData); });
             safe(() => { if (archiveSnapshotHandler && lastArchiveSnapshot) archiveSnapshotHandler(lastArchiveSnapshot); });
-            safe(() => { if (typeof renderPokemonPosts === 'function') renderPokemonPosts(); });
         }
 
         // addXP()가 호출될 때마다 실행된다: 사이드바 갱신 + 레벨업 감지 + (본인 프로필이 있는 경우) Firestore profiles에 xp 미러링.
@@ -10691,693 +10778,7 @@
             }
         });
 
-// --- 게임 (구 포켓몬 챔피언스) ---
-        let pokemonPostsCache = {};
-        let pokemonCategoryFilter = '전체';
-        let gamesCache = {};
-        let categoriesCache = {};
-        let editingGameId = null; // null이면 신규 추가, 값이 있으면 수정 모드
-
-        // Firebase에 아직 게임이 하나도 없을 때 보여줄 기본(하드코딩) 게임 — 절대 URL을 임의로 바꾸지 않음
-        const DEFAULT_FALLBACK_GAME = {
-            id: "pokemon-champions",
-            title: "포켓몬 챔피언스",
-            description: "우리가 함께 만들어가는 포켓몬 게임",
-            url: POKEMON_CHAMPIONS_URL,
-            backgroundImage: "./assets/pocketmonchampionsbackground.jpg",
-            order: 0,
-            enabled: true
-        };
-
-        // 카테고리가 Firebase에 아직 하나도 없을 때 사용할 기본값 ("공지"는 절대 포함하지 않음)
-        const DEFAULT_GAME_CATEGORIES = ["자유", "공략/정보", "질문"];
-
-        window.playPokemonChampions = function() {
-            if (!POKEMON_CHAMPIONS_URL || POKEMON_CHAMPIONS_URL === "여기에_게임_링크") {
-                alert("정식 출시일은 8월 17일 입니다.");
-                return;
-            }
-            window.open(POKEMON_CHAMPIONS_URL, '_blank');
-        }
-
-        window.playGameUrl = function(url) {
-            if (!url) { alert("아직 준비 중인 게임입니다. (URL이 등록되지 않았어요)"); return; }
-            const newWin = window.open(url, '_blank');
-            // 카카오톡 인앱 브라우저 등에서 window.open이 차단되면 newWin이 null이거나 즉시 닫힘
-            if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
-                location.href = url;
-            }
-        }
-
-        // ===== 게임 목록 렌더링 =====
-        function renderGames() {
-            const container = document.getElementById('games-container');
-            if (!container) return;
-            const addBtn = document.getElementById('btn-add-game');
-            if (addBtn) addBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
-            const entries = Object.entries(gamesCache);
-            let html = '';
-
-            if (entries.length === 0) {
-                // Firebase에 게임이 없으면 기존 하드코딩 포켓몬 챔피언스를 그대로 보여준다 (중복 방지)
-                const g = DEFAULT_FALLBACK_GAME;
-                html += renderGameCard(null, g, true);
-            } else {
-                entries.sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
-                entries.forEach(([id, g], idx) => {
-                    if (!g.enabled && !isAdmin) return; // 비활성 게임은 관리자만 볼 수 있음
-                    html += renderGameCard(id, g, false, idx === 0, idx === entries.length - 1);
-                });
-            }
-            container.innerHTML = html;
-        }
-
-        function renderGameCard(id, g, isFallback, isFirst, isLast) {
-            const bg = g.backgroundImage
-                ? `background-image: linear-gradient(rgba(15,23,42,0.5), rgba(15,23,42,0.5)), url('${g.backgroundImage}'); background-size: cover; background-position: center;`
-                : (g.color ? `background: ${g.color};` : `background: linear-gradient(135deg, #3b82f6, #6366f1);`);
-            const disabledBadge = (!g.enabled && !isFallback) ? `<span class="badge" style="background:#fee2e2; color:#991b1b; font-size:10px; margin-bottom:6px; display:inline-block;">비활성</span><br>` : '';
-            const safeUrl = escapeJsAttr(g.url || '');
-            let adminControls = '';
-            if (isAdmin) {
-                adminControls = `<div style="display:flex; gap:6px; justify-content:center; margin-top:8px; flex-wrap:wrap;">
-                    <button onclick="openGameModal('${isFallback ? '' : id}')" class="btn-sub" style="padding:5px 10px; font-size:11px;">⚙️ 관리</button>
-                    ${(!isFallback && !isFirst) ? `<button onclick="moveGame('${id}', -1)" class="btn-sub" style="padding:5px 10px; font-size:11px;">▲ 위로</button>` : ''}
-                    ${(!isFallback && !isLast) ? `<button onclick="moveGame('${id}', 1)" class="btn-sub" style="padding:5px 10px; font-size:11px;">▼ 아래로</button>` : ''}
-                </div>`;
-            }
-            return `
-                <div class="card" style="text-align:center; padding: 28px 16px; border: none; ${bg}">
-                    ${disabledBadge}
-                    <div class="game-card-title" style="font-size: 16px; font-weight: 800; margin-bottom: 4px;">${g.title}</div>
-                    <p class="game-card-desc" style="font-size: 12px; margin-bottom: 14px;">${g.description || ''}</p>
-                    <button class="auth-btn" style="width: auto; padding: 10px 28px; font-size: 14px; margin-top: 0;" onclick="playGameUrl('${safeUrl}')">▶ 플레이</button>
-                    ${adminControls}
-                </div>
-            `;
-        }
-
-        function listenToGames() {
-            onSnapshot(collection(fdb, 'games'), (snapshot) => {
-                gamesCache = fsSnapshotToMap(snapshot);
-                renderGames();
-            });
-        }
-
-        window.openGameModal = function(gameId) {
-            if (!isAdmin) return;
-            editingGameId = gameId || null;
-            const isFallbackEdit = (!gameId && Object.keys(gamesCache).length === 0);
-            const g = gameId ? gamesCache[gameId] : (isFallbackEdit ? DEFAULT_FALLBACK_GAME : null);
-
-            document.getElementById('game-modal-title').innerText = gameId ? '게임 수정' : (isFallbackEdit ? '기본 게임을 Firebase로 전환' : '게임 추가');
-            document.getElementById('game-input-title').value = g ? g.title : '';
-            document.getElementById('game-input-desc').value = g ? (g.description || '') : '';
-            document.getElementById('game-input-url').value = g ? (g.url || '') : '';
-            document.getElementById('game-input-bg').value = g ? (g.backgroundImage || '') : '';
-            document.getElementById('game-input-color').value = g ? (g.color || '#3b82f6') : '#3b82f6';
-            document.getElementById('game-bg-upload-status').textContent = '';
-            document.getElementById('game-input-order').value = g ? (g.order || 0) : Object.keys(gamesCache).length;
-            document.getElementById('game-input-enabled').value = (g && g.enabled === false) ? 'false' : 'true';
-            document.getElementById('game-delete-btn').style.display = gameId ? 'block' : 'none';
-            document.getElementById('game-modal').style.display = 'flex';
-        }
-
-        window.closeGameModal = function() {
-            document.getElementById('game-modal').style.display = 'none';
-            editingGameId = null;
-        }
-
-        window.saveGame = async function() {
-            if (!isAdmin) return;
-            const title = document.getElementById('game-input-title').value.trim();
-            const description = document.getElementById('game-input-desc').value.trim();
-            const url = document.getElementById('game-input-url').value.trim();
-            const backgroundImage = document.getElementById('game-input-bg').value.trim();
-            const color = document.getElementById('game-input-color').value || '#3b82f6';
-            const order = parseInt(document.getElementById('game-input-order').value) || 0;
-            const enabled = document.getElementById('game-input-enabled').value === 'true';
-            if (!title) return alert("게임 이름을 입력해주세요.");
-
-            try {
-                if (editingGameId) {
-                    await updateDoc(doc(fdb, 'games', editingGameId), { title, description, url, backgroundImage, color, order, enabled });
-                } else {
-                    await addDoc(collection(fdb, 'games'), { title, description, url, backgroundImage, color, order, enabled, createdAt: Date.now() });
-                }
-                closeGameModal();
-            } catch (e) { alert("게임 저장 중 오류가 발생했습니다: " + (e && e.message ? e.message : e)); }
-        }
-
-        // 게임 배경 이미지 업로드: 기존 리치 에디터/프로필 사진과 동일한 imgbb 업로드 함수를 재사용한다.
-        window.uploadGameBgImage = async function(inputEl) {
-            const file = inputEl.files && inputEl.files[0];
-            if (!file) return;
-            const statusEl = document.getElementById('game-bg-upload-status');
-            statusEl.textContent = '업로드 중...';
-            try {
-                const url = await uploadImageToImgbb(file);
-                document.getElementById('game-input-bg').value = url;
-                statusEl.textContent = '✓ 업로드 완료';
-            } catch (e) {
-                statusEl.textContent = '⚠ 업로드 실패';
-            } finally {
-                inputEl.value = '';
-            }
-        }
-
-        window.deleteGameFromModal = async function() {
-            if (!isAdmin || !editingGameId) return;
-            if (confirm("이 게임을 삭제하시겠습니까?")) {
-                try { await deleteDoc(doc(fdb, 'games', editingGameId)); closeGameModal(); }
-                catch (e) { alert("삭제 중 오류가 발생했습니다."); }
-            }
-        }
-
-        window.moveGame = async function(gameId, dir) {
-            if (!isAdmin) return;
-            const entries = Object.entries(gamesCache).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
-            const idx = entries.findIndex(([id]) => id === gameId);
-            const swapIdx = idx + dir;
-            if (idx === -1 || swapIdx < 0 || swapIdx >= entries.length) return;
-            // 두 게임의 order를 서로의 raw 값이 아니라 "정렬된 위치(인덱스)"로 맞바꿔 쓴다.
-            // idx와 swapIdx는 항상 서로 다른 정수이므로, 두 게임의 기존 order가 우연히 같았어도
-            // (예: 둘 다 기본값 0) 이 두 값만은 항상 서로 달라져 실제로 순서가 바뀐다.
-            // 이전 코드는 두 게임의 raw order 값을 그대로 맞바꿔서, 값이 같으면 조용히 아무 변화가 없었다.
-            const [idA] = entries[idx]; const [idB] = entries[swapIdx];
-            try {
-                await Promise.all([
-                    updateDoc(doc(fdb, 'games', idA), { order: swapIdx }),
-                    updateDoc(doc(fdb, 'games', idB), { order: idx })
-                ]);
-            } catch (e) { alert("순서 변경 중 오류가 발생했습니다."); }
-        }
-
-        // ===== 게임 커뮤니티 카테고리 =====
-        function getCategoryNames() {
-            const entries = Object.entries(categoriesCache);
-            if (entries.length === 0) return DEFAULT_GAME_CATEGORIES.slice();
-            return entries.sort((a, b) => (a[1].order || 0) - (b[1].order || 0)).map(([id, c]) => c.name);
-        }
-
-        function listenToGameCategories() {
-            onSnapshot(collection(fdb, 'game_categories'), async (snapshot) => {
-                categoriesCache = fsSnapshotToMap(snapshot);
-                // 카테고리가 아직 하나도 없다면, 엔지니어/창시자가 접속했을 때 기본 3개를 1회 자동 생성한다 ("공지"는 만들지 않음)
-                if (Object.keys(categoriesCache).length === 0 && isAdmin) {
-                    try {
-                        for (let i = 0; i < DEFAULT_GAME_CATEGORIES.length; i++) {
-                            await addDoc(collection(fdb, 'game_categories'), { name: DEFAULT_GAME_CATEGORIES[i], order: i, system: true, createdAt: Date.now() });
-                        }
-                    } catch (e) { /* 권한이 없거나 이미 다른 관리자가 생성한 경우 조용히 무시 */ }
-                }
-                renderCategoryFilters();
-                renderPostCategoryOptions();
-                if (document.getElementById('category-modal').style.display === 'flex') renderCategoryManageList();
-            });
-        }
-
-        function renderCategoryFilters() {
-            const wrap = document.getElementById('pokemon-category-filters');
-            if (!wrap) return;
-            const names = getCategoryNames();
-            let html = `<span class="pokemon-cat-btn" data-cat="전체" onclick="setPokemonCategoryFilter('전체')" style="cursor: pointer; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: ${pokemonCategoryFilter === '전체' ? 'var(--primary)' : '#f3f4f6'}; color: ${pokemonCategoryFilter === '전체' ? 'white' : 'var(--text-muted)'};">전체</span>`;
-            names.forEach(name => {
-                const active = pokemonCategoryFilter === name;
-                html += `<span class="pokemon-cat-btn" data-cat="${escapeNoticeText(name)}" onclick="setPokemonCategoryFilter('${escapeJsAttr(name)}')" style="cursor: pointer; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: ${active ? 'var(--primary)' : '#f3f4f6'}; color: ${active ? 'white' : 'var(--text-muted)'};">${name}</span>`;
-            });
-            wrap.innerHTML = html;
-            const manageBtn = document.getElementById('btn-manage-categories');
-            if (manageBtn) manageBtn.style.display = isAdmin ? 'inline-block' : 'none';
-        }
-
-        function renderPostCategoryOptions() {
-            const select = document.getElementById('pokemon-post-category');
-            if (!select) return;
-            const prevValue = select.value;
-            const names = getCategoryNames();
-            select.innerHTML = names.map(name => `<option value="${name}">${name}</option>`).join('');
-            if (names.includes(prevValue)) select.value = prevValue;
-        }
-
-        window.openCategoryManageModal = function() {
-            if (!isAdmin) return;
-            renderCategoryManageList();
-            document.getElementById('category-modal').style.display = 'flex';
-        }
-        window.closeCategoryModal = function() { document.getElementById('category-modal').style.display = 'none'; }
-
-        function renderCategoryManageList() {
-            const list = document.getElementById('category-manage-list');
-            if (!list) return;
-            const entries = Object.entries(categoriesCache).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
-            if (entries.length === 0) { list.innerHTML = `<div style="font-size:13px; color:var(--text-muted);">카테고리를 불러오는 중...</div>`; return; }
-            list.innerHTML = entries.map(([id, c], idx) => `
-                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface-secondary); padding:8px 12px; border-radius:8px; border:1px solid var(--border-color);">
-                    <span style="font-size:13px; font-weight:600;">${c.name}</span>
-                    <div style="display:flex; gap:6px;">
-                        <span onclick="renameCategory('${id}', '${escapeJsAttr(c.name)}')" style="cursor:pointer; font-size:13px;" title="이름 수정">✏️</span>
-                        ${idx > 0 ? `<span onclick="moveCategory('${id}', -1)" style="cursor:pointer; font-size:13px;" title="위로">▲</span>` : ''}
-                        ${idx < entries.length - 1 ? `<span onclick="moveCategory('${id}', 1)" style="cursor:pointer; font-size:13px;" title="아래로">▼</span>` : ''}
-                        <span onclick="deleteCategory('${id}', '${escapeJsAttr(c.name)}')" style="cursor:pointer; font-size:13px; color:#ef4444;" title="삭제">🗑️</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        window.addCategory = async function() {
-            if (!isAdmin) return;
-            const input = document.getElementById('category-input-new');
-            const name = input.value.trim();
-            if (!name) return;
-            if (name === '전체') return alert("'전체'는 필터 전용 이름이라 카테고리로 만들 수 없습니다.");
-            if (getCategoryNames().includes(name)) return alert("이미 존재하는 카테고리입니다.");
-            try {
-                const order = Object.keys(categoriesCache).length;
-                await addDoc(collection(fdb, 'game_categories'), { name, order, system: false, createdAt: Date.now() });
-                input.value = '';
-            } catch (e) { alert("카테고리 추가 중 오류가 발생했습니다."); }
-        }
-
-        window.renameCategory = async function(catId, oldName) {
-            if (!isAdmin) return;
-            const newName = prompt("새 카테고리 이름을 입력하세요:", oldName);
-            if (newName === null) return;
-            const trimmed = newName.trim();
-            if (!trimmed || trimmed === oldName) return;
-            if (trimmed === '전체') return alert("'전체'는 필터 전용 이름이라 사용할 수 없습니다.");
-            try {
-                // 이 카테고리를 사용하는 기존 게시글들도 함께 이름을 맞춰준다 (게시글 데이터는 손상하지 않음)
-                const affected = Object.entries(pokemonPostsCache).filter(([id, p]) => p.category === oldName);
-                for (const [postId] of affected) {
-                    await updateDoc(doc(fdb, 'pokemon_posts', postId), { category: trimmed });
-                }
-                await updateDoc(doc(fdb, 'game_categories', catId), { name: trimmed });
-            } catch (e) { alert("카테고리 이름 변경 중 오류가 발생했습니다."); }
-        }
-
-        window.moveCategory = async function(catId, dir) {
-            if (!isAdmin) return;
-            const entries = Object.entries(categoriesCache).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
-            const idx = entries.findIndex(([id]) => id === catId);
-            const swapIdx = idx + dir;
-            if (idx === -1 || swapIdx < 0 || swapIdx >= entries.length) return;
-            const [idA, cA] = entries[idx]; const [idB, cB] = entries[swapIdx];
-            try {
-                await updateDoc(doc(fdb, 'game_categories', idA), { order: cB.order || 0 });
-                await updateDoc(doc(fdb, 'game_categories', idB), { order: cA.order || 0 });
-            } catch (e) { alert("순서 변경 중 오류가 발생했습니다."); }
-        }
-
-        window.deleteCategory = async function(catId, name) {
-            if (!isAdmin) return;
-            const allNames = getCategoryNames();
-            if (allNames.length <= 1) return alert("카테고리는 최소 1개 이상 있어야 합니다.");
-
-            const affected = Object.entries(pokemonPostsCache).filter(([id, p]) => p.category === name);
-            if (affected.length > 0) {
-                const otherNames = allNames.filter(n => n !== name);
-                const target = prompt(
-                    `'${name}' 카테고리를 사용하는 게시글이 ${affected.length}개 있습니다.\n삭제하면 이 게시글들을 다른 카테고리로 옮겨야 합니다.\n옮길 카테고리 이름을 입력하세요 (취소하려면 취소 버튼을 누르세요):\n\n선택 가능: ${otherNames.join(', ')}`,
-                    otherNames[0]
-                );
-                if (target === null) return; // 사용자가 취소 -> 게시글도 카테고리도 삭제하지 않음
-                if (!otherNames.includes(target.trim())) return alert("목록에 있는 카테고리 이름을 정확히 입력해주세요. 삭제가 취소되었습니다.");
-                try {
-                    for (const [postId] of affected) {
-                        await updateDoc(doc(fdb, 'pokemon_posts', postId), { category: target.trim() });
-                    }
-                    await deleteDoc(doc(fdb, 'game_categories', catId));
-                } catch (e) { alert("카테고리 삭제 중 오류가 발생했습니다."); }
-                return;
-            }
-
-            if (confirm(`'${name}' 카테고리를 삭제하시겠습니까?`)) {
-                try { await deleteDoc(doc(fdb, 'game_categories', catId)); }
-                catch (e) { alert("카테고리 삭제 중 오류가 발생했습니다."); }
-            }
-        }
-
-        window.setPokemonCategoryFilter = function(cat) {
-            pokemonCategoryFilter = cat;
-            document.querySelectorAll('.pokemon-cat-btn').forEach(b => {
-                const active = b.dataset.cat === cat;
-                b.style.background = active ? 'var(--primary)' : '#f3f4f6';
-                b.style.color = active ? 'white' : 'var(--text-muted)';
-            });
-            renderPokemonPosts();
-        }
-
-        let pokemonView = 'feed'; // 'feed' | 'compose' | 'detail'
-        let pokemonEditingPostId = null;
-        let pokemonDetailPostId = null;
-        let pokemonSortTab = 'all'; // 'all' | 'popular'
-
-        window.startNewPokemonPost = function() {
-            if (!currentUser) return showLoginScreen(() => startNewPokemonPost());
-            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
-            pokemonEditingPostId = null;
-            document.getElementById('pokemon-post-title').value = '';
-            document.getElementById('pokemon-post-content').innerHTML = '';
-            const composeTitleEl = document.querySelector('#pokemon-post-form .community-back-link');
-            const submitBtn = document.querySelector("#pokemon-post-form button[onclick='handlePokemonPostSubmit()']");
-            if (submitBtn) submitBtn.innerText = "게시하기";
-            document.getElementById('pokemon-post-form').style.display = 'block';
-        }
-        window.closePokemonCompose = function() {
-            pokemonEditingPostId = null;
-            document.getElementById('pokemon-post-form').style.display = 'none';
-        }
-        window.togglePokemonPostForm = function() {
-            const form = document.getElementById('pokemon-post-form');
-            if (!form) return;
-            if (form.style.display === 'none') startNewPokemonPost(); else closePokemonCompose();
-        }
-
-        window.handlePokemonPostSubmit = async function() {
-            const titleInput = document.getElementById('pokemon-post-title');
-            const contentInput = document.getElementById('pokemon-post-content');
-            const categorySelect = document.getElementById('pokemon-post-category');
-            if (isRichEditorUploadingImage('pokemon-post-content')) return alert('이미지를 업로드하는 중이에요. 잠시 후 다시 눌러주세요.');
-            const rawHTML = contentInput.innerHTML.trim();
-            const plainText = (contentInput.textContent || '').trim();
-            if (!titleInput.value.trim() || !plainText) return alert("제목과 내용을 모두 입력해주세요.");
-            if (!currentUser) return showLoginScreen(() => handlePokemonPostSubmit());
-            if (currentUserInfo.role !== 'class2_member') return alert("권한이 없습니다.");
-
-            try {
-                if (pokemonEditingPostId) {
-                    const original = pokemonPostsCache[pokemonEditingPostId];
-                    if (!original || (original.authorId !== currentUser.uid && !isAdmin && !isSubAdmin && !isOperator)) return alert("수정 권한이 없습니다.");
-                    await updateDoc(doc(fdb, 'pokemon_posts', pokemonEditingPostId), {
-                        title: titleInput.value, content: plainText, contentHTML: sanitizeRichHTML(rawHTML), updatedAt: Date.now()
-                    });
-                } else {
-                    await addDoc(collection(fdb, 'pokemon_posts'), {
-                        title: titleInput.value, content: plainText, contentHTML: sanitizeRichHTML(rawHTML),
-                        category: categorySelect.value,
-                        authorId: currentUser.uid,
-                        authorName: getAuthorName(),
-                        authorOriginal: currentUser.email || getAuthorOriginal(),
-                        createdAt: Date.now(), likeCount: 0
-                    });
-                }
-                titleInput.value = ""; contentInput.innerHTML = "";
-                pokemonEditingPostId = null;
-                document.getElementById('pokemon-post-form').style.display = 'none';
-            } catch (e) { alert(pokemonEditingPostId ? "게시글 수정 실패" : "글 등록 실패"); }
-        }
-
-        window.editPokemonPost = function(postId) {
-            const post = pokemonPostsCache[postId];
-            const canEdit = post && currentUser && (post.authorId === currentUser.uid || isAdmin || isSubAdmin || isOperator);
-            if (!canEdit) return alert("수정 권한이 없습니다.");
-            document.querySelectorAll('.post-menu-dropdown.open').forEach(el => el.classList.remove('open'));
-            pokemonEditingPostId = postId;
-            document.getElementById('pokemon-post-title').value = post.title || '';
-            const contentEditable = document.getElementById('pokemon-post-content');
-            contentEditable.innerHTML = post.contentHTML && post.contentHTML.trim()
-                ? sanitizeRichHTML(post.contentHTML)
-                : escapeNoticeText(post.content || '').replace(/\n/g, '<br>');
-            const catSelect = document.getElementById('pokemon-post-category');
-            if (catSelect) catSelect.value = post.category || '';
-            const submitBtn = document.querySelector("#pokemon-post-form button[onclick='handlePokemonPostSubmit()']");
-            if (submitBtn) submitBtn.innerText = "수정하기";
-            document.getElementById('pokemon-post-form').style.display = 'block';
-            closePokemonPostDetail();
-        };
-
-        window.setPokemonSortTab = function(tab) {
-            pokemonSortTab = tab;
-            document.querySelectorAll('#pokemon-feed-view .community-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
-            renderPokemonPosts();
-        };
-
-        window.openPokemonPostDetail = function(postId) {
-            pokemonView = 'detail';
-            pokemonDetailPostId = postId;
-            document.getElementById('pokemon-feed-view').style.display = 'none';
-            document.getElementById('pokemon-detail-view').style.display = 'block';
-            renderPokemonPosts();
-        };
-        window.closePokemonPostDetail = function() {
-            pokemonView = 'feed';
-            pokemonDetailPostId = null;
-            document.getElementById('pokemon-detail-view').style.display = 'none';
-            document.getElementById('pokemon-feed-view').style.display = 'block';
-            renderPokemonPosts();
-        };
-
-        window.deletePokemonPost = async function(postId, authorId) {
-            if (!currentUser) return;
-            const canDel = currentUser.uid === authorId || isAdmin || isSubAdmin;
-            if (!canDel) return alert("본인의 글만 삭제할 수 있습니다.");
-            if (confirm("정말 이 게시글을 삭제하시겠습니까?")) {
-                await deleteDoc(doc(fdb, 'pokemon_posts', postId));
-                if (pokemonView === 'detail') closePokemonPostDetail();
-            }
-        }
-
-        // toggleLike()와 동일한 낙관적 UI 패턴 적용 (Firestore 트랜잭션으로 likes map + likeCount를 함께 갱신)
-        window.togglePokemonLike = async function(postId) {
-            if (!currentUser) return showLoginScreen(() => togglePokemonLike(postId));
-            const btn = document.getElementById(`pokemon-like-btn-${postId}`);
-            let optimisticLiked = null;
-            if (btn) {
-                optimisticLiked = !btn.classList.contains('liked');
-                const countEl = btn.querySelector('.like-count');
-                const prevCount = countEl ? parseInt(countEl.textContent) || 0 : 0;
-                btn.classList.toggle('liked', optimisticLiked);
-                btn.innerHTML = `${optimisticLiked ? '❤️' : '🤍'} <span class="like-count">${Math.max(0, prevCount + (optimisticLiked ? 1 : -1))}</span>`;
-            }
-            try {
-                const postRef = doc(fdb, 'pokemon_posts', postId);
-                await fsRunTransaction(fdb, async (tx) => {
-                    const snap = await tx.get(postRef);
-                    if (!snap.exists()) return;
-                    const data = snap.data();
-                    const likes = data.likes || {};
-                    const liked = !likes[currentUser.uid];
-                    if (liked) likes[currentUser.uid] = true; else delete likes[currentUser.uid];
-                    const likeCount = Math.max(0, (typeof data.likeCount === 'number' ? data.likeCount : 0) + (liked ? 1 : -1));
-                    tx.update(postRef, { likes, likeCount });
-                });
-            } catch (e) {
-                console.warn('좋아요 처리 중 오류:', e);
-                if (btn && optimisticLiked !== null) {
-                    btn.classList.toggle('liked', !optimisticLiked);
-                    const countEl = btn.querySelector('.like-count');
-                    const cur = countEl ? parseInt(countEl.textContent) || 0 : 0;
-                    btn.innerHTML = `${!optimisticLiked ? '❤️' : '🤍'} <span class="like-count">${Math.max(0, cur - (optimisticLiked ? 1 : -1))}</span>`;
-                }
-            }
-        }
-
-        window.addPokemonComment = async function(postId) {
-            if (!currentUser) return showLoginScreen(() => addPokemonComment(postId));
-            const commentInput = document.getElementById(`pokemon-reply-${postId}`);
-            if (!commentInput || !commentInput.value.trim()) return;
-            await addDoc(collection(fdb, 'pokemon_posts', postId, 'comments'), {
-                authorId: currentUser.uid,
-                authorName: getAuthorName(),
-                authorOriginal: currentUser.email || getAuthorOriginal(),
-                content: commentInput.value, createdAt: Date.now()
-            });
-            commentInput.value = "";
-        }
-
-        window.deletePokemonComment = async function(postId, commentId, commentAuthorId) {
-            if (!currentUser) return;
-            const canDel = currentUser.uid === commentAuthorId || isAdmin || isSubAdmin;
-            if (!canDel) return alert("권한이 없습니다.");
-            if (confirm("댓글을 삭제하시겠습니까?")) await deleteDoc(doc(fdb, 'pokemon_posts', postId, 'comments', commentId));
-        }
-
-        // posts와 동일한 이유로 댓글은 서브컬렉션이라 게시글마다 별도로 구독한다.
-        let pokemonCommentsCache = {};
-        let pokemonCommentUnsubscribers = {};
-
-        function listenToPokemonPosts() {
-            onSnapshot(collection(fdb, 'pokemon_posts'), (snapshot) => {
-                pokemonPostsCache = fsSnapshotToMap(snapshot);
-                Object.keys(pokemonPostsCache).forEach(postId => {
-                    if (pokemonCommentUnsubscribers[postId]) return;
-                    pokemonCommentUnsubscribers[postId] = onSnapshot(collection(fdb, 'pokemon_posts', postId, 'comments'), (csnap) => {
-                        pokemonCommentsCache[postId] = fsSnapshotToMap(csnap);
-                        renderPokemonPosts();
-                    });
-                });
-                Object.keys(pokemonCommentUnsubscribers).forEach(postId => {
-                    if (!pokemonPostsCache[postId]) {
-                        pokemonCommentUnsubscribers[postId]();
-                        delete pokemonCommentUnsubscribers[postId];
-                        delete pokemonCommentsCache[postId];
-                    }
-                });
-                renderPokemonPosts();
-            });
-        }
-
-        function renderPokemonCommentsHTML(postId) {
-            const postComments = pokemonCommentsCache[postId] || {};
-            const entries = Object.entries(postComments).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
-            let html = `<div class="detail-comments-title">댓글 ${entries.length}개</div>`;
-            if (entries.length === 0) {
-                html += `<div style="color:var(--text-muted); font-size:13px; padding:6px 0 14px;">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</div>`;
-            } else {
-                entries.forEach(([commentId, comment]) => {
-                    const isMyComment = currentUser && currentUser.uid === comment.authorId;
-                    const canDelComment = isMyComment || isAdmin || isSubAdmin || isOperator;
-                    const cAuthor = communityAuthorHTML(comment.authorName, comment.authorOriginal);
-                    html += `
-                        <div class="detail-comment-item">
-                            <span class="detail-comment-name">${cAuthor}</span><span class="detail-comment-time">${formatCommentTime(comment.createdAt)}</span>
-                            ${canDelComment ? `<span class="detail-comment-actions"><span onclick="deletePokemonComment('${postId}', '${commentId}', '${comment.authorId}')" style="color:#ef4444;">삭제</span></span>` : ''}
-                            <div class="detail-comment-body">${renderContentWithEmojis(comment.content)}</div>
-                        </div>
-                    `;
-                });
-            }
-            html += `
-                <div class="detail-comment-composer">
-                    <input type="text" id="pokemon-reply-${postId}" placeholder="댓글을 남겨주세요...">
-                    <button class="primary" onclick="addPokemonComment('${postId}')">등록</button>
-                </div>
-            `;
-            return html;
-        }
-
-        function pokemonEmptyStateHTML(hasFilter) {
-            if (hasFilter) return `<div class="community-empty-state">해당하는 게시글이 없습니다.</div>`;
-            return `
-                <div class="community-empty-state">
-                    <div style="font-size:15px; font-weight:700; color:var(--text-main); margin-bottom:6px;">아직 이야기가 없어요.</div>
-                    <div style="font-size:13.5px;">첫 번째 글을 남겨보세요.</div>
-                    <button class="community-write-btn cta" onclick="startNewPokemonPost()">+ 글쓰기</button>
-                </div>
-            `;
-        }
-
-        function renderPokemonPosts() {
-            if (pokemonView === 'detail' && pokemonDetailPostId) {
-                const feedContainer = document.getElementById('pokemon-posts-container');
-                if (feedContainer) feedContainer.innerHTML = '';
-                renderPokemonPostDetailView();
-                return;
-            }
-            const detailEl = document.getElementById('pokemon-detail-view');
-            if (detailEl) detailEl.innerHTML = '';
-            renderPokemonFeedList();
-        }
-        window.renderPokemonPosts = renderPokemonPosts; // 검색창 등 인라인 이벤트 핸들러(oninput)는 window 스코프에서 찾으므로 명시적으로 노출
-
-        function renderPokemonFeedList() {
-            const container = document.getElementById('pokemon-posts-container');
-            if (!container) return;
-
-            const searchInput = document.getElementById('pokemon-search-input');
-            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
-            let entries = Object.entries(pokemonPostsCache).filter(([, p]) => pokemonCategoryFilter === '전체' || p.category === pokemonCategoryFilter);
-            const hasFilter = !!query || pokemonCategoryFilter !== '전체';
-            if (query) {
-                entries = entries.filter(([, p]) => {
-                    const authorText = resolveDisplayName(p.authorName, p.authorOriginal) || '';
-                    return (p.title || '').toLowerCase().includes(query)
-                        || (p.content || '').toLowerCase().includes(query)
-                        || authorText.toLowerCase().includes(query);
-                });
-            }
-            if (entries.length === 0) {
-                container.innerHTML = pokemonEmptyStateHTML(hasFilter);
-                return;
-            }
-
-            if (pokemonSortTab === 'popular') {
-                entries.sort((a, b) => (b[1].likeCount || 0) - (a[1].likeCount || 0)); // 이미 좋아요 많은 순 - 뒤에서 reverse() 안 함
-            } else {
-                entries.sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0)).reverse(); // 오래된순으로 정렬 후 뒤집어서 최신이 위로
-            }
-
-            let html = `<div class="feed-list">`;
-            entries.forEach(([postId, post], idx) => {
-                const isMyPost = currentUser && currentUser.uid === post.authorId;
-                const hasLiked = post.likes && post.likes[currentUser.uid];
-                const canDelete = isMyPost || isAdmin || isSubAdmin || isOperator;
-                const displayAuthor = communityAuthorHTML(post.authorName, post.authorOriginal);
-                const commentCount = Object.keys(pokemonCommentsCache[postId] || {}).length;
-
-                html += `
-                    <article class="feed-post" onclick="openPokemonPostDetail('${postId}')">
-                        <div class="feed-post-meta">
-                            <span class="feed-post-author"><span class="badge" style="background:var(--primary-soft); color:var(--primary); font-size:10.5px; padding:2px 7px; margin-right:6px; border-radius:5px;">${escapeNoticeText(post.category || '자유')}</span>${displayAuthor}</span>
-                            <span class="feed-post-date">${formatPostTimeOrDash(post.createdAt)}</span>
-                        </div>
-                        <div class="feed-post-title">${escapeNoticeText(post.title)}</div>
-                        ${renderFeedPreview(post)}
-                        <div class="feed-post-footer">
-                            <span onclick="event.stopPropagation()">
-                                <span id="pokemon-like-btn-${postId}" onclick="togglePokemonLike('${postId}')" class="like-btn ${hasLiked ? 'liked' : ''}">${hasLiked ? '❤️' : '🤍'} <span class="like-count">${post.likeCount != null ? post.likeCount : '—'}</span></span>
-                                <span class="feed-comment-count" onclick="openPokemonPostDetail('${postId}')">💬 ${commentCount}</span>
-                            </span>
-                            ${canDelete ? `
-                                <span class="post-menu-wrap" onclick="event.stopPropagation()">
-                                    <span class="post-menu-trigger" onclick="togglePostMenu('pk-${postId}')">⋯</span>
-                                    <div class="post-menu-dropdown" id="post-menu-pk-${postId}">
-                                        ${canDelete ? `<div class="post-menu-item" onclick="editPokemonPost('${postId}')">수정</div>` : ''}
-                                        <div class="post-menu-item danger" onclick="deletePokemonPost('${postId}', '${post.authorId}')">삭제</div>
-                                    </div>
-                                </span>
-                            ` : ''}
-                        </div>
-                    </article>
-                    ${idx < entries.length - 1 ? '<div class="feed-divider"></div>' : ''}
-                `;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-            fitFeedPreviews(container);
-        }
-
-        function renderPokemonPostDetailView() {
-            const detailEl = document.getElementById('pokemon-detail-view');
-            if (!detailEl) return;
-            const post = pokemonPostsCache[pokemonDetailPostId];
-            if (!post) { closePokemonPostDetail(); return; }
-
-            const postId = pokemonDetailPostId;
-            const isMyPost = currentUser && currentUser.uid === post.authorId;
-            const hasLiked = post.likes && post.likes[currentUser.uid];
-            const canDelete = isMyPost || isAdmin || isSubAdmin || isOperator;
-            const displayAuthor = communityAuthorHTML(post.authorName, post.authorOriginal);
-            const commentCount = Object.keys(pokemonCommentsCache[postId] || {}).length;
-
-            detailEl.innerHTML = `
-                <div class="community-detail-card">
-                    <div class="community-back-link" onclick="closePokemonPostDetail()">← 게임 커뮤니티</div>
-                    <div class="detail-meta">
-                        <span><span class="badge" style="background:var(--primary-soft); color:var(--primary); font-size:10.5px; padding:2px 7px; margin-right:6px; border-radius:5px;">${escapeNoticeText(post.category || '자유')}</span>${displayAuthor} · ${formatPostTimeOrDash(post.createdAt)}</span>
-                        ${canDelete ? `
-                            <span class="post-menu-wrap">
-                                <span class="post-menu-trigger" onclick="togglePostMenu('pk-${postId}')">⋯</span>
-                                <div class="post-menu-dropdown" id="post-menu-pk-${postId}">
-                                    ${canDelete ? `<div class="post-menu-item" onclick="editPokemonPost('${postId}')">수정</div>` : ''}
-                                    <div class="post-menu-item danger" onclick="deletePokemonPost('${postId}', '${post.authorId}')">삭제</div>
-                                </div>
-                            </span>
-                        ` : ''}
-                    </div>
-                    <h2 class="detail-title">${escapeNoticeText(post.title)}</h2>
-                    <div class="detail-body">${renderRichOrPlain(post, 'contentHTML', 'content')}</div>
-                    <div class="detail-actions">
-                        <span id="pokemon-like-btn-${postId}" onclick="togglePokemonLike('${postId}')" class="like-btn ${hasLiked ? 'liked' : ''}">${hasLiked ? '❤️' : '🤍'} <span class="like-count">${post.likeCount != null ? post.likeCount : '—'}</span></span>
-                        <span style="color:var(--text-muted); font-weight:600;">💬 댓글 ${commentCount}개</span>
-                    </div>
-                    ${renderPokemonCommentsHTML(postId)}
-                </div>
-            `;
-        }
+// (게임/게임 커뮤니티 기능은 앱스토어로 대체되어 제거됨 - 앱스토어 모듈은 id="appstore-module" 스크립트 참고)
 
 // --- 2반 아카이브 ---
         window.handleArchiveSubmit = async function() {
@@ -14629,6 +14030,736 @@
             if(!activeStudentNum) return;
             if(confirm("이 댓글을 삭제 처리 할까요?")) await deleteDoc(doc(fdb, 'profile_comments', `student_${activeStudentNum}__${commentId}`));
         }
+    </script>
+
+    <script type="module" id="appstore-module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        // =========================================================================
+        // 앱스토어: HTML 웹앱(단일 .html 또는 .zip)을 올려 게시하고, 누구나 /app/<id> 에서 실행·다운로드하는 기능.
+        //
+        // - 저장소: 자료실과 같은 Supabase 프로젝트의 apps / app_versions 테이블 + webapps 스토리지 버킷
+        //   (supabase/migrations/20261002_appstore.sql). 읽기는 anon 키로 직접(RLS: 공개 앱만),
+        //   쓰기는 Edge Function apps-write 가 Firebase ID 토큰을 검증하고 "본인 앱"일 때만 수행한다.
+        // - 실행: 업로드된 HTML/JS 는 이 사이트와 같은 출처에서 절대 실행하지 않는다. sandbox="allow-scripts" (allow-same-origin 없음)
+        //   iframe 안에서만 실행되어 "고유하지 않은(opaque) 출처"가 되므로 부모 DOM/localStorage/Firebase·Supabase 토큰/쿠키에 접근할 수 없다.
+        // - 로그인 정보는 main 스크립트가 노출한 window.__gmwAuth 브리지로만 받는다(토큰은 apps-write 호출에만 쓴다).
+        // =========================================================================
+        const AS_SB_URL = "https://cryeosgmuxqyphntqqlc.supabase.co";
+        const AS_SB_KEY = "sb_publishable_oXzL8eqnE-eVeBv4SGUIIA_c8wFi8u2";
+        const AS_BUCKET = "webapps";
+        const AS_FN_URL = `${AS_SB_URL}/functions/v1/apps-write`;
+        const sbApps = createClient(AS_SB_URL, AS_SB_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+
+        const AS_BASE_TITLE = document.title; // 앱 화면에서 바꾼 탭 제목을 되돌릴 때 쓴다
+        const AS_CATEGORIES = ['유틸리티', '게임', '교육', '생산성', '엔터테인먼트', '도구', '기타'];
+        const AS_LIMITS = {
+            html: 5 * 1024 * 1024, zip: 20 * 1024 * 1024, icon: 1 * 1024 * 1024,
+            zipEntries: 400, zipFileBytes: 15 * 1024 * 1024, zipTotalBytes: 30 * 1024 * 1024,
+            appData: 512 * 1024, // 앱이 sandbox 안에서 쓰는 localStorage 대용품을 이 브라우저에 저장하는 최대 크기(앱당)
+            appDataTotal: 2 * 1024 * 1024 // 모든 앱을 합친 최대 크기(앱이 이 사이트의 저장 공간을 다 차지해 버리지 못하게)
+        };
+        const AS_MIME = {
+            html: 'text/html', htm: 'text/html', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript', json: 'application/json', txt: 'text/plain',
+            png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', bmp: 'image/bmp',
+            mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac',
+            mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+            woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf', xml: 'application/xml', wasm: 'application/wasm', csv: 'text/csv'
+        };
+
+        const asEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const AUTH = () => window.__gmwAuth || { user: () => null, token: async () => null, login: () => {}, displayName: () => '익명' };
+        const asPublicUrl = (path) => `${AS_SB_URL}/storage/v1/object/public/${AS_BUCKET}/${path}`;
+        const asFmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; };
+        const asFmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+
+        // ---------------------------------------------------------------- 상태
+        const AS = { apps: [], loadedAt: 0, loading: false, loadError: '', cat: '전체', q: '', mine: null, view: 'list', appId: null, app: null, form: null, runFrame: null, runAppId: null };
+
+        // ---------------------------------------------------------------- 서버 호출
+        async function asCallFn(body) {
+            const token = await AUTH().token();
+            if (!token) throw new Error('로그인이 필요해요.');
+            const resp = await fetch(AS_FN_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AS_SB_KEY}` },
+                body: JSON.stringify({ ...body, firebaseIdToken: token })
+            });
+            const data = await resp.json().catch(() => null);
+            if (!resp.ok || !data || data.error) throw new Error((data && data.error) || `요청에 실패했어요 (${resp.status})`);
+            return data;
+        }
+
+        async function asLoadApps(force) {
+            if (AS.loading) return;
+            if (!force && AS.apps.length && Date.now() - AS.loadedAt < 30000) return;
+            AS.loading = true; AS.loadError = '';
+            try {
+                const { data, error } = await sbApps.from('apps').select('*').eq('published', true).order('created_at', { ascending: false }).limit(500);
+                if (error) throw error;
+                AS.apps = data || []; AS.loadedAt = Date.now();
+            } catch (e) {
+                AS.loadError = '앱 목록을 불러오지 못했어요. (앱스토어 DB 설정이 끝났는지 확인해주세요)';
+                console.warn('앱 목록 로드 실패:', e);
+            }
+            AS.loading = false;
+        }
+        async function asLoadMine() {
+            if (!AUTH().user()) { AS.mine = []; return; }
+            try { AS.mine = (await asCallFn({ action: 'mine' })).apps || []; } catch (e) { AS.mine = []; console.warn(e); }
+        }
+        async function asFindApp(id) {
+            let app = AS.apps.find(a => a.id === id) || (AS.mine || []).find(a => a.id === id);
+            if (app) return app;
+            try {
+                const { data } = await sbApps.from('apps').select('*').eq('id', id).maybeSingle();
+                if (data) return data;
+            } catch (e) { /* 아래에서 비공개 앱(내 앱)도 찾아본다 */ }
+            if (AUTH().user()) { await asLoadMine(); app = (AS.mine || []).find(a => a.id === id); }
+            return app || null;
+        }
+
+        // ---------------------------------------------------------------- 표시 보조
+        function asIconHtml(app, size) {
+            const px = size || 56;
+            if (app.icon_url) return `<img class="as-icon-img" style="width:${px}px;height:${px}px;" src="${asEsc(app.icon_url)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=&quot;as-icon-fallback&quot; style=&quot;width:${px}px;height:${px}px;&quot;>🧩</div>'">`;
+            let h = 0; for (const c of String(app.id)) h = (h * 31 + c.charCodeAt(0)) % 360;
+            const letter = asEsc((String(app.name || '?').trim()[0] || '?').toUpperCase());
+            return `<div class="as-icon-fallback" style="width:${px}px;height:${px}px;font-size:${Math.round(px * 0.45)}px;background:linear-gradient(135deg,hsl(${h},70%,58%),hsl(${(h + 40) % 360},70%,46%));">${letter}</div>`;
+        }
+        function asCardHtml(app, opts) {
+            const mine = opts && opts.mine;
+            return `<div class="as-card" data-as="open" data-id="${asEsc(app.id)}">
+                ${asIconHtml(app, 56)}
+                <div class="as-card-body">
+                    <div class="as-name">${asEsc(app.name)}${mine && !app.published ? ' <span class="as-chip as-chip-warn">비공개</span>' : ''}</div>
+                    <div class="as-desc">${asEsc(app.description || '설명이 없어요')}</div>
+                    <div class="as-meta"><span>${asEsc(app.author_name || '익명')}</span><span>v${asEsc(app.version)}</span><span>👁 ${Number(app.views || 0).toLocaleString()}</span><span>${asFmtDate(app.created_at)}</span></div>
+                </div>
+                ${mine ? `<button class="as-card-edit" data-as="edit" data-id="${asEsc(app.id)}" title="수정">✏️</button>` : ''}
+            </div>`;
+        }
+        const asSection = (title, apps, opts) => apps.length ? `<section class="as-section"><h3 class="as-section-title">${title}</h3><div class="as-grid">${apps.map(a => asCardHtml(a, opts)).join('')}</div></section>` : '';
+
+        // ---------------------------------------------------------------- 렌더링: 목록
+        function asRenderList(root) {
+            const user = AUTH().user();
+            const q = AS.q.trim().toLowerCase();
+            const catChips = ['전체', ...AS_CATEGORIES, ...(user ? ['내 앱'] : [])].map(c => `<button class="as-cat ${AS.cat === c ? 'active' : ''}" data-as="cat" data-cat="${asEsc(c)}">${asEsc(c)}</button>`).join('');
+            let body = '';
+            if (AS.cat === '내 앱') {
+                body = AS.mine === null ? '<div class="as-empty">불러오는 중…</div>'
+                    : (AS.mine.length ? asSection('내가 올린 앱', AS.mine, { mine: true }) : '<div class="as-empty">아직 올린 앱이 없어요. 오른쪽 위 “앱 등록”으로 첫 앱을 올려보세요!</div>');
+            } else if (AS.loading && !AS.apps.length) {
+                body = '<div class="as-empty">불러오는 중…</div>';
+            } else if (AS.loadError) {
+                body = `<div class="as-empty">${asEsc(AS.loadError)}</div>`;
+            } else {
+                const filtered = AS.apps.filter(a => (AS.cat === '전체' || a.category === AS.cat) && (!q || `${a.name} ${a.description} ${a.author_name}`.toLowerCase().includes(q)));
+                if (q || AS.cat !== '전체') {
+                    body = filtered.length ? asSection(q ? `“${asEsc(AS.q.trim())}” 검색 결과` : asEsc(AS.cat), filtered) : '<div class="as-empty">조건에 맞는 앱이 없어요.</div>';
+                } else if (!AS.apps.length) {
+                    body = '<div class="as-empty">아직 등록된 앱이 없어요. 첫 번째 앱을 올려보세요! 🚀</div>';
+                } else {
+                    const popular = [...AS.apps].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
+                    const latest = AS.apps.slice(0, 6);
+                    let featured = AS.apps.filter(a => a.featured).slice(0, 6);
+                    if (!featured.length) { // 추천 앱을 따로 지정하지 않았다면 날짜마다 바뀌는 추천을 보여준다
+                        const day = Math.floor(Date.now() / 86400000);
+                        featured = [...AS.apps].sort((a, b) => ((a.id.charCodeAt(0) * 31 + day) % 97) - ((b.id.charCodeAt(0) * 31 + day) % 97)).slice(0, Math.min(3, AS.apps.length));
+                    }
+                    body = asSection('🔥 인기 앱', popular) + asSection('🆕 최신 앱', latest) + asSection('✨ 추천 앱', featured);
+                }
+            }
+            root.innerHTML = `
+                <div class="header as-header">
+                    <div><h1>앱스토어 🧩</h1><p>HTML 웹앱을 올리고, 누구나 바로 실행해 보세요</p></div>
+                    <button class="auth-btn as-btn-new" data-as="new">＋ 앱 등록</button>
+                </div>
+                <div class="as-toolbar"><input id="as-search" class="community-search-input" placeholder="🔎 앱 이름·설명·제작자 검색" value="${asEsc(AS.q)}" autocomplete="off"></div>
+                <div class="as-cats">${catChips}</div>
+                ${body}`;
+        }
+
+        // ---------------------------------------------------------------- 렌더링: 상세
+        async function asRenderDetail(root) {
+            const id = AS.appId;
+            root.innerHTML = '<div class="as-empty">불러오는 중…</div>';
+            const app = await asFindApp(id);
+            if (AS.view !== 'detail' || AS.appId !== id) return; // 그 사이 다른 화면으로 이동
+            if (!app) {
+                root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div><div class="card as-empty">존재하지 않거나 비공개로 바뀐 앱이에요.</div>`;
+                return;
+            }
+            AS.app = app;
+            document.title = `${app.name} · 앱스토어`;
+            asCountView(app);
+            const u = AUTH().user();
+            const isOwner = !!u && u.uid === app.author_uid;
+            let versions = [];
+            try { const { data } = await sbApps.from('app_versions').select('*').eq('app_id', app.id).order('created_at', { ascending: false }).limit(30); versions = data || []; } catch (e) { /* 이력이 없어도 상세는 보인다 */ }
+            if (AS.view !== 'detail' || AS.appId !== id) return;
+            const dl = app.file_type === 'zip' ? 'ZIP 다운로드' : 'HTML 다운로드';
+            root.innerHTML = `
+                <div class="community-back-link" data-as="home">← 앱스토어</div>
+                <div class="card as-detail">
+                    <div class="as-detail-top">
+                        ${asIconHtml(app, 88)}
+                        <div class="as-detail-info">
+                            <h2 class="as-detail-name">${asEsc(app.name)}${!app.published ? ' <span class="as-chip as-chip-warn">비공개</span>' : ''}</h2>
+                            <div class="as-detail-sub">${asEsc(app.author_name || '익명')} · <span class="as-chip">${asEsc(app.category)}</span></div>
+                            <div class="as-stats">
+                                <div><b>v${asEsc(app.version)}</b><span>버전</span></div>
+                                <div><b>${Number(app.views || 0).toLocaleString()}</b><span>조회수</span></div>
+                                <div><b>${asFmtDate(app.updated_at)}</b><span>업데이트</span></div>
+                                <div><b>${asFmtDate(app.created_at)}</b><span>등록일</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="as-actions">
+                        <button class="auth-btn as-btn-run" data-as="run" data-id="${asEsc(app.id)}">▶ 웹에서 실행</button>
+                        <button class="btn-sub" data-as="download" data-id="${asEsc(app.id)}">⬇ ${dl}</button>
+                        <button class="btn-sub" data-as="copylink" data-id="${asEsc(app.id)}">🔗 링크 복사</button>
+                        ${isOwner ? `<button class="btn-sub" data-as="edit" data-id="${asEsc(app.id)}">✏️ 수정</button>` : ''}
+                    </div>
+                    <div class="as-desc-full">${asEsc(app.description || '설명이 없어요.').replace(/\n/g, '<br>')}</div>
+                    <div class="as-link-row">주소 <code>${asEsc(location.origin)}/app/${asEsc(app.id)}</code></div>
+                    ${versions.length ? `<h3 class="as-section-title" style="margin-top:22px;">업데이트 기록</h3><div class="as-versions">${versions.map(v => `<div class="as-version"><b>v${asEsc(v.version)}</b><span>${asFmtDate(v.created_at)}</span><p>${asEsc(v.changelog || '').replace(/\n/g, '<br>') || '<i>변경 내용 없음</i>'}</p></div>`).join('')}</div>` : ''}
+                </div>`;
+        }
+        function asCountView(app) {
+            const key = `gmw_app_viewed:${app.id}`;
+            try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { return; }
+            app.views = (app.views || 0) + 1; // 화면에는 바로 반영하고, 서버에는 조용히 +1
+            sbApps.rpc('increment_app_views', { p_app_id: app.id }).then(() => {}, () => {});
+        }
+
+        // ---------------------------------------------------------------- ZIP 읽기(외부 라이브러리 없이) - 경로 조작/압축 폭탄을 막으면서 메모리에서만 푼다
+        class ZipError extends Error {}
+        function zipSafePath(raw) {
+            const name = String(raw).replace(/\\/g, '/');
+            if (name.includes('\0')) throw new ZipError('ZIP 안에 올바르지 않은 파일 이름이 있어요.');
+            if (name.startsWith('/') || /^[A-Za-z]:/.test(name)) throw new ZipError(`ZIP 안에 절대 경로가 있어요: ${name}`);
+            const parts = name.split('/');
+            if (parts.some(p => p === '..')) throw new ZipError(`ZIP 안에 허용되지 않는 경로(../)가 있어요: ${name}`);
+            return parts.filter(p => p && p !== '.').join('/') + (name.endsWith('/') ? '/' : '');
+        }
+        async function zipInflate(bytes, expectedSize) {
+            if (typeof DecompressionStream === 'undefined') throw new ZipError('이 브라우저는 ZIP 앱 실행을 지원하지 않아요. 최신 Chrome / Safari / Firefox 로 열어주세요.');
+            const ds = new DecompressionStream('deflate-raw');
+            const reader = new Blob([bytes]).stream().pipeThrough(ds).getReader();
+            const out = new Uint8Array(expectedSize);
+            let off = 0;
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (off + value.length > expectedSize) { try { reader.cancel(); } catch (e) {} throw new ZipError('압축 해제 크기가 ZIP에 적힌 값과 달라요.'); }
+                out.set(value, off); off += value.length;
+            }
+            if (off !== expectedSize) throw new ZipError('압축 해제 크기가 ZIP에 적힌 값과 달라요.');
+            return out;
+        }
+        // 목록만 읽고(파일 내용은 아직 안 푼다) 안전성을 먼저 검사한 뒤, 필요한 파일만 extract()로 푼다.
+        function zipOpen(buf) {
+            const u8 = new Uint8Array(buf), view = new DataView(buf);
+            let eocd = -1;
+            for (let i = u8.length - 22; i >= Math.max(0, u8.length - 22 - 65535); i--) { if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+            if (eocd < 0) throw new ZipError('올바른 ZIP 파일이 아니에요.');
+            const total = view.getUint16(eocd + 10, true), cdOff = view.getUint32(eocd + 16, true);
+            if (total === 0xffff || cdOff === 0xffffffff) throw new ZipError('ZIP64 형식은 지원하지 않아요. 파일을 다시 압축해주세요.');
+            if (total > AS_LIMITS.zipEntries) throw new ZipError(`ZIP 안의 파일이 너무 많아요 (최대 ${AS_LIMITS.zipEntries}개).`);
+            const entries = new Map(); let p = cdOff, totalSize = 0;
+            const dec = new TextDecoder('utf-8');
+            for (let i = 0; i < total; i++) {
+                if (p + 46 > u8.length || view.getUint32(p, true) !== 0x02014b50) throw new ZipError('ZIP 파일이 손상됐어요.');
+                const flags = view.getUint16(p + 8, true), method = view.getUint16(p + 10, true);
+                const csize = view.getUint32(p + 20, true), usize = view.getUint32(p + 24, true);
+                const nlen = view.getUint16(p + 28, true), elen = view.getUint16(p + 30, true), clen = view.getUint16(p + 32, true);
+                const lho = view.getUint32(p + 42, true);
+                const rawName = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
+                p += 46 + nlen + elen + clen;
+                const name = zipSafePath(rawName); // 위험한 경로가 하나라도 있으면 ZIP 전체를 거부한다
+                if (!name || name.endsWith('/')) continue; // 폴더
+                if (name.startsWith('__MACOSX/') || name.split('/').pop() === '.DS_Store') continue;
+                if (flags & 1) throw new ZipError('암호가 걸린 ZIP은 올릴 수 없어요.');
+                if (method !== 0 && method !== 8) throw new ZipError(`지원하지 않는 압축 방식이에요: ${name}`);
+                if (usize > AS_LIMITS.zipFileBytes) throw new ZipError(`파일이 너무 커요(최대 ${asFmtSize(AS_LIMITS.zipFileBytes)}): ${name}`);
+                if (usize > 1048576 && csize > 0 && usize / csize > 200) throw new ZipError(`비정상적으로 높은 압축률의 파일이 있어요: ${name}`);
+                totalSize += usize;
+                if (totalSize > AS_LIMITS.zipTotalBytes) throw new ZipError(`압축을 풀면 너무 커요 (최대 ${asFmtSize(AS_LIMITS.zipTotalBytes)}).`);
+                if (entries.has(name)) throw new ZipError(`같은 이름의 파일이 두 번 들어 있어요: ${name}`);
+                entries.set(name, { name, method, csize, usize, lho });
+            }
+            // 진입점: 최상위 index.html, 아니면 모든 파일이 한 폴더 안에 있고 그 안에 index.html 이 있을 때
+            let root = '';
+            if (!entries.has('index.html')) {
+                const tops = new Set([...entries.keys()].map(n => n.split('/')[0]));
+                const only = tops.size === 1 ? [...tops][0] : null;
+                if (only && entries.has(`${only}/index.html`) && [...entries.keys()].every(n => n.startsWith(only + '/'))) root = only + '/';
+                else throw new ZipError('ZIP 맨 위(또는 하나뿐인 폴더 안)에 index.html 이 있어야 해요.');
+            }
+            async function extract(name) {
+                const e = entries.get(name); if (!e) return null;
+                if (view.getUint32(e.lho, true) !== 0x04034b50) throw new ZipError('ZIP 파일이 손상됐어요.');
+                const start = e.lho + 30 + view.getUint16(e.lho + 26, true) + view.getUint16(e.lho + 28, true);
+                if (start + e.csize > u8.length) throw new ZipError('ZIP 파일이 손상됐어요.');
+                const data = u8.subarray(start, start + e.csize);
+                if (e.method === 0) { if (e.csize !== e.usize) throw new ZipError('ZIP 파일이 손상됐어요.'); return data.slice(); }
+                return zipInflate(data, e.usize);
+            }
+            return { entries, root, extract, count: entries.size };
+        }
+
+        // ---------------------------------------------------------------- 실행 문서 만들기 (srcdoc)
+        function asBytesToB64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
+        const asExt = (name) => (String(name).split('.').pop() || '').toLowerCase();
+        const asIsLocalRef = (u) => !!u && !/^(data:|blob:|https?:|\/\/|about:|javascript:|mailto:|tel:|#)/i.test(String(u).trim());
+        function asResolvePath(ref, baseDir) { // ref(HTML이 적은 상대 경로) → ZIP 안의 정규화된 경로(실패하면 null)
+            let r = String(ref).trim().split('#')[0].split('?')[0];
+            try { r = decodeURIComponent(r); } catch (e) { /* 그대로 */ }
+            r = r.replace(/\\/g, '/');
+            const parts = r.startsWith('/') ? [] : baseDir.split('/').filter(Boolean);
+            for (const seg of r.split('/')) { if (!seg || seg === '.') continue; if (seg === '..') { if (!parts.length) return null; parts.pop(); } else parts.push(seg); }
+            return parts.join('/');
+        }
+        // 파일 이름 대소문자가 달라도 찾을 수 있게 소문자 색인도 만든다
+        function asBuildFileIndex(zip) {
+            const lower = new Map(); for (const n of zip.entries.keys()) lower.set(n.toLowerCase(), n);
+            return (path) => (path == null ? null : (zip.entries.has(path) ? path : (lower.get(path.toLowerCase()) || null)));
+        }
+
+        async function asBuildZipDocument(buf) {
+            const zip = zipOpen(buf);
+            const find = asBuildFileIndex(zip);
+            const cache = new Map(); // path → { bytes, dataUrl }
+            async function load(path) {
+                if (cache.has(path)) return cache.get(path);
+                const bytes = await zip.extract(path);
+                const item = { bytes, dataUrl: `data:${AS_MIME[asExt(path)] || 'application/octet-stream'};base64,${asBytesToB64(bytes)}` };
+                cache.set(path, item); return item;
+            }
+            const text = async (path) => new TextDecoder('utf-8').decode((await load(path)).bytes);
+            const entryPath = zip.root + 'index.html';
+            const baseDirOf = (p) => p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+
+            // CSS 안의 url(...) 과 @import 를 ZIP 안 파일(data URL)로 바꾼다
+            async function rewriteCss(css, cssDir, depth) {
+                let out = css;
+                const imports = [...css.matchAll(/@import\s+(?:url\(\s*)?["']?([^"')\s;]+)["']?\s*\)?[^;]*;/gi)];
+                for (const m of imports) {
+                    const p = asIsLocalRef(m[1]) ? find(asResolvePath(m[1], cssDir)) : null;
+                    out = out.replace(m[0], (p && depth < 3) ? await rewriteCss(await text(p), baseDirOf(p), depth + 1) : '');
+                }
+                const urls = [...out.matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi)];
+                for (const m of urls) {
+                    if (!asIsLocalRef(m[2])) continue;
+                    const p = find(asResolvePath(m[2], cssDir));
+                    if (p) out = out.split(m[0]).join(`url("${(await load(p)).dataUrl}")`);
+                }
+                return out;
+            }
+
+            const doc = new DOMParser().parseFromString(await text(entryPath), 'text/html');
+            const entryDir = baseDirOf(entryPath);
+            // 정적 참조 치환: 스타일시트/스크립트는 인라인으로, 나머지(이미지·오디오·비디오·폰트 등)는 data URL 로
+            for (const el of [...doc.querySelectorAll('link[rel~="stylesheet"][href]')]) {
+                const p = asIsLocalRef(el.getAttribute('href')) ? find(asResolvePath(el.getAttribute('href'), entryDir)) : null;
+                if (!p) continue;
+                const style = doc.createElement('style');
+                style.textContent = await rewriteCss(await text(p), baseDirOf(p), 0);
+                el.replaceWith(style);
+            }
+            for (const el of [...doc.querySelectorAll('script[src]')]) {
+                const p = asIsLocalRef(el.getAttribute('src')) ? find(asResolvePath(el.getAttribute('src'), entryDir)) : null;
+                if (!p) continue;
+                el.removeAttribute('src');
+                el.textContent = (await text(p)).replace(/<\/script/gi, '<\\/script');
+            }
+            for (const style of [...doc.querySelectorAll('style')]) style.textContent = await rewriteCss(style.textContent, entryDir, 0);
+            for (const el of [...doc.querySelectorAll('[style*="url("]')]) el.setAttribute('style', await rewriteCss(el.getAttribute('style'), entryDir, 0));
+            const attrs = [['src', '*'], ['poster', 'video'], ['href', 'link'], ['data', 'object']];
+            for (const [attr, sel] of attrs) {
+                for (const el of [...doc.querySelectorAll(`${sel}[${attr}]`)]) {
+                    if (el.tagName === 'A' || !asIsLocalRef(el.getAttribute(attr))) continue;
+                    const p = find(asResolvePath(el.getAttribute(attr), entryDir));
+                    if (p) el.setAttribute(attr, (await load(p)).dataUrl);
+                }
+            }
+            for (const el of [...doc.querySelectorAll('[srcset]')]) {
+                const parts = [];
+                for (const cand of el.getAttribute('srcset').split(',')) {
+                    const [u, ...rest] = cand.trim().split(/\s+/);
+                    const p = asIsLocalRef(u) ? find(asResolvePath(u, entryDir)) : null;
+                    parts.push(`${p ? (await load(p)).dataUrl : u}${rest.length ? ' ' + rest.join(' ') : ''}`);
+                }
+                el.setAttribute('srcset', parts.join(', '));
+            }
+            // 스크립트가 fetch/XHR/new Audio('x.mp3') 처럼 "나중에" 부르는 파일을 위해 전체 색인(경로 → data URL)도 넣어 준다
+            const files = {};
+            for (const name of zip.entries.keys()) {
+                if (zip.root && !name.startsWith(zip.root)) continue;
+                files[name.slice(zip.root.length)] = (await load(name)).dataUrl;
+            }
+            return { doc, files, base: '' };
+        }
+
+        // sandbox 안에서 제일 먼저 실행되는 보조 스크립트: localStorage/sessionStorage 대용품(부모에 저장), ZIP 앱의 상대 경로 처리
+        const AS_SHIM = `(function(){
+            var CFG = window.__GMW_CFG__; delete window.__GMW_CFG__;
+            function makeStore(initial, persist) {
+                var d = Object.create(null); Object.keys(initial || {}).forEach(function (k) { d[k] = String(initial[k]); });
+                var api = {
+                    getItem: function (k) { k = String(k); return k in d ? d[k] : null; },
+                    setItem: function (k, v) { d[String(k)] = String(v); persist(d); },
+                    removeItem: function (k) { delete d[String(k)]; persist(d); },
+                    clear: function () { d = Object.create(null); persist(d); },
+                    key: function (i) { return Object.keys(d)[i] || null; }
+                };
+                return new Proxy(api, {
+                    get: function (t, p) { if (p === 'length') return Object.keys(d).length; if (p in t) return t[p]; return typeof p === 'string' && p in d ? d[p] : undefined; },
+                    set: function (t, p, v) { if (typeof p === 'string') { d[p] = String(v); persist(d); } return true; },
+                    deleteProperty: function (t, p) { delete d[p]; persist(d); return true; },
+                    has: function (t, p) { return p in t || p in d; },
+                    ownKeys: function () { return Object.keys(d); },
+                    getOwnPropertyDescriptor: function (t, p) { return p in d ? { value: d[p], writable: true, enumerable: true, configurable: true } : undefined; }
+                });
+            }
+            var timer = null;
+            function persistLocal(d) { clearTimeout(timer); timer = setTimeout(function () { try { parent.postMessage({ gmw: 'ls', appId: CFG.appId, data: JSON.stringify(d) }, '*'); } catch (e) {} }, 250); }
+            try { var ls = makeStore(CFG.store, persistLocal); Object.defineProperty(window, 'localStorage', { get: function () { return ls; }, configurable: true }); } catch (e) {}
+            try { var ss = makeStore({}, function () {}); Object.defineProperty(window, 'sessionStorage', { get: function () { return ss; }, configurable: true }); } catch (e) {}
+            if (!CFG.files) return;
+            var files = CFG.files, lower = {};
+            Object.keys(files).forEach(function (k) { lower[k.toLowerCase()] = k; });
+            function resolve(u) {
+                if (typeof u !== 'string' || /^(data:|blob:|https?:|\\/\\/|about:|javascript:|#)/i.test(u)) return null;
+                var r = u.split('#')[0].split('?')[0]; try { r = decodeURIComponent(r); } catch (e) {}
+                var parts = [];
+                r.replace(/\\\\/g, '/').split('/').forEach(function (s) { if (!s || s === '.') return; if (s === '..') parts.pop(); else parts.push(s); });
+                var p = parts.join('/'); var key = p in files ? p : lower[p.toLowerCase()];
+                return key ? files[key] : null;
+            }
+            var of = window.fetch;
+            if (of) window.fetch = function (input, init) { var r = typeof input === 'string' ? resolve(input) : null; return of.call(window, r || input, init); };
+            var oo = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function (m, u) { var r = resolve(u); var a = Array.prototype.slice.call(arguments); if (r) a[1] = r; return oo.apply(this, a); };
+            function patchProp(proto, prop) {
+                var desc = Object.getOwnPropertyDescriptor(proto, prop); if (!desc || !desc.set) return;
+                Object.defineProperty(proto, prop, { get: desc.get, configurable: true, enumerable: desc.enumerable, set: function (v) { var r = resolve(v); desc.set.call(this, r || v); } });
+            }
+            [[HTMLImageElement, 'src'], [HTMLMediaElement, 'src'], [HTMLSourceElement, 'src'], [HTMLScriptElement, 'src'], [HTMLLinkElement, 'href'], [HTMLVideoElement, 'poster']].forEach(function (x) { try { patchProp(x[0].prototype, x[1]); } catch (e) {} });
+            try { var OA = window.Audio; window.Audio = function (src) { var a = new OA(); if (src !== undefined) a.src = src; return a; }; window.Audio.prototype = OA.prototype; } catch (e) {}
+            var oset = Element.prototype.setAttribute;
+            Element.prototype.setAttribute = function (n, v) { if (/^(src|href|poster)$/i.test(n)) { var r = resolve(v); if (r) v = r; } return oset.call(this, n, v); };
+        })();`;
+
+        function asJsonForScript(obj) { return JSON.stringify(obj).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'); }
+        function asStoreKey(appId) { const u = AUTH().user(); return `gmw_appdata:${appId}:${u ? u.uid : 'guest'}`; }
+        function asLoadAppData(appId) { try { const v = JSON.parse(localStorage.getItem(asStoreKey(appId)) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
+
+        async function asBuildRunDocument(app) {
+            const resp = await fetch(asPublicUrl(app.file_path), { cache: 'force-cache' }); // 경로 자체가 버전마다 달라서 캐시해도 안전하다
+            if (!resp.ok) throw new Error('앱 파일을 불러오지 못했어요.');
+            const buf = await resp.arrayBuffer();
+            if (buf.byteLength > Math.max(AS_LIMITS.html, AS_LIMITS.zip)) throw new Error('앱 파일이 너무 커요.');
+            let doc, files = null;
+            if (app.file_type === 'zip') ({ doc, files } = await asBuildZipDocument(buf));
+            else doc = new DOMParser().parseFromString(new TextDecoder('utf-8').decode(buf), 'text/html');
+            // <base href="about:srcdoc">: srcdoc 안에서 <a href="#x"> 같은 앵커가 부모(이 사이트) 주소로 이동해 버리는 문제를 막는다
+            const head = doc.head || doc.documentElement.insertBefore(doc.createElement('head'), doc.body);
+            const shim = doc.createElement('script');
+            shim.textContent = `window.__GMW_CFG__ = ${asJsonForScript({ appId: app.id, store: asLoadAppData(app.id), files })};\n${AS_SHIM}`;
+            head.insertBefore(shim, head.firstChild);
+            const base = doc.createElement('base'); base.setAttribute('href', 'about:srcdoc');
+            head.insertBefore(base, head.firstChild);
+            doc.querySelectorAll('meta[http-equiv="refresh" i]').forEach(m => m.remove());
+            return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+        }
+
+        // 앱이 sandbox 안에서 쓴 "localStorage" 내용을 이 브라우저에 저장해 준다(앱·계정별로 분리, 크기 제한)
+        window.addEventListener('message', (e) => {
+            const d = e.data;
+            if (!AS.runFrame || e.source !== AS.runFrame.contentWindow) return; // 우리가 띄운 앱 iframe 이 보낸 메시지만 받는다
+            if (!d || d.gmw !== 'ls' || d.appId !== AS.runAppId || typeof d.data !== 'string') return;
+            if (d.data.length > AS_LIMITS.appData) return;
+            try {
+                JSON.parse(d.data);
+                const key = asStoreKey(AS.runAppId);
+                let others = 0;
+                for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('gmw_appdata:') && k !== key) others += (localStorage.getItem(k) || '').length; }
+                if (others + d.data.length > AS_LIMITS.appDataTotal) return; // 앱 저장 데이터 전체 한도 초과
+                localStorage.setItem(key, d.data);
+            } catch (err) { /* 용량 초과 등은 무시 */ }
+        });
+
+        // ---------------------------------------------------------------- 렌더링: 실행
+        async function asRenderRun(root) {
+            const id = AS.appId;
+            root.innerHTML = '<div class="as-empty">앱을 불러오는 중…</div>';
+            const app = await asFindApp(id);
+            if (AS.view !== 'run' || AS.appId !== id) return;
+            if (!app) { root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div><div class="card as-empty">존재하지 않거나 비공개로 바뀐 앱이에요.</div>`; return; }
+            AS.app = app; document.title = `${app.name} · 앱스토어`;
+            asCountView(app);
+            root.innerHTML = `
+                <div class="as-run-bar">
+                    <button class="btn-sub" data-as="detail" data-id="${asEsc(app.id)}">← 앱 정보</button>
+                    <div class="as-run-title">${asEsc(app.name)} <span class="as-chip">v${asEsc(app.version)}</span></div>
+                    <button class="btn-sub" data-as="newtab" data-id="${asEsc(app.id)}" title="새 탭에서 열기">↗ 새 탭</button>
+                    <button class="btn-sub" data-as="fullscreen" title="전체 화면">⛶</button>
+                </div>
+                <div class="as-run-note">🔒 이 앱은 격리된 상자(sandbox) 안에서 실행돼요. 사이트의 로그인 정보나 다른 데이터에는 접근할 수 없어요.</div>
+                <div class="as-run-stage" id="as-run-stage"><div class="as-empty">앱을 준비하는 중…</div></div>`;
+            try {
+                const html = await asBuildRunDocument(app);
+                if (AS.view !== 'run' || AS.appId !== id) return;
+                const stage = document.getElementById('as-run-stage');
+                const frame = document.createElement('iframe');
+                // allow-same-origin 을 일부러 넣지 않는다 → 앱은 고유하지 않은(opaque) 출처가 되어 부모 DOM/저장소/토큰에 접근할 수 없다.
+                // allow-top-navigation 도 없다 → 이 사이트 화면 자체를 다른 주소로 바꿔치기할 수 없다.
+                frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock allow-downloads');
+                frame.setAttribute('allow', 'fullscreen; autoplay; gamepad; clipboard-write');
+                frame.setAttribute('allowfullscreen', '');
+                frame.setAttribute('referrerpolicy', 'no-referrer');
+                frame.className = 'as-run-frame'; frame.title = app.name;
+                frame.srcdoc = html;
+                stage.innerHTML = ''; stage.appendChild(frame);
+                AS.runFrame = frame; AS.runAppId = app.id;
+            } catch (e) {
+                const msg = e instanceof ZipError ? e.message : (e && e.message) || '앱을 실행하지 못했어요.';
+                const stage = document.getElementById('as-run-stage');
+                if (stage) stage.innerHTML = `<div class="as-empty">⚠️ ${asEsc(msg)}</div>`;
+            }
+        }
+
+        // ---------------------------------------------------------------- 렌더링: 등록/수정 폼
+        function asRenderForm(root) {
+            const { mode, app } = AS.form;
+            const isEdit = mode === 'update';
+            root.innerHTML = `
+                <div class="community-back-link" data-as="${isEdit ? 'detail' : 'home'}" data-id="${asEsc(app ? app.id : '')}">← ${isEdit ? '앱 정보' : '앱스토어'}</div>
+                <div class="card as-form">
+                    <h2 class="as-form-title">${isEdit ? '앱 수정' : '새 앱 등록'}</h2>
+                    <label class="as-label">앱 이름 *<input id="as-f-name" class="auth-input" maxlength="40" placeholder="예: 계산기" value="${asEsc(app ? app.name : '')}"></label>
+                    <label class="as-label">설명<textarea id="as-f-desc" class="auth-input as-textarea" maxlength="1000" placeholder="어떤 앱인지 간단히 알려주세요">${asEsc(app ? app.description : '')}</textarea></label>
+                    <div class="as-row">
+                        <label class="as-label">카테고리<select id="as-f-cat" class="auth-select">${AS_CATEGORIES.map(c => `<option ${app && app.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+                        <label class="as-label">버전<input id="as-f-ver" class="auth-input" maxlength="20" placeholder="1.0.0" value="${asEsc(app ? app.version : '1.0.0')}"></label>
+                    </div>
+                    <div class="as-label">아이콘 <span class="as-hint">(PNG·JPG·WEBP·GIF, 1MB 이하 · 선택)</span>
+                        <div class="as-icon-pick">
+                            <div id="as-f-icon-preview">${app ? asIconHtml(app, 64) : '<div class="as-icon-fallback" style="width:64px;height:64px;font-size:28px;background:var(--surface-secondary);color:var(--text-muted);">🧩</div>'}</div>
+                            <input id="as-f-icon" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+                            ${isEdit && app.icon_url ? '<label class="as-check"><input id="as-f-icon-remove" type="checkbox"> 아이콘 지우기</label>' : ''}
+                        </div>
+                    </div>
+                    <div class="as-label">${isEdit ? '새 버전 파일로 교체 <span class="as-hint">(선택 · 비워 두면 파일은 그대로)</span>' : 'HTML 또는 ZIP 파일 *'}
+                        <input id="as-f-file" type="file" accept=".html,.htm,.zip">
+                        <div class="as-hint">${isEdit ? `현재: ${app.file_type === 'zip' ? 'ZIP' : 'HTML'} · ${asFmtSize(app.file_size || 0)} · ` : ''}HTML 한 파일이면 <b>.html</b>(5MB 이하), 여러 파일이면 <b>.zip</b>(20MB 이하, 맨 위에 <b>index.html</b>)으로 올려요. 주소는 수정해도 바뀌지 않아요.</div>
+                    </div>
+                    ${isEdit ? `<label class="as-label">이번 업데이트 내용 <span class="as-hint">(업데이트 기록에 남아요)</span><textarea id="as-f-log" class="auth-input as-textarea" maxlength="1000" placeholder="예: 버그 수정, 검색 기능 추가"></textarea></label>` : ''}
+                    <label class="as-check"><input id="as-f-pub" type="checkbox" ${!app || app.published ? 'checked' : ''}> 앱스토어에 공개</label>
+                    <div class="as-limits">ℹ️ 실행 환경: 앱은 격리된 sandbox 에서 실행돼요. 서버 코드·IndexedDB·여러 HTML 페이지 이동·Web Worker·ES 모듈 import 는 지원하지 않아요. localStorage 는 이 브라우저에 앱별로 저장돼요.</div>
+                    <div id="as-f-error" class="as-error" style="display:none;"></div>
+                    <div class="as-form-actions">
+                        ${isEdit ? '<button class="btn-sub as-danger" data-as="delete" id="as-f-delete">🗑 앱 삭제</button>' : '<span></span>'}
+                        <div><button class="btn-sub" data-as="${isEdit ? 'detail' : 'home'}" data-id="${asEsc(app ? app.id : '')}">취소</button>
+                        <button class="auth-btn as-btn-submit" id="as-f-submit" data-as="submit">${isEdit ? '저장' : '게시하기'}</button></div>
+                    </div>
+                </div>`;
+            const iconInput = document.getElementById('as-f-icon');
+            iconInput.addEventListener('change', () => {
+                const f = iconInput.files[0]; if (!f) return;
+                if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type) || f.size > AS_LIMITS.icon) { asFormError('아이콘은 1MB 이하의 PNG/JPG/WEBP/GIF 이미지만 쓸 수 있어요.'); iconInput.value = ''; return; }
+                document.getElementById('as-f-icon-preview').innerHTML = `<img class="as-icon-img" style="width:64px;height:64px;" src="${URL.createObjectURL(f)}" alt="">`;
+            });
+        }
+        function asFormError(msg) { const el = document.getElementById('as-f-error'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; if (msg) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+        function asFormBusy(text) { const b = document.getElementById('as-f-submit'); if (!b) return; b.disabled = !!text; b.textContent = text || (AS.form && AS.form.mode === 'update' ? '저장' : '게시하기'); }
+
+        async function asSubmitForm() {
+            const { mode, app } = AS.form;
+            asFormError('');
+            const val = (id) => (document.getElementById(id) ? document.getElementById(id).value : '');
+            const fields = { name: val('as-f-name').trim(), description: val('as-f-desc').trim(), category: val('as-f-cat'), version: val('as-f-ver').trim(), published: document.getElementById('as-f-pub').checked };
+            if (!fields.name) return asFormError('앱 이름을 입력해주세요.');
+            if (!/^[0-9A-Za-z][0-9A-Za-z._+-]{0,19}$/.test(fields.version)) return asFormError('버전 형식이 올바르지 않아요. (예: 1.0.0)');
+            const file = document.getElementById('as-f-file').files[0] || null;
+            const icon = document.getElementById('as-f-icon').files[0] || null;
+            if (mode === 'create' && !file) return asFormError('HTML 또는 ZIP 파일을 선택해주세요.');
+            let fileType = null;
+            if (file) {
+                const n = file.name.toLowerCase();
+                fileType = /\.html?$/.test(n) ? 'html' : (/\.zip$/.test(n) ? 'zip' : null);
+                if (!fileType) return asFormError('.html 또는 .zip 파일만 올릴 수 있어요.');
+                if (file.size > AS_LIMITS[fileType]) return asFormError(`${fileType === 'zip' ? 'ZIP은 20MB' : 'HTML은 5MB'} 이하만 올릴 수 있어요.`);
+                if (fileType === 'zip') { // 서버로 보내기 전에 구조/경로/크기를 미리 검사한다
+                    try { zipOpen(await file.arrayBuffer()); } catch (e) { return asFormError(e instanceof ZipError ? e.message : 'ZIP 파일을 읽지 못했어요.'); }
+                }
+            }
+            const u = AUTH().user();
+            if (!u) { AUTH().login(() => {}); return; }
+            try {
+                asFormBusy('준비 중…');
+                const prep = await asCallFn({
+                    action: 'prepare', mode, appId: app ? app.id : undefined,
+                    mainFile: file ? { name: file.name, size: file.size, type: file.type } : undefined,
+                    icon: icon ? { name: icon.name, size: icon.size, type: icon.type } : undefined
+                });
+                const storage = sbApps.storage.from(AS_BUCKET);
+                if (file) {
+                    asFormBusy('파일 올리는 중…');
+                    const { error } = await storage.uploadToSignedUrl(prep.uploads.main.path, prep.uploads.main.token, file, { contentType: fileType === 'zip' ? 'application/zip' : 'text/html' });
+                    if (error) throw new Error('파일 업로드에 실패했어요: ' + (error.message || ''));
+                }
+                if (icon) {
+                    const { error } = await storage.uploadToSignedUrl(prep.uploads.icon.path, prep.uploads.icon.token, icon, { contentType: icon.type });
+                    if (error) throw new Error('아이콘 업로드에 실패했어요: ' + (error.message || ''));
+                }
+                asFormBusy('게시하는 중…');
+                const removeIcon = !!(document.getElementById('as-f-icon-remove') && document.getElementById('as-f-icon-remove').checked);
+                const done = await asCallFn({
+                    action: 'commit', mode, appId: prep.appId,
+                    fields: { ...fields, changelog: val('as-f-log') },
+                    mainPath: file ? prep.uploads.main.path : undefined, fileType: file ? fileType : undefined,
+                    iconPath: icon ? prep.uploads.icon.path : undefined, removeIcon,
+                    authorName: AUTH().displayName()
+                });
+                AS.loadedAt = 0; AS.mine = null;
+                await asLoadApps(true);
+                asNavigate({ view: 'detail', appId: done.app.id }, true);
+            } catch (e) {
+                asFormBusy('');
+                asFormError(e && e.message ? e.message : '저장하지 못했어요. 잠시 후 다시 시도해주세요.');
+            }
+        }
+
+        async function asDeleteApp(app) {
+            if (!confirm(`“${app.name}” 앱을 삭제할까요?\n주소와 모든 버전 파일이 사라지고 되돌릴 수 없어요.`)) return;
+            try {
+                await asCallFn({ action: 'delete', appId: app.id });
+                AS.apps = AS.apps.filter(a => a.id !== app.id); AS.mine = null; AS.loadedAt = 0;
+                asNavigate({ view: 'list' }, true);
+            } catch (e) { asFormError(e.message || '삭제하지 못했어요.'); }
+        }
+
+        // ---------------------------------------------------------------- 다운로드 / 링크 복사
+        async function asDownload(app) {
+            try {
+                const resp = await fetch(asPublicUrl(app.file_path));
+                if (!resp.ok) throw new Error();
+                const blob = await resp.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${String(app.name).replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40) || 'app'}.${app.file_type === 'zip' ? 'zip' : 'html'}`;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            } catch (e) { alert('파일을 내려받지 못했어요. 잠시 후 다시 시도해주세요.'); }
+        }
+        async function asCopyLink(app) {
+            const url = `${location.origin}/app/${app.id}`;
+            try { await navigator.clipboard.writeText(url); alert('링크가 복사됐어요!\n' + url); }
+            catch (e) { prompt('링크를 복사하세요', url); }
+        }
+
+        // ---------------------------------------------------------------- 화면 전환 / 주소(/app/<id>) 처리
+        function asPathFor(state) {
+            if (state.view === 'detail' && state.appId) return `/app/${state.appId}`;
+            if (state.view === 'run' && state.appId) return `/app/${state.appId}/run`;
+            return '/';
+        }
+        function asNavigate(state, push) {
+            AS.view = state.view; AS.appId = state.appId || null; AS.form = state.form || null;
+            if (state.view !== 'run') { AS.runFrame = null; AS.runAppId = null; }
+            const path = asPathFor(state);
+            if (location.pathname !== path) { try { history[push ? 'pushState' : 'replaceState']({ gmwApp: true }, '', path); } catch (e) {} }
+            if (state.view === 'list' || state.view === 'form') document.title = AS_BASE_TITLE;
+            asRender();
+        }
+        async function asRender() {
+            const root = document.getElementById('as-root');
+            if (!root) return;
+            if (AS.view === 'list') {
+                asRenderList(root);
+                if (!AS.apps.length || Date.now() - AS.loadedAt > 30000) { await asLoadApps(true); if (AS.view === 'list') asRenderList(root); }
+                if (AS.cat === '내 앱' && AS.mine === null) { await asLoadMine(); if (AS.view === 'list') asRenderList(root); }
+            } else if (AS.view === 'detail') await asRenderDetail(root);
+            else if (AS.view === 'run') await asRenderRun(root);
+            else if (AS.view === 'form') asRenderForm(root);
+            document.querySelector('.main') && document.querySelector('.main').scrollTo({ top: 0 });
+        }
+        function asRequireLogin(then) {
+            if (AUTH().user()) return then();
+            AUTH().login(then);
+        }
+
+        // 클릭은 한 곳에서 처리한다(이벤트 위임)
+        document.addEventListener('click', async (e) => {
+            const el = e.target.closest('#tab-appstore [data-as]');
+            if (!el) return;
+            const act = el.dataset.as, id = el.dataset.id;
+            if (act === 'open') { if (e.target.closest('[data-as="edit"]')) return; asNavigate({ view: 'detail', appId: id }, true); }
+            else if (act === 'home') asNavigate({ view: 'list' }, true);
+            else if (act === 'detail') asNavigate({ view: 'detail', appId: id }, true);
+            else if (act === 'run') asNavigate({ view: 'run', appId: id }, true);
+            else if (act === 'newtab') window.open(`/app/${id}/run`, '_blank', 'noopener');
+            else if (act === 'fullscreen') { const f = document.getElementById('as-run-stage'); if (f && f.requestFullscreen) f.requestFullscreen().catch(() => {}); }
+            else if (act === 'cat') {
+                AS.cat = el.dataset.cat;
+                if (AS.cat === '내 앱' && AS.mine === null) { asRender(); } else asRenderList(document.getElementById('as-root'));
+            }
+            else if (act === 'new') asRequireLogin(() => asNavigate({ view: 'form', form: { mode: 'create', app: null } }, true));
+            else if (act === 'edit') { e.stopPropagation(); asRequireLogin(async () => { const app = await asFindApp(id); if (app) asNavigate({ view: 'form', appId: id, form: { mode: 'update', app } }, true); }); }
+            else if (act === 'download') { const app = await asFindApp(id); if (app) asDownload(app); }
+            else if (act === 'copylink') { const app = await asFindApp(id); if (app) asCopyLink(app); }
+            else if (act === 'submit') asSubmitForm();
+            else if (act === 'delete') { if (AS.form && AS.form.app) asDeleteApp(AS.form.app); }
+        });
+        document.addEventListener('input', (e) => {
+            if (e.target && e.target.id === 'as-search') {
+                AS.q = e.target.value;
+                const pos = e.target.selectionStart;
+                asRenderList(document.getElementById('as-root'));
+                const input = document.getElementById('as-search'); input.focus(); try { input.setSelectionRange(pos, pos); } catch (err) {}
+            }
+        });
+
+        // 사이드바 "앱스토어"로 들어올 때는 항상 목록부터 보여준다
+        window.openAppStore = function () {
+            window.switchTab('appstore');
+            asNavigate({ view: 'list' }, true);
+        };
+        // 다른 탭으로 나가면 주소를 / 로 되돌린다(새로고침했을 때 앱 화면으로 되돌아가지 않도록)
+        (function wrapSwitchTab() {
+            const orig = window.switchTab;
+            if (typeof orig !== 'function') return;
+            window.switchTab = function (tabId) {
+                if (tabId !== 'appstore' && /^\/app\//.test(location.pathname)) { try { history.replaceState(null, '', '/'); } catch (e) {} AS.runFrame = null; AS.runAppId = null; document.title = AS_BASE_TITLE; }
+                return orig.apply(this, arguments);
+            };
+        })();
+
+        function asParseRoute() {
+            const m = location.pathname.match(/^\/app\/([a-z0-9]{6,12})(\/run)?\/?$/);
+            return m ? { view: m[2] ? 'run' : 'detail', appId: m[1] } : null;
+        }
+        window.addEventListener('popstate', () => {
+            const r = asParseRoute();
+            if (r) { window.switchTab('appstore'); AS.view = r.view; AS.appId = r.appId; asRender(); }
+            else if (document.getElementById('tab-appstore').classList.contains('active')) { AS.view = 'list'; AS.appId = null; asRender(); }
+        });
+
+        // 처음 열린 주소가 /app/<id> 이면: 사이트가 준비(익명/로그인 세션 시작)된 뒤 해당 앱 화면을 연다
+        (function bootRoute() {
+            const r = asParseRoute();
+            if (!r) return;
+            const container = document.getElementById('app-container');
+            const open = () => { window.switchTab('appstore'); asNavigate({ view: r.view, appId: r.appId }, false); };
+            if (container.classList.contains('authenticated')) { setTimeout(open, 0); return; }
+            const mo = new MutationObserver(() => { if (container.classList.contains('authenticated')) { mo.disconnect(); setTimeout(open, 0); } });
+            mo.observe(container, { attributes: true, attributeFilter: ['class'] });
+        })();
+
     </script>
 
 <script>
@@ -18521,7 +18652,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch((err) => {
+                navigator.serviceWorker.register('/sw.js').catch((err) => {
                     console.warn('[한일고 PWA] service worker 등록 실패:', err);
                 });
             });
