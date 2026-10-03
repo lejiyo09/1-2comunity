@@ -34,6 +34,14 @@
   푼 파일은 **data URL 로 인라인**해서 실행한다(sandbox 의 opaque 출처에서는 부모가 만든 blob URL 을 읽을 수 없기 때문). `fetch()`/`XMLHttpRequest`/`new Audio()`/`img.src = ...` 같은 동적 상대 경로는 shim 이 ZIP 안 파일로 연결한다.
 * 앱 파일 제한: HTML 5MB, ZIP 20MB, 아이콘 1MB(PNG/JPG/WEBP/GIF — SVG 는 스크립트를 담을 수 있어 불허), 사용자당 앱 50개. 서버(`apps-write`)와 버킷(`file_size_limit`, `allowed_mime_types`)이 같은 제한을 다시 검사한다.
 
+### 큰 앱: 외부 링크(Netlify 등)로 등록
+HTML 5MB / ZIP 20MB 를 넘어 올릴 수 없는 앱은 **"🌐 외부 링크만"** 방식으로 등록한다. 파일은 올리지 않고 제작자가 Netlify 등에 직접 배포한 `https://` 주소만 건다(`file_type='link'`, `file_path='external'`).
+* 앱스토어 안에서의 실행·다운로드는 없고, 상세 화면의 **"외부 링크로 열기"**(새 탭, `noopener noreferrer nofollow`)로만 연결한다. `/app/<id>/run` 으로 들어와도 상세 화면으로 돌려보낸다.
+* 파일을 올린 앱에도 **선택 항목**으로 외부 공유 링크를 덧붙일 수 있다(`apps.external_url`). 이 경우 실행/다운로드 버튼과 외부 링크 버튼이 같이 보인다.
+* 외부 링크는 서버(`apps-write`)와 화면이 같은 규칙으로 검사한다: `https` 만, 아이디/비밀번호 포함 금지, `localhost`/IP/내부 주소 금지, 500자 이하. DB 에도 `https://` 로 시작하는지 CHECK 제약이 있다.
+* 외부 사이트는 앱스토어의 sandbox 보호가 적용되지 않으므로 상세 화면에 경고 문구와 도메인을 함께 보여준다.
+* 이미 마이그레이션을 실행했다면 `20261002_appstore.sql` 을 **다시 실행**하고(idempotent) `apps-write` 함수를 **다시 배포**해야 한다.
+
 ### 알려진 제한 (앱이 지원하지 않는 것)
 
 IndexedDB·쿠키, Web Worker/Service Worker, ES 모듈 `import`(상대 경로), 여러 HTML 페이지 사이 이동(`<a href="page2.html">`; `#해시` 기반 단일 페이지 앱은 가능),

@@ -540,6 +540,12 @@
         .as-icon-fallback { flex:none; border-radius:22%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
         .as-chip { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--primary-soft); color:var(--primary); vertical-align:middle; }
         .as-chip-warn { background:#fee2e2; color:#b91c1c; }
+        .as-chip-ext { background:#e0f2fe; color:#0369a1; }
+        .as-ext-box { margin:14px 0 4px; padding:12px 14px; border-radius:14px; background:var(--surface-secondary); border:1px solid var(--border-color); font-size:13px; line-height:1.55; color:var(--text-secondary); }
+        .as-ext-box a { word-break:break-all; font-weight:700; }
+        .as-kind { display:flex; gap:8px; margin:2px 0 4px; flex-wrap:wrap; }
+        .as-kind label { flex:1 1 150px; display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; font-size:13px; font-weight:600; cursor:pointer; }
+        .as-kind label:has(input:checked) { border-color:var(--primary); background:var(--primary-soft); color:var(--primary); }
         .as-empty { text-align:center; color:var(--text-muted); font-size:13.5px; padding:40px 16px; }
         .as-detail { margin-top:6px; }
         .as-detail-top { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
@@ -14127,12 +14133,17 @@
             const letter = asEsc((String(app.name || '?').trim()[0] || '?').toUpperCase());
             return `<div class="as-icon-fallback" style="width:${px}px;height:${px}px;font-size:${Math.round(px * 0.45)}px;background:linear-gradient(135deg,hsl(${h},70%,58%),hsl(${(h + 40) % 360},70%,46%));">${letter}</div>`;
         }
+        // 외부 링크: https 만, 표시용 호스트 (서버도 같은 규칙으로 검사한다)
+        function asExtUrl(app) {
+            try { const u = new URL(app && app.external_url || ''); return u.protocol === 'https:' ? u : null; } catch (e) { return null; }
+        }
+        const asIsLink = (app) => app.file_type === 'link';
         function asCardHtml(app, opts) {
             const mine = opts && opts.mine;
             return `<div class="as-card" data-as="open" data-id="${asEsc(app.id)}">
                 ${asIconHtml(app, 56)}
                 <div class="as-card-body">
-                    <div class="as-name">${asEsc(app.name)}${mine && !app.published ? ' <span class="as-chip as-chip-warn">비공개</span>' : ''}</div>
+                    <div class="as-name">${asEsc(app.name)}${asIsLink(app) ? ' <span class="as-chip as-chip-ext">🌐 외부 링크</span>' : ''}${mine && !app.published ? ' <span class="as-chip as-chip-warn">비공개</span>' : ''}</div>
                     <div class="as-desc">${asEsc(app.description || '설명이 없어요')}</div>
                     <div class="as-meta"><span>${asEsc(app.author_name || '익명')}</span><span>v${asEsc(app.version)}</span><span>👁 ${Number(app.views || 0).toLocaleString()}</span><span>${asFmtDate(app.created_at)}</span></div>
                 </div>
@@ -14200,6 +14211,9 @@
             try { const { data } = await sbApps.from('app_versions').select('*').eq('app_id', app.id).order('created_at', { ascending: false }).limit(30); versions = data || []; } catch (e) { /* 이력이 없어도 상세는 보인다 */ }
             if (AS.view !== 'detail' || AS.appId !== id) return;
             const dl = app.file_type === 'zip' ? 'ZIP 다운로드' : 'HTML 다운로드';
+            const linkOnly = asIsLink(app), ext = asExtUrl(app);
+            const extBtn = ext ? `<a class="${linkOnly ? 'auth-btn as-btn-run' : 'btn-sub'}" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;" href="${asEsc(ext.href)}" target="_blank" rel="noopener noreferrer nofollow" data-as-ext="1">🌐 외부 링크로 열기</a>` : '';
+            const extBox = ext ? `<div class="as-ext-box">${linkOnly ? '용량이 커서 앱스토어에서 직접 실행·다운로드는 지원하지 않는 앱이에요. 제작자가 따로 올려 둔 외부 주소로 연결돼요.' : '제작자가 따로 걸어 둔 외부 공유 링크예요.'}<br>⚠️ 외부 사이트라 앱스토어의 격리(sandbox) 보호가 적용되지 않아요. 아는 사이트인지 확인하고 이용하세요.<br>주소 <a href="${asEsc(ext.href)}" target="_blank" rel="noopener noreferrer nofollow">${asEsc(ext.hostname)}</a></div>` : '';
             root.innerHTML = `
                 <div class="community-back-link" data-as="home">← 앱스토어</div>
                 <div class="card as-detail">
@@ -14217,11 +14231,12 @@
                         </div>
                     </div>
                     <div class="as-actions">
-                        <button class="auth-btn as-btn-run" data-as="run" data-id="${asEsc(app.id)}">▶ 웹에서 실행</button>
-                        <button class="btn-sub" data-as="download" data-id="${asEsc(app.id)}">⬇ ${dl}</button>
+                        ${linkOnly ? extBtn : `<button class="auth-btn as-btn-run" data-as="run" data-id="${asEsc(app.id)}">▶ 웹에서 실행</button>
+                        <button class="btn-sub" data-as="download" data-id="${asEsc(app.id)}">⬇ ${dl}</button>${extBtn}`}
                         <button class="btn-sub" data-as="copylink" data-id="${asEsc(app.id)}">🔗 링크 복사</button>
                         ${isOwner ? `<button class="btn-sub" data-as="edit" data-id="${asEsc(app.id)}">✏️ 수정</button>` : ''}
                     </div>
+                    ${extBox}
                     <div class="as-desc-full">${asEsc(app.description || '설명이 없어요.').replace(/\n/g, '<br>')}</div>
                     <div class="as-link-row">주소 <code>${asEsc(location.origin)}/app/${asEsc(app.id)}</code></div>
                     ${versions.length ? `<h3 class="as-section-title" style="margin-top:22px;">업데이트 기록</h3><div class="as-versions">${versions.map(v => `<div class="as-version"><b>v${asEsc(v.version)}</b><span>${asFmtDate(v.created_at)}</span><p>${asEsc(v.changelog || '').replace(/\n/g, '<br>') || '<i>변경 내용 없음</i>'}</p></div>`).join('')}</div>` : ''}
@@ -14499,6 +14514,7 @@
             const app = await asFindApp(id);
             if (AS.view !== 'run' || AS.appId !== id) return;
             if (!app) { root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div><div class="card as-empty">존재하지 않거나 비공개로 바뀐 앱이에요.</div>`; return; }
+            if (asIsLink(app)) { asNavigate({ view: 'detail', appId: app.id }, false); return; } // 파일이 없는 외부 링크 앱은 실행 화면이 없다
             AS.app = app; document.title = `${app.name} · 앱스토어`;
             asCountView(app);
             root.innerHTML = `
@@ -14533,9 +14549,14 @@
         }
 
         // ---------------------------------------------------------------- 렌더링: 등록/수정 폼
+        const AS_EXT_LABEL_LINK = '외부 링크 주소 *';
+        const AS_EXT_LABEL_OPT = '외부 공유 링크 <span class="as-hint">(선택 · 용량이 커서 올릴 수 없거나 따로 배포한 버전이 있을 때)</span>';
+        const AS_EXT_HINT_LINK = '파일이 너무 커서 올릴 수 없는 앱은 Netlify 등에 직접 배포하고 그 주소(https)만 걸어 두세요. 이 경우 앱스토어에서는 직접 실행·다운로드 없이 이 주소로 연결만 해줘요.';
+        const AS_EXT_HINT_OPT = 'https:// 로 시작하는 주소만 쓸 수 있어요. 앱 상세 화면에 “외부 링크로 열기” 버튼이 생겨요.';
         function asRenderForm(root) {
             const { mode, app } = AS.form;
             const isEdit = mode === 'update';
+            const isLinkApp = isEdit && !!app && asIsLink(app);
             root.innerHTML = `
                 <div class="community-back-link" data-as="${isEdit ? 'detail' : 'home'}" data-id="${asEsc(app ? app.id : '')}">← ${isEdit ? '앱 정보' : '앱스토어'}</div>
                 <div class="card as-form">
@@ -14553,11 +14574,21 @@
                             ${isEdit && app.icon_url ? '<label class="as-check"><input id="as-f-icon-remove" type="checkbox"> 아이콘 지우기</label>' : ''}
                         </div>
                     </div>
-                    <div class="as-label">${isEdit ? '새 버전 파일로 교체 <span class="as-hint">(선택 · 비워 두면 파일은 그대로)</span>' : 'HTML 또는 ZIP 파일 *'}
+                    ${isEdit ? '' : `<div class="as-label">등록 방식
+                        <div class="as-kind">
+                            <label><input type="radio" name="as-f-kind" value="file" checked> 📦 파일 올리기 <span class="as-hint">(HTML/ZIP)</span></label>
+                            <label><input type="radio" name="as-f-kind" value="link"> 🌐 외부 링크만 <span class="as-hint">(큰 앱용)</span></label>
+                        </div>
+                    </div>`}
+                    ${isLinkApp ? '' : `<div class="as-label" id="as-f-file-block">${isEdit ? '새 버전 파일로 교체 <span class="as-hint">(선택 · 비워 두면 파일은 그대로)</span>' : 'HTML 또는 ZIP 파일 *'}
                         <input id="as-f-file" type="file" accept=".html,.htm,.zip">
                         <div class="as-hint">${isEdit ? `현재: ${app.file_type === 'zip' ? 'ZIP' : 'HTML'} · ${asFmtSize(app.file_size || 0)} · ` : ''}HTML 한 파일이면 <b>.html</b>(5MB 이하), 여러 파일이면 <b>.zip</b>(20MB 이하, 맨 위에 <b>index.html</b>)으로 올려요. 주소는 수정해도 바뀌지 않아요.</div>
-                    </div>
-                    ${isEdit ? `<label class="as-label">이번 업데이트 내용 <span class="as-hint">(업데이트 기록에 남아요)</span><textarea id="as-f-log" class="auth-input as-textarea" maxlength="1000" placeholder="예: 버그 수정, 검색 기능 추가"></textarea></label>` : ''}
+                    </div>`}
+                    <label class="as-label" id="as-f-ext-block"><span id="as-f-ext-label">${isLinkApp ? AS_EXT_LABEL_LINK : AS_EXT_LABEL_OPT}</span>
+                        <input id="as-f-ext" class="auth-input" type="url" maxlength="500" inputmode="url" placeholder="https://내앱.netlify.app" value="${asEsc(app && app.external_url ? app.external_url : '')}">
+                        <div class="as-hint" id="as-f-ext-hint">${isLinkApp ? AS_EXT_HINT_LINK : AS_EXT_HINT_OPT}</div>
+                    </label>
+                    ${isEdit && !isLinkApp ? `<label class="as-label">이번 업데이트 내용 <span class="as-hint">(업데이트 기록에 남아요)</span><textarea id="as-f-log" class="auth-input as-textarea" maxlength="1000" placeholder="예: 버그 수정, 검색 기능 추가"></textarea></label>` : ''}
                     <label class="as-check"><input id="as-f-pub" type="checkbox" ${!app || app.published ? 'checked' : ''}> 앱스토어에 공개</label>
                     <div class="as-limits">ℹ️ 실행 환경: 앱은 격리된 sandbox 에서 실행돼요. 서버 코드·IndexedDB·여러 HTML 페이지 이동·Web Worker·ES 모듈 import 는 지원하지 않아요. localStorage 는 이 브라우저에 앱별로 저장돼요.</div>
                     <div id="as-f-error" class="as-error" style="display:none;"></div>
@@ -14567,6 +14598,13 @@
                         <button class="auth-btn as-btn-submit" id="as-f-submit" data-as="submit">${isEdit ? '저장' : '게시하기'}</button></div>
                     </div>
                 </div>`;
+            document.querySelectorAll('input[name="as-f-kind"]').forEach(r => r.addEventListener('change', () => {
+                const link = document.querySelector('input[name="as-f-kind"]:checked').value === 'link';
+                const fb = document.getElementById('as-f-file-block'); if (fb) fb.style.display = link ? 'none' : '';
+                document.getElementById('as-f-ext-label').innerHTML = link ? AS_EXT_LABEL_LINK : AS_EXT_LABEL_OPT;
+                document.getElementById('as-f-ext-hint').textContent = link ? AS_EXT_HINT_LINK : AS_EXT_HINT_OPT;
+                asFormError('');
+            }));
             const iconInput = document.getElementById('as-f-icon');
             iconInput.addEventListener('change', () => {
                 const f = iconInput.files[0]; if (!f) return;
@@ -14584,9 +14622,18 @@
             const fields = { name: val('as-f-name').trim(), description: val('as-f-desc').trim(), category: val('as-f-cat'), version: val('as-f-ver').trim(), published: document.getElementById('as-f-pub').checked };
             if (!fields.name) return asFormError('앱 이름을 입력해주세요.');
             if (!/^[0-9A-Za-z][0-9A-Za-z._+-]{0,19}$/.test(fields.version)) return asFormError('버전 형식이 올바르지 않아요. (예: 1.0.0)');
-            const file = document.getElementById('as-f-file').files[0] || null;
+            const linkOnly = mode === 'create' ? document.querySelector('input[name="as-f-kind"]:checked').value === 'link' : asIsLink(app);
+            const extRaw = val('as-f-ext').trim();
+            if (extRaw) {
+                let ok = false; try { const eu = new URL(extRaw); ok = eu.protocol === 'https:' && !eu.username && !eu.password; } catch (e) {}
+                if (!ok) return asFormError('외부 링크는 https:// 로 시작하는 주소만 쓸 수 있어요. (예: https://my-app.netlify.app)');
+            }
+            if (linkOnly && !extRaw) return asFormError('외부 링크 주소를 입력해주세요.');
+            fields.externalUrl = extRaw; // 빈 문자열이면 링크 제거
+            const fileEl = document.getElementById('as-f-file');
+            const file = (!linkOnly && fileEl && fileEl.files[0]) || null;
             const icon = document.getElementById('as-f-icon').files[0] || null;
-            if (mode === 'create' && !file) return asFormError('HTML 또는 ZIP 파일을 선택해주세요.');
+            if (mode === 'create' && !linkOnly && !file) return asFormError('HTML 또는 ZIP 파일을 선택해주세요.');
             let fileType = null;
             if (file) {
                 const n = file.name.toLowerCase();
@@ -14602,7 +14649,7 @@
             try {
                 asFormBusy('준비 중…');
                 const prep = await asCallFn({
-                    action: 'prepare', mode, appId: app ? app.id : undefined,
+                    action: 'prepare', mode, appId: app ? app.id : undefined, linkOnly: linkOnly || undefined, externalUrl: linkOnly ? extRaw : undefined,
                     mainFile: file ? { name: file.name, size: file.size, type: file.type } : undefined,
                     icon: icon ? { name: icon.name, size: icon.size, type: icon.type } : undefined
                 });
