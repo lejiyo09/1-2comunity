@@ -350,6 +350,7 @@
 
         /* --- 5.0 모바일 하단 네비게이션 (기본은 숨김, 768px 이하에서만 표시) --- */
         .mobile-bottom-nav { display: none; }
+        .mb-menu-overlay, .mb-menu-sheet { display: none; } /* 모바일 폭(아래 미디어 쿼리)에서만 쓰인다 */
         @media (max-width: 768px) {
             .sidebar { width: 260px; margin-left: -260px; transition: margin-left 0.28s ease; }
             .sidebar.mobile-open { margin-left: 0; width: 260px; box-shadow: 0 0 0 100vmax rgba(15,23,42,0.45); }
@@ -373,7 +374,40 @@
             }
             .mobile-bottom-nav .mb-item span.mb-icon { font-size: 19px; line-height: 1; }
             .mobile-bottom-nav .mb-item.active { color: var(--primary); }
+            .mobile-bottom-nav .mb-item.open { color: var(--primary); }
+
+            /* --- 모바일 '메뉴' 시트: 오른쪽 아래(메뉴 버튼 위)에서 위로 쭉 펼쳐진다 --- */
+            .mb-menu-overlay { display:none; position:fixed; inset:0; z-index:190; background:rgba(15,23,42,0.28); opacity:0; transition:opacity .2s ease; }
+            .mb-menu-overlay.open { display:block; opacity:1; }
+            .mb-menu-sheet { display:none; position:fixed; right:10px; z-index:195; width:min(316px, calc(100vw - 20px)); max-height:calc(100vh - 150px); max-height:calc(100dvh - 150px); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+                background:var(--card-bg); border:1px solid var(--border-color); border-radius:20px; padding:10px 10px 8px; box-shadow:0 14px 40px rgba(15,23,42,0.28); transform-origin:bottom right; }
+            .mb-menu-sheet.open { display:block; animation:mb-sheet-pop .26s cubic-bezier(.2,.9,.3,1.1) both; }
+            .mb-menu-sheet.closing { display:block; animation:mb-sheet-out .16s ease-in both; pointer-events:none; }
+            @keyframes mb-sheet-pop { from { opacity:0; transform:translateY(18px) scale(.92); } to { opacity:1; transform:none; } }
+            @keyframes mb-sheet-out { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(12px) scale(.96); } }
+            /* 항목은 버튼에 가까운 아래쪽부터 위로 차례로 올라온다(--i 가 클수록 위쪽 = 늦게) */
+            .mb-sheet-in { animation:mb-sheet-item .3s cubic-bezier(.2,.9,.3,1) both; animation-delay:calc(var(--i) * 32ms + 40ms); }
+            @keyframes mb-sheet-item { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+            .mb-sheet-head { display:flex; align-items:center; gap:10px; padding:8px 8px 10px; border-bottom:1px solid var(--border-color); margin-bottom:6px; }
+            .mb-sheet-head-main { flex:1; min-width:0; }
+            .mb-sheet-nick { font-size:14px; font-weight:800; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            .mb-sheet-role { font-size:11.5px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            .mb-sheet-mini { flex:none; border:1px solid var(--border-color); background:var(--surface-secondary); color:var(--text-main); border-radius:10px; padding:7px 10px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+            .mb-sheet-mini.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+            .mb-sheet-section { padding:6px 4px 2px; }
+            .mb-sheet-title { font-size:11px; font-weight:800; color:var(--text-muted); letter-spacing:.2px; padding:2px 6px 6px; }
+            .mb-sheet-chips { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+            .mb-sheet-list { display:flex; flex-direction:column; gap:2px; }
+            .mb-sheet-item { display:flex; align-items:center; gap:10px; width:100%; border:none; background:transparent; color:var(--text-main); font-family:inherit; font-size:14px; font-weight:600; text-align:left; padding:11px 10px; border-radius:12px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+            .mb-sheet-item:active { background:var(--hover-bg); }
+            .mb-sheet-item.active { background:var(--primary-soft); color:var(--primary); }
+            .mb-sheet-item .mb-sheet-ico { font-size:18px; width:24px; text-align:center; flex:none; }
+            .mb-sheet-chip { justify-content:center; text-align:center; padding:10px 6px; font-size:13px; background:var(--surface-secondary); }
+            .mb-sheet-foot { display:flex; gap:6px; padding:8px 4px 2px; margin-top:6px; border-top:1px solid var(--border-color); }
+            .mb-sheet-foot .mb-sheet-item { justify-content:center; padding:10px 6px; font-size:13px; background:var(--surface-secondary); }
+            .mb-sheet-foot .mb-sheet-item.danger { color:#dc2626; }
         }
+        @media (prefers-reduced-motion: reduce) { .mb-menu-sheet.open, .mb-menu-sheet.closing, .mb-sheet-in { animation:none !important; } }
 
         /* 메인 & 탭 컨트롤 */
         .main { padding: 40px; overflow-y: auto; margin-left: 78px; width: calc(100% - 78px); box-sizing: border-box; min-height: 100vh; transition: margin-left 0.25s cubic-bezier(.4,0,.2,1), width 0.25s cubic-bezier(.4,0,.2,1); }
@@ -2263,8 +2297,11 @@
             <div class="mb-item" data-tab="materials" onclick="switchTab('materials')"><span class="mb-icon">🗂</span>자료실</div>
             <div class="mb-item" data-tab="mixtape" onclick="switchTab('mixtape')"><span class="mb-icon">🎵</span>음악</div>
             <div class="mb-item" data-tab="profile" onclick="switchTab('profile')"><span class="mb-icon">👤</span>프로필</div>
-            <div class="mb-item" id="mb-menu-btn"><span class="mb-icon">☰</span>메뉴</div>
+            <div class="mb-item" id="mb-menu-btn" role="button" aria-haspopup="true" aria-expanded="false" aria-controls="mb-menu-sheet"><span class="mb-icon">☰</span><span class="mb-menu-label">메뉴</span></div>
         </nav>
+        <!-- 모바일 '메뉴' 시트: 메뉴 버튼 바로 위(오른쪽)에서 항목이 아래→위로 차례로 올라온다. 내용은 열 때마다 사이드바(.sidebar-nav)에서 만들어서 메뉴가 바뀌어도 자동으로 따라간다. -->
+        <div id="mb-menu-overlay" class="mb-menu-overlay"></div>
+        <div id="mb-menu-sheet" class="mb-menu-sheet" role="menu" aria-hidden="true"></div>
 
         <!-- 나의 성장 (XP/레벨/프로필 효과) 모달 - 어느 탭에서나 사이드바에서 열 수 있어야 하므로 tab-content 밖에 둔다 -->
         <div id="growth-modal" class="modal-overlay" style="display:none;">
@@ -4171,12 +4208,89 @@
         sidebar.addEventListener('mouseenter', restoreSidebarScroll); // 데스크톱 마우스로 펼칠 때
 
         // 5.0 모바일: 하단 '메뉴' 버튼으로 사이드바를 드로어처럼 열고, 바깥(반투명 오버레이) 클릭 시 닫는다.
+        // (모바일 하단 '메뉴' 버튼은 이제 왼쪽 드로어 대신, 버튼 바로 위에서 항목이 차례로 올라오는 시트(#mb-menu-sheet)를 연다.)
         const mbMenuBtn = document.getElementById('mb-menu-btn');
-        if (mbMenuBtn) {
-            mbMenuBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('mobile-open');
-                if (sidebar.classList.contains('mobile-open')) restoreSidebarScroll();
+        const mbSheet = document.getElementById('mb-menu-sheet');
+        const mbOverlay = document.getElementById('mb-menu-overlay');
+        function closeMobileMenu(immediate) {
+            if (!mbSheet || !mbSheet.classList.contains('open')) return;
+            mbOverlay.classList.remove('open');
+            mbMenuBtn.classList.remove('open'); mbMenuBtn.setAttribute('aria-expanded', 'false');
+            mbMenuBtn.querySelector('.mb-icon').textContent = '☰';
+            mbSheet.setAttribute('aria-hidden', 'true');
+            mbSheet.classList.remove('open');
+            if (!immediate) { mbSheet.classList.add('closing'); setTimeout(() => mbSheet.classList.remove('closing'), 170); }
+        }
+        // 사이드바 DOM 에서 지금 보이는 메뉴를 그대로 읽어 시트를 만든다(로그인/게스트/권한에 따라 숨겨진 항목은 자동으로 빠진다).
+        function buildMobileMenu() {
+            const visible = (el) => !!el && getComputedStyle(el).display !== 'none';
+            const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const actions = []; // index → 눌렀을 때 실행할 원래 사이드바 요소
+            const make = (el, cls, withIcon) => {
+                const label = (el.querySelector('.nav-label') || el).textContent.trim();
+                const icon = el.querySelector('.nav-icon');
+                actions.push(el);
+                return `<button type="button" class="mb-sheet-item ${cls || ''} ${el.classList.contains('active') ? 'active' : ''}" role="menuitem" data-mb="${actions.length - 1}">${withIcon && icon ? `<span class="mb-sheet-ico">${esc(icon.textContent.trim())}</span>` : ''}<span>${esc(label)}</span></button>`;
+            };
+            const blocks = []; // 위에서 아래 순서의 덩어리들(애니메이션은 아래쪽부터 시작)
+            const profileCard = document.getElementById('user-profile-card'), guestCard = document.getElementById('guest-login-card');
+            if (visible(profileCard)) {
+                const nick = (document.getElementById('profile-nick-text') || {}).textContent || '';
+                const role = (document.getElementById('profile-role-text') || {}).textContent || '';
+                blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">👤 ${esc(nick.trim())}</div><div class="mb-sheet-role">${esc(role.trim())}</div></div><button type="button" class="mb-sheet-mini" data-mb-act="nick">✏️ 닉네임</button></div>`);
+            } else if (visible(guestCard)) {
+                blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">로그인하지 않았어요</div><div class="mb-sheet-role">글쓰기·좋아요는 로그인이 필요해요</div></div><button type="button" class="mb-sheet-mini primary" data-mb-act="login">🔑 로그인</button></div>`);
+            }
+            document.querySelectorAll('.sidebar-nav > *').forEach((node) => {
+                if (!visible(node)) return;
+                if (node.classList.contains('nav-item')) {
+                    blocks.push(`<div class="mb-sheet-list">${make(node, '', true)}</div>`);
+                } else if (node.classList.contains('nav-group')) {
+                    const header = node.querySelector('.nav-group-header');
+                    const items = [...node.querySelectorAll('.nav-group-items > .nav-item')].filter(visible);
+                    if (!items.length) return;
+                    const title = `${header.querySelector('.nav-icon').textContent.trim()} ${header.querySelector('.nav-label').textContent.trim()}`;
+                    blocks.push(`<div class="mb-sheet-section"><div class="mb-sheet-title">${esc(title)}</div><div class="mb-sheet-chips">${items.map(it => make(it, 'mb-sheet-chip', false)).join('')}</div></div>`);
+                }
             });
+            const foot = [];
+            ['btn-open-settings', 'btn-logout'].forEach((id) => { const el = document.getElementById(id); if (visible(el)) foot.push(make(el, id === 'btn-logout' ? 'danger' : '', true)); });
+            if (foot.length) blocks.push(`<div class="mb-sheet-foot">${foot.join('')}</div>`);
+            // 아래쪽 덩어리일수록 먼저(--i 작게) 올라오도록 인덱스를 뒤집어 각 덩어리를 감싼다
+            mbSheet.innerHTML = blocks.map((html, idx) => `<div class="mb-sheet-in" style="--i:${blocks.length - 1 - idx}">${html}</div>`).join('');
+            mbSheet._actions = actions;
+        }
+        function openMobileMenu() {
+            buildMobileMenu();
+            const nav = document.getElementById('mobile-bottom-nav');
+            const h = nav ? nav.getBoundingClientRect().height : 62;
+            mbSheet.style.bottom = (h + 12) + 'px';
+            mbSheet.style.maxHeight = `calc(100dvh - ${h + 80}px)`;
+            mbSheet.scrollTop = 0;
+            mbSheet.classList.remove('closing'); mbSheet.classList.add('open'); mbSheet.setAttribute('aria-hidden', 'false');
+            mbOverlay.classList.add('open');
+            mbMenuBtn.classList.add('open'); mbMenuBtn.setAttribute('aria-expanded', 'true');
+            mbMenuBtn.querySelector('.mb-icon').textContent = '✕';
+        }
+        if (mbMenuBtn && mbSheet) {
+            mbMenuBtn.addEventListener('click', () => { if (window.innerWidth > 768) return; mbSheet.classList.contains('open') ? closeMobileMenu() : openMobileMenu(); });
+            mbOverlay.addEventListener('click', () => closeMobileMenu());
+            mbSheet.addEventListener('click', (e) => {
+                const act = e.target.closest('[data-mb-act]');
+                if (act) {
+                    closeMobileMenu();
+                    if (act.dataset.mbAct === 'login' && window.showLoginScreen) window.showLoginScreen();
+                    if (act.dataset.mbAct === 'nick' && window.setNickname) window.setNickname();
+                    return;
+                }
+                const btn = e.target.closest('[data-mb]');
+                if (!btn) return;
+                const el = (mbSheet._actions || [])[Number(btn.dataset.mb)];
+                closeMobileMenu();
+                if (el) setTimeout(() => el.click(), 60); // 시트가 닫히기 시작한 뒤 원래 메뉴 동작 실행
+            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMobileMenu(true); });
+            window.addEventListener('resize', () => { if (window.innerWidth > 768) closeMobileMenu(true); });
         }
         sidebar.addEventListener('click', (e) => {
             if (e.target === sidebar && window.innerWidth <= 768) sidebar.classList.remove('mobile-open');
