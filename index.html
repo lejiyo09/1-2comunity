@@ -416,6 +416,11 @@
         @media (min-width: 769px) {
             .sidebar.pinned-expanded ~ .main { margin-left: 260px; width: calc(100% - 260px); }
         }
+        /* ⚠️ 위쪽(모바일 하단 네비게이션 쪽) 미디어 쿼리에도 같은 규칙이 있었지만, 이 기본 .main 규칙이 더 뒤에 나와서 모바일에서도 덮어써졌다
+           (왼쪽 78px 여백 + 40px 패딩 → 폰에서 본문 폭이 232px 정도로 줄어 글이 여러 줄로 꺾였다). 기본 규칙 뒤에서 다시 모바일 값을 적용한다. */
+        @media (max-width: 768px) {
+            .main { margin-left: 0; width: 100%; padding: 18px 14px 92px; }
+        }
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -711,6 +716,24 @@
         .card { background-color: var(--card-bg-glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border-radius: 20px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s; }
         .card.clickable:hover { cursor: pointer; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: var(--primary); }
         .card-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
+        /* ===== 모바일(세로) 화면 조정: 홈 위젯/카드 가독성 =====
+           - 6칸 그리드에서 위젯마다 "span 2/4" 같은 칸 수가 박혀 있어서, 모바일처럼 1열로 줄이면 span 때문에 보이지 않는 추가 열이 생기고
+             그만큼 카드 폭이 줄어들었다(반 설문 카드가 다른 카드보다 좁던 원인). 모바일에서는 모든 위젯이 한 줄 전체를 쓰도록 span 을 무시한다.
+           - 카드 안쪽 여백/글씨/간격을 좁은 화면에 맞게 줄여 글이 여러 줄로 꺾이는 것을 줄인다. */
+        @media (max-width: 768px) {
+            .dashboard-grid { gap: 12px; margin-bottom: 14px; }
+            .dashboard-grid > * { grid-column: 1 / -1 !important; }
+            .card { padding: 16px 16px 15px; border-radius: 18px; }
+            .card-title { font-size: 15.5px; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+            .header { margin-bottom: 14px; }
+            .header h1 { font-size: 21px; margin-bottom: 4px; letter-spacing: -0.4px; }
+            .header p { font-size: 13px; line-height: 1.45; }
+            .home-section-header { margin-bottom: 8px; }
+            #tab-home .home-section { margin-bottom: 4px; }
+            #home-popular-posts { grid-template-columns: 1fr !important; gap: 8px !important; }
+            #home-sections-container .card .widget-text, #home-sections-container .card .meal-desc { font-size: 13.5px; line-height: 1.5; }
+            #home-layout-edit-toolbar { flex-wrap: wrap; }
+        }
         /* 반 공용 일정 - 태그 필터 팝오버 (버튼 바로 아래에 붙는 compact popup) */
         .tag-filter-popover {
             position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
