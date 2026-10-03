@@ -14,6 +14,9 @@
 //   3) action: "commit"   → 올라간 파일이 실제로 있는지/크기/ZIP 시그니처를 서버에서 다시 확인한 뒤 DB에 반영
 //   그 외: "update-meta"(파일 없이 정보만 수정), "delete", "mine"(내 앱 목록: 비공개 포함)
 //
+// 외부 링크: 파일이 너무 커서 올릴 수 없는 앱은 file_type='link'(파일 없이 외부 링크만)로 등록할 수 있다. 이 경우 사이트 안 실행/다운로드는 없고
+// 상세 화면에서 제작자가 건 외부 주소(Netlify 공유 링크 등)로만 연결한다. 파일이 있는 앱에도 external_url 을 덧붙일 수 있다.
+//
 // 앱을 수정(새 파일 교체)해도 apps.id(= 공개 주소 /app/<id>)는 그대로고 file_path만 새 경로로 바뀐다.
 // 이전 버전 파일은 버전 이력(app_versions)에 남겨 둔다.
 //
@@ -78,6 +81,22 @@ function cleanText(v: unknown, max: number): string {
     return typeof v === "string" ? v.replace(/\u0000/g, "").trim().slice(0, max) : "";
 }
 
+// 외부 공유 링크(Netlify 등) 검증: https 만, 계정정보/IP/로컬 주소 금지. 빈 값이면 null(= 링크 없음).
+function cleanExternalUrl(v: unknown): string | null {
+    const raw = cleanText(v, 500);
+    if (!raw) return null;
+    let u: URL;
+    try { u = new URL(raw); } catch { throw new HttpError("외부 링크 주소 형식이 올바르지 않아요. (예: https://my-app.netlify.app)"); }
+    if (u.protocol !== "https:") throw new HttpError("외부 링크는 https:// 로 시작하는 주소만 쓸 수 있어요.");
+    if (u.username || u.password) throw new HttpError("아이디/비밀번호가 들어간 주소는 쓸 수 없어요.");
+    const host = u.hostname.toLowerCase();
+    if (!host.includes(".") || host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")
+        || /^[0-9.]+$/.test(host) || host.includes(":") || host.startsWith("[")) {
+        throw new HttpError("공개된 사이트 주소만 쓸 수 있어요. (IP·내부 주소는 안 돼요)");
+    }
+    return u.toString();
+}
+
 // ---- 입력 검증 ----
 function validateFields(f: any, partial: boolean) {
     const out: Record<string, unknown> = {};
@@ -97,6 +116,7 @@ function validateFields(f: any, partial: boolean) {
         if (!/^[0-9A-Za-z][0-9A-Za-z._+-]{0,19}$/.test(version)) throw new HttpError("버전 형식이 올바르지 않습니다. (예: 1.0.0)");
         out.version = version;
     }
+    if (f?.externalUrl !== undefined) out.external_url = cleanExternalUrl(f.externalUrl);
     if (f?.published !== undefined) out.published = !!f.published;
     return out;
 }
@@ -170,11 +190,15 @@ Deno.serve(async (req: Request) => {
                 }
                 const { count } = await sb.from("apps").select("id", { count: "exact", head: true }).eq("author_uid", user.uid);
                 if ((count ?? 0) >= MAX_APPS_PER_USER) throw new HttpError(`앱은 최대 ${MAX_APPS_PER_USER}개까지 등록할 수 있어요.`);
-                if (!body?.mainFile) throw new HttpError("HTML 또는 ZIP 파일을 선택해주세요.");
+                const linkOnly = body?.linkOnly === true;
+                if (linkOnly) {
+                    if (body?.mainFile) throw new HttpError("외부 링크로만 등록할 때는 파일을 올리지 않아요.");
+                    if (!cleanExternalUrl(body?.externalUrl)) throw new HttpError("외부 링크 주소를 입력해주세요.");
+                } else if (!body?.mainFile) throw new HttpError("HTML 또는 ZIP 파일을 선택해주세요.");
                 // 충돌 없는 새 ID. 앱 행을 "등록 중"(비공개, file_path='pending')으로 먼저 만들어 이 ID를 이 사용자에게 묶어 둔다.
                 // (그래야 다른 사람이 남의 ID로 commit 해서 가로채는 일이 불가능하다. insert 가 PK 충돌을 막아주므로 겹치면 다시 뽑는다.)
                 appId = "";
-                const draftType = mainFileInfo(body.mainFile).fileType;
+                const draftType = linkOnly ? "link" : mainFileInfo(body.mainFile).fileType;
                 for (let i = 0; i < 8 && !appId; i++) {
                     const candidate = randomId(8);
                     const { error } = await sb.from("apps").insert({
@@ -185,7 +209,9 @@ Deno.serve(async (req: Request) => {
                 }
                 if (!appId) throw new HttpError("앱 주소를 만들지 못했어요. 다시 시도해주세요.", 500);
             } else if (mode === "update") {
-                appId = (await loadOwnApp(body?.appId)).id;
+                const own = await loadOwnApp(body?.appId);
+                if (own.file_type === "link" && body?.mainFile) throw new HttpError("외부 링크로 등록한 앱에는 파일을 올릴 수 없어요.");
+                appId = own.id;
             } else {
                 throw new HttpError("mode가 올바르지 않습니다.");
             }
@@ -224,6 +250,7 @@ Deno.serve(async (req: Request) => {
             if (mode === "create" && existing.file_path !== "pending") throw new HttpError("이미 등록이 끝난 앱이에요.");
             if (mode === "update" && existing.file_path === "pending") throw new HttpError("아직 등록이 끝나지 않은 앱이에요.");
 
+            const isLink = existing.file_type === "link";
             const fields = validateFields(body?.fields, mode === "update");
             const changelog = cleanText(body?.fields?.changelog, 1000);
 
@@ -261,7 +288,13 @@ Deno.serve(async (req: Request) => {
             const row: Record<string, unknown> = { ...fields, updated_at: new Date().toISOString() };
             let newVersionFile: { path: string; type: string; size: number } | null = null;
 
-            if (body?.mainPath) {
+            if (isLink) {
+                // 링크 전용 앱: 파일/버전 이력 없음. 외부 링크는 필수.
+                if (body?.mainPath) throw new HttpError("외부 링크로 등록한 앱에는 파일을 올릴 수 없어요.");
+                const finalUrl = fields.external_url !== undefined ? fields.external_url : existing.external_url;
+                if (!finalUrl) throw new HttpError("외부 링크 주소를 입력해주세요.");
+                if (mode === "create") { row.file_path = "external"; row.file_type = "link"; row.file_size = 0; }
+            } else if (body?.mainPath) {
                 const fileType = body?.fileType === "zip" ? "zip" : "html";
                 const size = await verifyUploaded(body.mainPath, "main", fileType);
                 row.file_path = body.mainPath; row.file_type = fileType; row.file_size = size; row.entry_file = "index.html";
@@ -298,6 +331,7 @@ Deno.serve(async (req: Request) => {
             if (existing.file_path === "pending") throw new HttpError("아직 등록이 끝나지 않은 앱이에요.");
             const fields = validateFields(body?.fields, true);
             if (Object.keys(fields).length === 0) throw new HttpError("바꿀 내용이 없어요.");
+            if (existing.file_type === "link" && fields.external_url === null) throw new HttpError("외부 링크로 등록한 앱은 링크를 비울 수 없어요.");
             const { data, error } = await sb.from("apps").update({ ...fields, updated_at: new Date().toISOString() })
                 .eq("id", existing.id).eq("author_uid", user.uid).select("*").single();
             if (error) throw new HttpError("앱을 수정하지 못했어요.", 500);
