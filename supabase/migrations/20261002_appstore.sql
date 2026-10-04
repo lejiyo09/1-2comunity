@@ -37,6 +37,16 @@ create index if not exists apps_published_created_idx on public.apps (published,
 create index if not exists apps_published_views_idx   on public.apps (published, views desc);
 create index if not exists apps_author_idx            on public.apps (author_uid);
 
+-- 1-1) 외부 공유 링크 (파일이 너무 커서 올릴 수 없는 앱용) ------------------------------------
+--   file_type = 'link' : 파일 없이 외부 주소(Netlify 공유 링크 등)만 건 앱. 사이트 안 실행/다운로드는 없다.
+--   external_url       : 파일 있는 앱에도 덧붙일 수 있는 외부 링크(https 만). 여러 번 실행해도 안전하다.
+alter table public.apps add column if not exists external_url text;
+alter table public.apps drop constraint if exists apps_external_url_check;
+alter table public.apps add constraint apps_external_url_check
+    check (external_url is null or (external_url ~ '^https://' and char_length(external_url) <= 500));
+alter table public.apps drop constraint if exists apps_file_type_check;
+alter table public.apps add constraint apps_file_type_check check (file_type in ('html', 'zip', 'link'));
+
 -- 2) 버전 이력 테이블 ------------------------------------------------------------
 create table if not exists public.app_versions (
     id          uuid primary key default gen_random_uuid(),
