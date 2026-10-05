@@ -3497,6 +3497,7 @@
         </button>
         <div id="menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-44 bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-700/60">
           <button onclick="PlannerApp.openCalendarModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-indigo-400 w-4">📅</span> <span>달력 (기록 열람)</span></button>
+          <button onclick="PlannerApp.openMonthlyModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-sky-400 w-4">🗓️</span> <span>월별 계획</span></button>
           <button onclick="PlannerApp.openDiaryModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-emerald-400 w-4">📖</span> <span>날짜별 기록장</span></button>
           <button onclick="PlannerApp.openStatsModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-amber-400 w-4">📊</span> <span>과목별 통계</span></button>
           <button onclick="PlannerApp.openSettingsModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-slate-400 w-4">⚙️</span> <span>플래너 설정</span></button>
@@ -3657,6 +3658,35 @@
       <div class="flex items-center justify-between mb-3 bg-slate-900/50 p-2.5 rounded-xl border border-slate-700/80"><span class="text-[10px] font-semibold text-slate-400 pl-1">오늘의 공부 만족도:</span><div class="flex gap-1.5" id="diary-mood-selector"><button onclick="PlannerApp.selectDiaryMood('🔥')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="🔥">🔥 완벽함</button><button onclick="PlannerApp.selectDiaryMood('💡')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="💡">💡 깨달음</button><button onclick="PlannerApp.selectDiaryMood('🐢')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="🐢">🐢 전진</button><button onclick="PlannerApp.selectDiaryMood('💤')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="💤">💤 휴식</button></div></div>
       <div class="flex-1 mb-4 overflow-hidden border border-slate-600 rounded-xl bg-slate-900"><textarea id="diary-textarea" rows="12" class="w-full h-full notebook-lines border-none outline-none resize-none" placeholder="이곳에 오늘 하루의 배움, 부족했던 점, 내일의 다짐을 줄글 노트에 적듯 자유롭게 기록해보세요..." oninput="PlannerApp.updateCharCount()"></textarea></div>
       <div class="flex justify-between items-center"><span id="diary-char-count" class="text-[10px] text-slate-400 font-mono">0 글자 작성 중</span><div class="flex gap-2"><button onclick="PlannerApp.closeModal('modal-diary')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition">닫기</button><button onclick="PlannerApp.saveDiary(true)" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-lg flex items-center gap-1.5"><span>✓</span> 저장하기</button></div></div>
+    </div>
+  </div>
+
+  <!-- 월별 계획: 이달의 목표 + 날짜별 계획(이 브라우저의 localStorage 에 저장, 플래너 기록과 같은 방식) -->
+  <div id="modal-monthly" class="fixed inset-0 modal-backdrop hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/90">
+        <h3 class="text-base font-black text-slate-100 flex items-center gap-2"><span class="text-sky-400">🗓️</span><span id="monthly-title"></span></h3>
+        <div class="flex gap-2 items-center">
+          <button onclick="PlannerApp.changeMonthlyMonth(-1)" class="px-2.5 py-1 bg-slate-700 rounded hover:bg-slate-600 transition text-xs">‹</button>
+          <button onclick="PlannerApp.changeMonthlyMonth(0)" class="px-2.5 py-1 bg-slate-700 rounded hover:bg-slate-600 transition text-[11px] font-bold">이번 달</button>
+          <button onclick="PlannerApp.changeMonthlyMonth(1)" class="px-2.5 py-1 bg-slate-700 rounded hover:bg-slate-600 transition text-xs">›</button>
+          <button onclick="PlannerApp.closeModal('modal-monthly')" class="ml-1 text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto bg-slate-900/40">
+        <label class="block text-[11px] font-bold text-slate-400 mb-1">🎯 이달의 목표</label>
+        <textarea id="monthly-goal" rows="3" maxlength="600" oninput="PlannerApp.onMonthlyGoalInput()" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-sm text-slate-100 outline-none focus:border-sky-500 resize-none" placeholder="예) 수학 문제집 1권 끝내기 / 영단어 하루 30개 / 중간고사 대비 계획 세우기"></textarea>
+        <div class="grid grid-cols-7 gap-1.5 text-center text-[10px] font-black mt-4 mb-1.5"><div class="text-red-400">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-400">토</div></div>
+        <div id="monthly-grid" class="grid grid-cols-7 gap-1.5"></div>
+        <div id="monthly-editor" class="mt-4 p-3 rounded-xl border border-slate-700 bg-slate-800/70">
+          <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <span id="monthly-editor-label" class="text-xs font-bold text-slate-200"></span>
+            <button id="monthly-goto-btn" onclick="PlannerApp.gotoMonthlyDay()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition">📝 이 날 플래너 열기</button>
+          </div>
+          <textarea id="monthly-day-text" rows="3" maxlength="300" oninput="PlannerApp.onMonthlyDayInput()" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-sm text-slate-100 outline-none focus:border-sky-500 resize-none" placeholder="그날 할 일·시험·제출 마감 등을 적어 두세요 (자동 저장)"></textarea>
+          <div class="text-[10px] text-slate-500 mt-1.5">날짜 칸을 누르면 그날의 계획을 쓸 수 있어요. 입력하면 바로 이 기기에 저장돼요.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -16201,6 +16231,63 @@
       if (timerState.isRunning) notifyFocusVisibilityChanged();
     }
 
+    // ================= 월별 계획 (이달의 목표 + 날짜별 계획) =================
+    // 저장: localStorage 'planner_monthly_plans' = { 'YYYY-MM': { goal: '', days: { 'YYYY-MM-DD': '메모' } } } (플래너 기록과 같은 방식 - 이 기기에만 저장)
+    let monthlyPlans = safeJSONParse('planner_monthly_plans', {});
+    if (!monthlyPlans || typeof monthlyPlans !== 'object' || Array.isArray(monthlyPlans)) monthlyPlans = {};
+    let mpYear = new Date().getFullYear(), mpMonth = new Date().getMonth(), mpSelected = null, mpSaveTimer = null;
+    const mpKey = () => `${mpYear}-${String(mpMonth + 1).padStart(2, '0')}`;
+    const mpDateStr = (d) => `${mpKey()}-${String(d).padStart(2, '0')}`;
+    const mpEsc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function mpEnsureMonth() { const k = mpKey(); if (!monthlyPlans[k] || typeof monthlyPlans[k] !== 'object') monthlyPlans[k] = { goal: '', days: {} }; if (!monthlyPlans[k].days) monthlyPlans[k].days = {}; return monthlyPlans[k]; }
+    function mpSave() { try { localStorage.setItem('planner_monthly_plans', JSON.stringify(monthlyPlans)); } catch (e) { console.warn('월별 계획 저장 실패:', e); } }
+    function mpScheduleSave() { clearTimeout(mpSaveTimer); mpSaveTimer = setTimeout(mpSave, 300); }
+    function openMonthlyModal() {
+      const t = new Date(); mpYear = t.getFullYear(); mpMonth = t.getMonth(); mpSelected = (mpYear === t.getFullYear() && mpMonth === t.getMonth()) ? todayStr : null;
+      renderMonthly(); document.getElementById('modal-monthly').classList.remove('hidden');
+    }
+    function changeMonthlyMonth(delta) {
+      mpSave();
+      if (delta === 0) { const t = new Date(); mpYear = t.getFullYear(); mpMonth = t.getMonth(); }
+      else { mpMonth += delta; if (mpMonth > 11) { mpMonth = 0; mpYear++; } else if (mpMonth < 0) { mpMonth = 11; mpYear--; } }
+      mpSelected = (mpKey() === todayStr.slice(0, 7)) ? todayStr : mpDateStr(1);
+      renderMonthly();
+    }
+    function renderMonthly() {
+      const plan = mpEnsureMonth();
+      document.getElementById('monthly-title').innerText = `${mpYear}년 ${mpMonth + 1}월 계획`;
+      document.getElementById('monthly-goal').value = plan.goal || '';
+      const grid = document.getElementById('monthly-grid'); let html = '';
+      const firstDay = new Date(mpYear, mpMonth, 1).getDay(); const daysInMonth = new Date(mpYear, mpMonth + 1, 0).getDate();
+      for (let i = 0; i < firstDay; i++) html += '<div></div>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ds = mpDateStr(d); const note = (plan.days[ds] || '').trim(); const dow = (firstDay + d - 1) % 7;
+        const border = ds === mpSelected ? 'border-sky-500 bg-sky-950/50 shadow-md' : (ds === todayStr ? 'border-amber-500/80 bg-amber-950/40' : 'border-slate-700/80 bg-slate-800/60');
+        const dayColor = dow === 0 ? 'text-red-400' : dow === 6 ? 'text-blue-400' : 'text-slate-300';
+        html += `<div onclick="PlannerApp.selectMonthlyDay('${ds}')" class="monthly-day min-h-[3.6rem] sm:min-h-[4.6rem] border rounded-xl p-1.5 cursor-pointer flex flex-col items-start overflow-hidden ${border}"><div class="text-[10px] font-bold ${dayColor}">${d}${ds === todayStr ? ' <span class="text-amber-400">·오늘</span>' : ''}</div>${note ? `<div class="monthly-note text-[9px] sm:text-[10px] leading-tight text-slate-200 mt-0.5 break-words">${mpEsc(note.split('\n')[0].slice(0, 40))}</div>` : ''}</div>`;
+      }
+      grid.innerHTML = html;
+      renderMonthlyEditor();
+    }
+    function renderMonthlyEditor() {
+      const label = document.getElementById('monthly-editor-label'), ta = document.getElementById('monthly-day-text'), btn = document.getElementById('monthly-goto-btn');
+      if (!mpSelected || mpSelected.slice(0, 7) !== mpKey()) { label.innerText = '날짜를 선택해 주세요'; ta.value = ''; ta.disabled = true; btn.style.display = 'none'; return; }
+      const dt = new Date(mpSelected + 'T00:00:00'); const names = ['일', '월', '화', '수', '목', '금', '토'];
+      label.innerText = `${dt.getMonth() + 1}월 ${dt.getDate()}일 (${names[dt.getDay()]}) 계획`;
+      ta.disabled = false; ta.value = mpEnsureMonth().days[mpSelected] || ''; btn.style.display = '';
+    }
+    function selectMonthlyDay(ds) { mpSave(); mpSelected = ds; renderMonthly(); }
+    function onMonthlyGoalInput() { mpEnsureMonth().goal = document.getElementById('monthly-goal').value; mpScheduleSave(); }
+    function onMonthlyDayInput() {
+      if (!mpSelected) return;
+      const plan = mpEnsureMonth(); const v = document.getElementById('monthly-day-text').value;
+      if (v.trim()) plan.days[mpSelected] = v; else delete plan.days[mpSelected];
+      mpScheduleSave();
+      // 날짜 칸의 미리보기만 가볍게 갱신(입력 중인 칸의 포커스를 잃지 않도록 전체를 다시 그리지 않는다)
+      const cell = [...document.querySelectorAll('#monthly-grid .monthly-day')].find(c => c.getAttribute('onclick').includes(`'${mpSelected}'`));
+      if (cell) { let n = cell.querySelector('.monthly-note'); const first = v.trim().split('\n')[0].slice(0, 40); if (first) { if (!n) { n = document.createElement('div'); n.className = 'monthly-note text-[9px] sm:text-[10px] leading-tight text-slate-200 mt-0.5 break-words'; cell.appendChild(n); } n.textContent = first; } else if (n) n.remove(); }
+    }
+    function gotoMonthlyDay() { if (!mpSelected) return; mpSave(); closeModal('modal-monthly'); selectCalendarDate(mpSelected); }
     function openCalendarModal() { renderCalendar(); document.getElementById('modal-calendar').classList.remove('hidden'); }
     function changeMonth(delta) { calMonth += delta; if(calMonth > 11) { calMonth = 0; calYear++; } else if(calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
     
@@ -16386,6 +16473,12 @@
       openConfirmStart,
       openDdayModal,
       openDiaryModal,
+      openMonthlyModal,
+      changeMonthlyMonth,
+      selectMonthlyDay,
+      onMonthlyGoalInput,
+      onMonthlyDayInput,
+      gotoMonthlyDay,
       openEditTaskModal,
       openSettingsModal,
       openStatsModal,
