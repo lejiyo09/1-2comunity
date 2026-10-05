@@ -2073,6 +2073,7 @@
                 if (!noticeReadsCache[noticeId]) noticeReadsCache[noticeId] = {};
                 noticeReadsCache[noticeId][currentUser.uid] = Date.now();
                 renderNoticePopup();
+                renderNotificationBell(); // 확인한 공지는 알림센터에서도 바로 사라진다
             } catch (e2) { /* 무시: 실패해도 팝업은 유지되어 재시도 가능 */ }
         }
 
@@ -2989,7 +2990,9 @@
             currentPopupNoticeId = current.id;
             document.getElementById('gmw-notice-popup-label').textContent = noticeCategoryLabel(current.category) + ' 공지';
             document.getElementById('gmw-notice-popup-title').textContent = current.title || '';
-            document.getElementById('gmw-notice-popup-content').innerHTML = renderRichOrPlain(current, 'contentHTML', 'content');
+            // 팝업은 작은 카드라서 본문 전체(제목/사진/긴 목록)를 그리지 않고, 태그를 걷어낸 텍스트 요약만 보여준다(CSS 가 6줄에서 "…"로 자름).
+            // 전체 내용은 팝업을 누르면 열리는 공지 상세에서 본다.
+            document.getElementById('gmw-notice-popup-content').textContent = richContentPreviewText(current, 'contentHTML', 'content', 360);
             document.getElementById('gmw-notice-popup-important-bar').style.display = current.important ? 'block' : 'none';
 
             const navEl = document.getElementById('gmw-notice-popup-nav');
@@ -3086,19 +3089,24 @@
             if (panel.classList.contains('visible')) renderNotificationBell();
         };
 
+        const NOTIF_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 알림센터에 보이는 공지의 최대 나이(한 달)
         function renderNotificationBell() {
             const badge = document.getElementById('gmw-notif-badge');
             const listEl = document.getElementById('gmw-notif-list');
             if (!listEl) return;
-            const entries = Object.entries(noticesCache).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0)).slice(0, 8);
-            const unreadCount = entries.filter(([id]) => !isNoticeConfirmedByMe(id)).length;
-            if (badge) badge.style.display = unreadCount > 0 ? 'block' : 'none';
+            // 알림센터에는 "아직 확인하지 않은 공지"만, 그리고 올라온 지 한 달(30일) 안의 것만 보인다.
+            // 공지를 확인(확인했습니다)하면 목록에서 사라지고, 확인하지 않아도 한 달이 지나면 사라진다. (전체 공지는 공지/설문 페이지에서 계속 볼 수 있다)
+            const cutoff = Date.now() - NOTIF_MAX_AGE_MS;
+            const entries = Object.entries(noticesCache)
+                .filter(([id, n]) => (n.createdAt || 0) >= cutoff && !isNoticeConfirmedByMe(id))
+                .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0)).slice(0, 8);
+            if (badge) badge.style.display = entries.length > 0 ? 'block' : 'none';
             if (entries.length === 0) {
-                listEl.innerHTML = `<div class="gmw-notif-empty">아직 공지가 없습니다.</div>`;
+                listEl.innerHTML = `<div class="gmw-notif-empty">새 알림이 없습니다.</div>`;
                 return;
             }
             listEl.innerHTML = entries.map(([id, n]) => {
-                const unread = !isNoticeConfirmedByMe(id);
+                const unread = true;
                 return `
                     <div class="gmw-notif-item ${unread ? 'unread' : ''}" onclick="openNoticeFromBell('${id}')">
                         <span class="gmw-notif-item-title">${unread ? '🔴 ' : ''}${escapeNoticeText(n.title || '')}</span>
