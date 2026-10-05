@@ -97,10 +97,16 @@
             background: rgba(15, 23, 42, 0.45);
             backdrop-filter: blur(14px) saturate(120%);
             -webkit-backdrop-filter: blur(14px) saturate(120%);
-            display: flex; justify-content: center; align-items: center; z-index: 9999;
+            display: none; /* 기본은 숨김 - 접속 직후 로그인 상태를 확인하는 동안 로그인 화면이 번쩍 보이지 않게 한다. showLoginScreen()이 flex 로 연다 */
+            justify-content: center; align-items: center; z-index: 9999;
             overflow: hidden;
             animation: gmw-auth-fade-in 0.2s ease;
         }
+        /* 접속 직후(로그인 상태 확인 중) 잠깐 보이는 로딩 화면. 앱 화면이 열리면(.authenticated) 자동으로 사라진다. */
+        #gmw-boot-splash { position: fixed; inset: 0; z-index: 9998; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg-color, #eef4ff); color: var(--text-secondary, #64748b); font-size: 14px; font-weight: 600; }
+        #gmw-boot-splash .gmw-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(100,116,139,0.25); border-top-color: var(--primary, #3b82f6); animation: gmw-spin 0.8s linear infinite; }
+        @keyframes gmw-spin { to { transform: rotate(360deg); } }
+        body:has(#app-container.authenticated) #gmw-boot-splash, body:has(#auth-container[style*="flex"]) #gmw-boot-splash { display: none; }
         @keyframes gmw-auth-fade-in { from { opacity: 0; } to { opacity: 1; } }
         /* 브랜드 배경화면 톤을 순수 CSS 블롭으로 은은하게 - 블러된 배경 위라 이전보다 옅게 둔다 */
         #auth-container::before, #auth-container::after {
@@ -2226,6 +2232,7 @@
 </script>
 </head>
 <body>
+    <div id="gmw-boot-splash" role="status" aria-live="polite"><div class="gmw-spin"></div><div>불러오는 중…</div></div>
     <div id="auth-container">
         <span id="auth-container-close" onclick="hideLoginScreen()" style="display:none; position:absolute; top:20px; right:24px; font-size:26px; color:var(--text-muted); cursor:pointer; z-index:2;">&times;</span>
         <div class="auth-card" id="login-form">
@@ -4785,6 +4792,17 @@
                 });
             }
         });
+
+        // 로그인 상태 확인(게스트 세션 만들기 포함)이 오래 걸려도(느린 네트워크/오프라인) 로딩 화면에 갇히지 않도록,
+        // 6초가 지나도 앱 화면이 안 열렸으면 일단 게스트 화면으로 연다. 이후 인증이 끝나면 위 핸들러가 정상적으로 이어받는다.
+        setTimeout(() => {
+            const appEl = document.getElementById('app-container');
+            if (appEl && !appEl.classList.contains('authenticated') && document.getElementById('auth-container').style.display !== 'flex') {
+                appEl.classList.add('authenticated');
+                applyGuestUI();
+                notifyAuthChange('guest');
+            }
+        }, 6000);
 
         // 로그인 상태(게스트 ↔ 회원)가 바뀔 때만 다른 화면(앱스토어 등)에 알린다. initSignedInUser 는 같은 사용자로도 여러 번 불린다.
         let lastAuthKey = null;
