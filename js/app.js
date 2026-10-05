@@ -38,6 +38,24 @@
         const FREEIMAGE_UPLOAD_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/upload-freeimage`;
         // 날씨/학사일정(NEIS) 외부 API 는 인증키를 서버(Edge Function api-proxy)에만 두고 이 주소로 부른다 - 키가 브라우저에 내려오지 않는다.
         const API_PROXY_URL = `${SUPABASE_URL}/functions/v1/api-proxy`;
+        // api-proxy 호출 도우미: 응답이 정상이 아니면(함수 미배포 404, 시크릿 미설정 503 등) 원인을 알려 주는 오류를 던진다.
+        // (예전에는 오류 JSON 을 그대로 읽어서 "일정 0개"로 처리되거나 TypeError 만 반복해서 찍혔다)
+        const __proxyWarned = new Set();
+        async function fetchApiProxyJson(url) {
+            let res;
+            try { res = await fetch(url); }
+            catch (e) { throw new Error('api-proxy 에 연결하지 못했어요(네트워크).'); }
+            let body = null;
+            try { body = await res.json(); } catch (e) {}
+            if (!res.ok) {
+                const detail = body && (body.error || body.message) ? String(body.error || body.message) : '';
+                const hint = res.status === 404 ? ' → Supabase 프로젝트에 api-proxy 함수가 배포되어 있지 않아요(docs/security.md 의 배포 단계 참고).'
+                    : res.status === 503 ? ' → Supabase Secrets(WEATHER_API_KEY / NEIS_API_KEY)를 등록해야 해요.' : '';
+                if (!__proxyWarned.has(res.status)) { __proxyWarned.add(res.status); console.warn(`⚠ api-proxy ${res.status}${detail ? ' ' + detail : ''}${hint}`); }
+                const err = new Error(`api-proxy ${res.status}${detail ? ': ' + detail : ''}`); err.proxyStatus = res.status; throw err;
+            }
+            return body;
+        }
 
         // ===============================
         // SUPABASE CONFIG — 1-2 Music 전용 (자료실용 Supabase 프로젝트와는 완전히 다른 별도 프로젝트)
@@ -1728,10 +1746,12 @@
                 weatherEl0.innerHTML = cachedWeather.data + (navigator.onLine ? '' : infoOfflineBadgeHtml(cachedWeather.updatedAt));
             }
 
+            if (window.__weatherInflight) return window.__weatherInflight; // 시작할 때 여러 곳에서 동시에 부르므로 한 번만 요청
+            let __resolveWeather; window.__weatherInflight = new Promise(r => { __resolveWeather = r; });
             try {
                 const url = `${API_PROXY_URL}?service=weather`;
-                const res = await fetch(url);
-                const data = await res.json();
+                const data = await fetchApiProxyJson(url);
+                if (!data || !data.current || !data.forecast) throw new Error('날씨 응답 형식이 올바르지 않아요.');
             
                 const temp = Math.round(data.current.temp_c);
                 const desc = data.current.condition.text;
@@ -1767,11 +1787,13 @@
                 document.getElementById('weather-widget').innerHTML = weatherHtml;
                 saveInfoCache('weather', weatherHtml);
             } catch (error) {
-                console.log("날씨 정보를 불러올 수 없습니다:", error);
+                console.log("날씨 정보를 불러올 수 없습니다:", error && error.message ? error.message : error);
                 // 요청이 실패했으면(오프라인 등) 마지막으로 저장해둔 날씨라도 계속 보여준다.
                 const weatherEl = document.getElementById('weather-widget');
                 const cached = loadInfoCache('weather');
                 if (weatherEl && cached) weatherEl.innerHTML = cached.data + infoOfflineBadgeHtml(cached.updatedAt);
+            } finally {
+                window.__weatherInflight = null; __resolveWeather();
             }
         }
         fetchWeather();
@@ -5692,7 +5714,7 @@
         const NEIS_SCHOOL_NAME = "한일고등학교";
         const neisProxyUrl = (path) => { const u = new URL(API_PROXY_URL); u.searchParams.set('service', 'neis'); u.searchParams.set('path', path); return u; };
         const NEIS_SCHOOL_INFO_CACHE_KEY = "hanilgo_neis_school_info";
-        const NEIS_LAST_SYNC_KEY = "hanilgo_neis_last_sync";
+        const NEIS_LAST_SYNC_KEY = "hanilgo_neis_last_sync_v2"; // v2: 프록시 오류를 "성공"으로 기록해 재시도가 막히던 문제 이후 모두 다시 동기화
         const NEIS_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6시간 - 열 때마다 과도하게 호출하지 않기 위한 최소 간격(브라우저별)
         const NEIS_RESULT_MESSAGES = {
             'INFO-200': '조회된 데이터가 없습니다.',
@@ -5711,6 +5733,8 @@
             if (topResult && topResult.CODE) return { code: topResult.CODE, rows: [] };
             const block = json && json[rootKey];
             const head = block && block[0] && block[0].head;
+            // NEIS 형식이 아닌 응답(프록시 오류 등)을 "정상/데이터 없음"으로 오해하지 않는다.
+            if (!block) return { code: 'ERROR-INVALID', rows: [] };
             const resultCode = (head && head[1] && head[1].RESULT && head[1].RESULT.CODE) || 'INFO-000';
             const rows = (block && block[1] && block[1].row) || [];
             return { code: resultCode, rows };
@@ -5741,7 +5765,7 @@
             url.searchParams.set('pSize', '100');
             url.searchParams.set('SCHUL_NM', NEIS_SCHOOL_NAME);
 
-            const json = await (await fetch(url.toString())).json();
+            const json = await fetchApiProxyJson(url.toString());
             const { code, rows } = parseNeisResponse(json, 'schoolInfo');
             if (code === 'INFO-200') throw new Error(`NEIS ${code}: "${NEIS_SCHOOL_NAME}" 학교를 찾지 못했습니다.`);
             if (code !== 'INFO-000') throw new Error(`NEIS ${code}: ${neisResultMessage(code)}`);
@@ -5767,7 +5791,7 @@
                 url.searchParams.set('AA_FROM_YMD', fromYmd);
                 url.searchParams.set('AA_TO_YMD', toYmd);
 
-                const json = await (await fetch(url.toString())).json();
+                const json = await fetchApiProxyJson(url.toString());
                 const { code, rows } = parseNeisResponse(json, 'SchoolSchedule');
                 if (code === 'INFO-200') break; // 정상: 해당 기간에 데이터 없음
                 if (code !== 'INFO-000') throw new Error(`NEIS ${code}: ${neisResultMessage(code)}`);
@@ -5816,7 +5840,8 @@
                 });
 
                 // manual/assessment는 절대 건드리지 않고, source==='neis'인데 이번 응답에 없는 것만 삭제 대상으로 삼는다.
-                Object.entries(scheduleCache).forEach(([id, ev]) => {
+                // 응답이 비어 있으면(일시적 오류 등) 기존 NEIS 일정을 지우지 않는다.
+                if (seenIds.size > 0) Object.entries(scheduleCache).forEach(([id, ev]) => {
                     if (ev && ev.source === 'neis' && !seenIds.has(id)) writes.push(remove(ref(db, `dashboard/shared_schedule/${id}`)));
                 });
 
@@ -5824,7 +5849,7 @@
                 try { localStorage.setItem(NEIS_LAST_SYNC_KEY, String(Date.now())); } catch (e) {}
                 console.log(`✓ ${NEIS_SCHOOL_NAME} 일정 ${seenIds.size}개 동기화`);
             } catch (e) {
-                console.warn('⚠ NEIS 학사일정을 불러오지 못했습니다. 인증키 또는 API 요청 상태를 확인해주세요.');
+                console.warn('⚠ NEIS 학사일정을 불러오지 못했습니다(기존 일정은 그대로 둡니다).');
                 console.error('NEIS 동기화 실패:', e && e.message ? e.message : e);
             }
         }
