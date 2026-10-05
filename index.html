@@ -1150,6 +1150,25 @@
         .deco-equipped-tags { display:flex; flex-wrap:wrap; gap:6px; width:100%; }
         .deco-equipped-tag { font-size:11px; font-weight:700; padding:5px 10px; border-radius:999px; background:var(--surface-secondary); border:1px solid var(--border-color); white-space:nowrap; }
         .deco-panel-pane { flex:1; min-width:0; display:flex; flex-direction:column; }
+        .deco-preview-visual { display:flex; flex-direction:column; align-items:center; width:100%; }
+        .deco-settings { width:100%; text-align:left; }
+        .deco-nick-row { display:flex; gap:8px; align-items:stretch; }
+        .deco-nick-row .auth-input { margin:0; flex:1; min-width:0; padding:9px 12px; font-size:13px; }
+        .deco-nick-row .btn-sub { flex-shrink:0; }
+        .deco-nick-msg { min-height:16px; margin-top:6px; font-size:11.5px; font-weight:600; color:var(--primary); }
+        .deco-nick-msg.error { color:#dc2626; }
+        .deco-switch-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; background:var(--surface-secondary); cursor:pointer; }
+        .deco-switch-text { display:flex; flex-direction:column; gap:3px; font-size:12.5px; color:var(--text-main); }
+        .deco-switch-text small { font-size:10.5px; color:var(--text-muted); font-weight:500; line-height:1.4; }
+        .deco-switch { appearance:none; -webkit-appearance:none; width:40px; height:23px; border-radius:999px; background:var(--surface-tertiary, #cbd5e1); position:relative; flex-shrink:0; cursor:pointer; transition:background .2s; margin:0; }
+        .deco-switch::after { content:''; position:absolute; top:3px; left:3px; width:17px; height:17px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s; }
+        .deco-switch:checked { background:var(--primary); }
+        .deco-switch:checked::after { transform:translateX(17px); }
+        /* 닉네임만 바꿀 수 있는 계정(담임/관리자/타반 등 - 프로필 꾸미기 대상이 아님)용 작은 창 */
+        .deco-editor.nick-only { width:min(440px, calc(100vw - 32px)); height:auto; max-height:calc(100vh - 48px); }
+        .deco-editor.nick-only .deco-panel-pane, .deco-editor.nick-only .deco-preview-visual, .deco-editor.nick-only .deco-editor-footer, .deco-editor.nick-only #decorate-streak-row { display:none; }
+        .deco-editor.nick-only .deco-preview-pane { width:100%; border-right:none; }
+        .deco-editor.nick-only .deco-settings .deco-equipped-title { margin-top:0; }
         .deco-tabs { display:flex; gap:6px; padding:16px 20px 0; flex-wrap:wrap; flex-shrink:0; }
         .deco-operator-panel { margin-bottom:10px; padding:9px 11px; border-radius:10px; border:1px dashed var(--primary); background:var(--surface-secondary); }
         .deco-operator-title { font-size:11.5px; font-weight:700; color:var(--primary); margin-bottom:7px; line-height:1.4; }
@@ -2214,8 +2233,7 @@
                     <div class="user-profile" id="user-profile-card" style="display:none;">
                         <div id="profile-nick-line" style="margin-bottom:14px; padding-top:5px;">👤 <strong id="profile-nick-text">불러오는 중...</strong></div>
                         <div id="profile-role-line" style="color:var(--text-secondary); margin-bottom:10px;">소속: <span id="profile-role-text">—</span></div>
-                        <button onclick="setNickname()" style="width:100%; padding:6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer; margin-bottom:6px;">✏️ 닉네임 설정/변경</button>
-                        <div id="sidebar-presence-widget" style="position:relative; display:none;">
+                                                <div id="sidebar-presence-widget" style="position:relative; display:none;">
                             <button id="sidebar-presence-btn" onclick="togglePresencePicker(event)" style="width:100%; display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--surface-color); color:var(--text-main); font-weight:600; cursor:pointer; font-family:inherit;">
                                 <span id="sidebar-presence-dot" style="width:9px; height:9px; border-radius:50%; background:#22c55e; flex-shrink:0;"></span>
                                 <span id="sidebar-presence-label" style="flex:1; text-align:left;">온라인</span>
@@ -2299,7 +2317,7 @@
                         </div>
                         <div class="nav-group-items">
                             <div class="nav-item nav-item-sub" onclick="if(window.openGrowthModal) openGrowthModal()"><span class="nav-label">나의 성장</span></div>
-                            <div class="nav-item nav-item-sub" onclick="if(window.openDecorateModal) openDecorateModal()"><span class="nav-label">내 프로필 꾸미기</span></div>
+                            <div class="nav-item nav-item-sub" onclick="if(window.openDecorateModal) openDecorateModal()"><span class="nav-label">내 프로필 설정</span></div>
                         </div>
                     </div>
                 </nav>
@@ -2344,7 +2362,7 @@
                         <div id="growth-progress-bar" style="width:0%; height:100%; background:var(--primary); transition:width .4s ease;"></div>
                     </div>
                     <div id="growth-next-text" style="font-size:11px; color:var(--text-muted); margin-top:8px;">다음 레벨까지 -</div>
-                    <button class="auth-btn" style="width:auto; margin-top:12px; padding:9px 18px; font-size:12.5px;" onclick="openDecorateModal()">✨ 내 프로필 꾸미기</button>
+                    <button class="auth-btn" style="width:auto; margin-top:12px; padding:9px 18px; font-size:12.5px;" onclick="openDecorateModal()">⚙️ 내 프로필 설정</button>
                 </div>
                 <div style="font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:8px;">✨ 해금된 효과</div>
                 <div id="growth-unlocked-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px; font-size:12.5px; color:var(--text-main);"></div>
@@ -2353,22 +2371,36 @@
             </div>
         </div>
 
-        <!-- 내 프로필 꾸미기 (해금된 효과 중 원하는 것을 직접 골라 장착) -->
+        <!-- 내 프로필 설정 (구 "내 프로필 꾸미기"): 닉네임 + 연속 출석 효과 on/off + 해금된 효과 장착 -->
         <div id="decorate-modal" class="modal-overlay" style="display:none;">
-            <div class="deco-editor" role="dialog" aria-label="내 프로필 꾸미기">
+            <div class="deco-editor" role="dialog" aria-label="내 프로필 설정">
                 <div class="deco-editor-header">
                     <div>
-                        <h3>✨ 내 프로필 꾸미기</h3>
-                        <p>프로필을 원하는 스타일로 꾸며보세요</p>
+                        <h3>⚙️ 내 프로필 설정</h3>
+                        <p>닉네임과 프로필 꾸미기를 설정해보세요</p>
                     </div>
                     <span class="close-btn" onclick="closeDecorateModal()">&times;</span>
                 </div>
                 <div class="deco-editor-body">
                     <div class="deco-preview-pane">
-                        <div class="deco-preview-avatar-wrap"><div id="decorate-preview-avatar"></div></div>
-                        <div id="decorate-preview-name" class="deco-preview-name"></div>
-                        <div class="deco-equipped-title">현재 장착 효과</div>
-                        <div id="decorate-equipped-tags" class="deco-equipped-tags"></div>
+                        <div class="deco-preview-visual">
+                            <div class="deco-preview-avatar-wrap"><div id="decorate-preview-avatar"></div></div>
+                            <div id="decorate-preview-name" class="deco-preview-name"></div>
+                            <div class="deco-equipped-title">현재 장착 효과</div>
+                            <div id="decorate-equipped-tags" class="deco-equipped-tags"></div>
+                        </div>
+                        <div class="deco-settings" id="decorate-settings">
+                            <div class="deco-equipped-title" style="margin-top:22px;">닉네임</div>
+                            <div class="deco-nick-row">
+                                <input id="decorate-nick-input" class="auth-input" maxlength="10" placeholder="비워 두면 학번으로 표시돼요" autocomplete="off" onkeydown="if(event.key==='Enter'){saveDecorateNickname();}">
+                                <button type="button" class="btn-sub" onclick="saveDecorateNickname()">저장</button>
+                            </div>
+                            <div id="decorate-nick-msg" class="deco-nick-msg"></div>
+                            <label id="decorate-streak-row" class="deco-switch-row">
+                                <span class="deco-switch-text"><b>🔥 연속 출석 효과</b><small>끄면 내 닉네임에 연속 출석 궤도가 안 보여요 (다른 사람 화면 포함). “적용하기”를 눌러야 저장돼요.</small></span>
+                                <input type="checkbox" id="decorate-streak-toggle" class="deco-switch" onchange="setDecorateStreakOff(!this.checked)">
+                            </label>
+                        </div>
                     </div>
                     <div class="deco-panel-pane">
                         <div id="decorate-tabs" class="deco-tabs"></div>
@@ -4169,21 +4201,15 @@
             currentUser = null; currentUserInfo = null; isAdmin = false; isFounder = false; isSubAdmin = false; isTeacherAccount = false; isOperator = false; isRestrictedViewer = false; canPostNotice = false; canWriteSchedule = false; canManageSeats = false; canManageShortcuts = false; isListeningToPosts = false; isListeningToSquad = false; signOut(auth);
         });
 
-        window.setNickname = async function() {
+        // 닉네임 수정은 "내 프로필 설정" 창으로 옮겨졌다(예전 사이드바 버튼/모바일 메뉴의 닉네임 버튼은 이 창을 연다).
+        window.setNickname = function() {
             if (!currentUser) return showLoginScreen(() => setNickname());
             if (!currentUserInfo) return;
-            const newNick = prompt("사용할 닉네임을 입력하세요.\n(공백으로 두시면 원래 학번으로 표시됩니다):", currentUserInfo.nickname || "");
-            if(newNick !== null) {
-                const trimmed = newNick.trim();
-                try {
-                    if (trimmed === "") { await update(ref(db, `users/${currentUser.uid}`), { nickname: null }); alert("초기화 완료"); }
-                    else {
-                        if(trimmed.length > 10) return alert("닉네임은 10자 이내로 입력해주세요.");
-                        await update(ref(db, `users/${currentUser.uid}`), { nickname: trimmed });
-                        alert("닉네임 변경 완료!");
-                    }
-                } catch (e) { alert("닉네임 설정 중 오류 발생"); }
-            }
+            openDecorateModal();
+            setTimeout(() => {
+                const input = document.getElementById('decorate-nick-input');
+                if (input && document.getElementById('decorate-modal').style.display === 'flex') { input.focus(); input.select(); }
+            }, 60);
         };
 
         // 리치 에디터 툴바 주입 (페이지 로드 시 한 번) - 커뮤니티/공지/설문 작성 화면 공용
@@ -4266,7 +4292,7 @@
             if (visible(profileCard)) {
                 const nick = (document.getElementById('profile-nick-text') || {}).textContent || '';
                 const role = (document.getElementById('profile-role-text') || {}).textContent || '';
-                blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">👤 ${esc(nick.trim())}</div><div class="mb-sheet-role">${esc(role.trim())}</div></div><button type="button" class="mb-sheet-mini" data-mb-act="nick">✏️ 닉네임</button></div>`);
+                blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">👤 ${esc(nick.trim())}</div><div class="mb-sheet-role">${esc(role.trim())}</div></div><button type="button" class="mb-sheet-mini" data-mb-act="nick">⚙️ 프로필 설정</button></div>`);
             } else if (visible(guestCard)) {
                 blocks.push(`<div class="mb-sheet-head"><div class="mb-sheet-head-main"><div class="mb-sheet-nick">로그인하지 않았어요</div><div class="mb-sheet-role">글쓰기·좋아요는 로그인이 필요해요</div></div><button type="button" class="mb-sheet-mini primary" data-mb-act="login">🔑 로그인</button></div>`);
             }
@@ -4465,6 +4491,7 @@
                     // 하나도 손대지 않아도 그대로 상호작용을 막아준다. 여기서는 읽기 전용 구독과
                     // 사이드바 UI만 guest 모드로 맞춘다.
                     applyGuestUI();
+                    notifyAuthChange('guest');
                     return;
                 }
 
@@ -4476,9 +4503,12 @@
                 function initSignedInUser(d, user) {
                         currentUser = user;
                         currentUserInfo = d;
+                        notifyAuthChange(user.uid);
                         // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
                         document.getElementById('guest-login-card').style.display = 'none';
                         document.getElementById('user-profile-card').style.display = 'block';
+                        const logoutBtnEl = document.getElementById('btn-logout');
+                        if (logoutBtnEl) logoutBtnEl.style.display = '';
                         // 글쓰기/좋아요 등 쓰기 동작을 하려다 로그인 위젯이 뜬 경우, 로그인이 끝난 지금
                         // 원래 하려던 동작을 자동으로 이어서 실행한다 (requireLogin/showLoginScreen 참고).
                         // 이 리스너는 유저 문서가 바뀔 때마다 다시 불릴 수 있으므로, 한 번 실행한 뒤에는
@@ -4627,11 +4657,24 @@
                 // 시도한다. 이 콜백이 다시 익명 사용자로 한 번 더 불려서 위 user.isAnonymous 분기를 탄다.
                 // 프로젝트에서 익명 로그인 자체가 꺼져있는 등 실패하면 기존처럼 로그인 화면만 보여준다.
                 signInAnonymously(auth).catch(() => {
-                    document.getElementById('auth-container').style.display = 'flex';
-                    document.getElementById('app-container').classList.remove('authenticated');
+                    // 익명 로그인이 꺼져 있거나(Firebase 콘솔) 네트워크 문제로 실패해도 로그인 화면으로 막지 않는다 -
+                    // 세션 없이 그대로 게스트 모드로 열람시키고(currentUser 는 null), 쓰기 동작을 할 때 로그인 위젯이 뜬다.
+                    // (RTDB 규칙이 로그인 필요라면 커뮤니티 글 같은 실시간 데이터는 비어 보일 수 있다.)
+                    document.getElementById('auth-container').style.display = 'none';
+                    document.getElementById('app-container').classList.add('authenticated');
+                    applyGuestUI();
+                    notifyAuthChange('guest');
                 });
             }
         });
+
+        // 로그인 상태(게스트 ↔ 회원)가 바뀔 때만 다른 화면(앱스토어 등)에 알린다. initSignedInUser 는 같은 사용자로도 여러 번 불린다.
+        let lastAuthKey = null;
+        function notifyAuthChange(key) {
+            if (lastAuthKey === key) return;
+            lastAuthKey = key;
+            window.dispatchEvent(new Event('gmw:authchange'));
+        }
 
         // ===== 게스트(비로그인) 열람 모드 =====
         // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/플래너/프로필/자리 등은 그대로 로그인 필요.
@@ -4653,7 +4696,18 @@
                 listenToPosts(); listenToNotices(); listenToPolls(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials();
                 isListeningToGuestReadable = true;
             }
+
+            // 홈 화면: 로그인 없이도 되는 위젯(날씨/급식/시간표/지금 우리 학교는)은 그대로 채우고, 계정이 필요한 미션만 안내한다.
+            const logoutBtn = document.getElementById('btn-logout');
+            if (logoutBtn) logoutBtn.style.display = 'none'; // 게스트에겐 로그아웃이 의미 없다
+            if (!guestHomeLoaded) {
+                guestHomeLoaded = true;
+                try { fetchMeals(); fetchWeather(); renderHomeTimetable(); renderCurrentPeriodWidget(); } catch (e) { console.warn('게스트 홈 위젯 로드 실패:', e); }
+            }
+            const missionEl = document.getElementById('daily-missions-widget');
+            if (missionEl) missionEl.innerHTML = '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">미션과 연속 출석은 로그인하면 이용할 수 있어요.</div><button class="btn-sub" style="margin-top:8px; font-size:12px;" onclick="showLoginScreen()">🔑 로그인</button>';
         }
+        let guestHomeLoaded = false;
 
         // resumeAction을 넘기면, 로그인에 성공했을 때 그 함수를 자동으로 이어서 실행한다
         // (예: "글쓰기" 클릭 -> 로그인 -> 곧바로 글쓰기 화면). 그냥 사이드바 "로그인" 버튼처럼
@@ -4661,7 +4715,7 @@
         window.showLoginScreen = function(resumeAction) {
             pendingAction = typeof resumeAction === 'function' ? resumeAction : null;
             // 실제로 되돌아갈 게스트 세션이 있을 때만(=지금 익명으로만 로그인된 상태) 닫기 버튼을 보여준다.
-            const canDismiss = !currentUser && auth.currentUser && auth.currentUser.isAnonymous;
+            const canDismiss = !currentUser; // 게스트 화면(익명 세션이 있든 없든)으로 되돌아갈 수 있을 때만 닫기 버튼을 보여준다
             document.getElementById('auth-container-close').style.display = canDismiss ? 'block' : 'none';
             document.getElementById('auth-container').style.display = 'flex';
         };
@@ -8150,7 +8204,9 @@
             if (num && num === getMyStudentNum() && xpCloudLoaded && window.PlannerApp && window.PlannerApp.getXP) xp = window.PlannerApp.getXP();
             const ap = getProfileAppearance(xp, sData.appearance);
             // Streak Effect: 장착 정보와 무관하게 "현재 연속 출석 일수"만으로 결정된다(내 화면=실시간, 남의 화면=거울 값의 유효성 확인)
-            ap.streakDays = (num && num === getMyStudentNum() && dailyMissionsLoaded) ? computeAttendanceStreak() : streakDaysFromMirror(sData.streak);
+            const isMe = !!(num && num === getMyStudentNum());
+            ap.streakDays = (isMe && dailyMissionsLoaded) ? computeAttendanceStreak() : streakDaysFromMirror(sData.streak);
+            if (isMe ? isMyStreakOff() : sData.streakOff === true) ap.streakDays = 0; // 본인이 "연속 출석 효과"를 꺼 둔 경우
             return ap;
         }
 
@@ -8680,6 +8736,22 @@
         // (새로운 사용자/저장 데이터 구조를 만들지 않음). 레벨보다 높은 해금 등급은 저장/렌더링 어디서도 허용하지 않는다.
         // =========================================================================
         let decorateDraftAppearance = null;
+        let decorateDraftStreakOff = false; // 연속 출석 효과를 끄는지(초안) - "적용하기"를 눌러야 저장된다
+        let decorateInitialStreakOff = false;
+        // 연속 출석 효과 on/off: 다른 사람 화면에서도 꺼지도록 내 프로필 문서(profiles/student_N.streakOff)에 남기고,
+        // 쓰기가 실패하거나 아직 반영 전이어도 내 화면은 바로 바뀌도록 이 브라우저에도 같은 값을 저장해 둔다.
+        const STREAK_OFF_KEY_PREFIX = 'hanilgo_streak_off_';
+        function isMyStreakOff() {
+            const num = getMyStudentNum();
+            let local = null;
+            try { if (currentUser) local = localStorage.getItem(STREAK_OFF_KEY_PREFIX + currentUser.uid); } catch (e) {}
+            if (local === '1') return true;
+            if (local === '0') return false;
+            return !!(num && (profilesData[`student_${num}`] || {}).streakOff === true);
+        }
+        function setMyStreakOffLocal(off) {
+            try { if (currentUser) localStorage.setItem(STREAK_OFF_KEY_PREFIX + currentUser.uid, off ? '1' : '0'); } catch (e) {}
+        }
         let decorateDraftLevel = 1;
         let decorateInitialAppearance = null; // "초기화" 버튼으로 되돌아갈 스냅샷 (모달을 연 시점의 상태)
         let decorateActiveTab = 'frameStyle'; // 지금 보고 있는 카테고리 탭
@@ -8714,11 +8786,41 @@
             return null;
         }
 
+        // 설정 창 안의 닉네임/연속 출석 스위치를 현재 상태로 채운다 (nickOnly: 프로필 꾸미기 대상이 아닌 계정은 닉네임만)
+        function fillDecorateSettings(nickOnly) {
+            document.getElementById('decorate-modal').querySelector('.deco-editor').classList.toggle('nick-only', !!nickOnly);
+            document.getElementById('decorate-nick-input').value = (currentUserInfo && currentUserInfo.nickname) || '';
+            const msg = document.getElementById('decorate-nick-msg'); msg.textContent = ''; msg.classList.remove('error');
+            document.getElementById('decorate-streak-row').style.display = (nickOnly || decorateOperatorMode) ? 'none' : '';
+            document.getElementById('decorate-streak-toggle').checked = !decorateDraftStreakOff;
+        }
+        window.setDecorateStreakOff = function(off) {
+            decorateDraftStreakOff = !!off;
+            renderDecorateModal();
+        };
+        window.saveDecorateNickname = async function() {
+            const input = document.getElementById('decorate-nick-input');
+            const msg = document.getElementById('decorate-nick-msg');
+            const say = (text, error) => { msg.textContent = text; msg.classList.toggle('error', !!error); };
+            if (!currentUser || !currentUserInfo) return showLoginScreen(() => setNickname());
+            const nick = input.value.trim();
+            if (nick.length > 10) return say('닉네임은 10자 이내로 입력해주세요.', true);
+            try {
+                await update(ref(db, `users/${currentUser.uid}`), { nickname: nick || null });
+                say(nick ? '닉네임을 바꿨어요!' : '닉네임을 지웠어요. 학번으로 표시돼요.');
+            } catch (e) { say('닉네임을 저장하지 못했어요. 잠시 후 다시 시도해주세요.', true); }
+        };
         window.openDecorateModal = function() {
-            if (!window.PlannerApp || !window.PlannerApp.getXP) return;
+            if (!currentUser) return showLoginScreen(() => openDecorateModal());
             const num = getMyStudentNum();
             decorateOperatorMode = !num && isOperator;
-            if (!num && !decorateOperatorMode) { alert('1~26번 학생 계정만 프로필을 꾸밀 수 있습니다.'); return; }
+            if (!num && !decorateOperatorMode) { // 담임/관리자/타반 계정은 꾸미기 대상이 아니라서 닉네임만 바꿀 수 있는 작은 창으로 연다
+                fillDecorateSettings(true);
+                document.getElementById('decorate-modal').style.display = 'flex';
+                return;
+            }
+            if (!window.PlannerApp || !window.PlannerApp.getXP) return;
+            decorateDraftStreakOff = isMyStreakOff(); decorateInitialStreakOff = decorateDraftStreakOff;
             if (decorateOperatorMode) {
                 const saved = loadOperatorTest();
                 decorateDraftLevel = Math.min(30, parseTierLevel(window.PlannerApp.getTierInfo(1e9).name)); // 운영자: 최고 레벨 기준으로 모든 효과 해금
@@ -8726,6 +8828,7 @@
                 decorateOperatorStreak = Number(saved.streakDays) || 0;
                 decorateInitialAppearance = JSON.parse(JSON.stringify(decorateDraftAppearance));
                 decorateActiveTab = 'frameStyle';
+                fillDecorateSettings(false);
                 renderDecorateModal();
                 document.getElementById('decorate-modal').style.display = 'flex';
                 return;
@@ -8737,6 +8840,7 @@
             decorateDraftAppearance = computeEffectiveAppearance(level, savedAppearance, myAchievementsUnlocked);
             decorateInitialAppearance = JSON.parse(JSON.stringify(decorateDraftAppearance)); // 취소/초기화용 스냅샷 - 적용하기 전까지 Firebase에는 아무것도 쓰지 않는다
             decorateActiveTab = 'frameStyle';
+            fillDecorateSettings(false);
             renderDecorateModal();
             document.getElementById('decorate-modal').style.display = 'flex';
         }
@@ -8758,6 +8862,8 @@
             if (!decorateInitialAppearance) return;
             decorateDraftAppearance = computeEffectiveAppearance(decorateDraftLevel, null, decorateUnlockedMap());
             if (decorateOperatorMode) decorateOperatorStreak = 0;
+            decorateDraftStreakOff = false;
+            const streakToggle = document.getElementById('decorate-streak-toggle'); if (streakToggle) streakToggle.checked = true;
             renderDecorateModal();
         }
 
@@ -8807,7 +8913,7 @@
             const title = parseTierTitle(window.PlannerApp.getTierInfo(decorateOperatorMode ? 1e9 : window.PlannerApp.getXP()).name);
             const isActiveNow = decorateActiveChecker();
 
-            const previewAppearance = { level, title, ...decorateDraftAppearance, streakDays: decorateOperatorMode ? decorateOperatorStreak : (dailyMissionsLoaded ? computeAttendanceStreak() : 0) };
+            const previewAppearance = { level, title, ...decorateDraftAppearance, streakDays: decorateOperatorMode ? decorateOperatorStreak : ((dailyMissionsLoaded && !decorateDraftStreakOff) ? computeAttendanceStreak() : 0) };
             // 미리보기는 본인 화면이므로 실시간 활성 여부(isMyAchievementActive)를 그대로 반영한다
             // (예: 7일 연속 출석이 끊긴 상태라면 장착해 두어도 미리보기에서 자동으로 꺼져 보인다).
             // Preview와 실제 프로필/커뮤니티/아카이브/댓글은 전부 renderProfileAvatarHTML()/renderStyledName() 두 공용 함수만 사용하므로
@@ -8919,7 +9025,7 @@
                 const myTier = streakTierFor(myStreak);
                 html += `<div style="font-size:12px; color:var(--text-muted); background:var(--surface-secondary); border:1px solid var(--border-color); border-radius:10px; padding:8px 10px; margin-bottom:10px; line-height:1.5;">
                     <b style="color:var(--text-main);">연속 출석 효과</b>는 따로 장착하지 않아도 <b>현재 연속 출석 일수</b>에 따라 닉네임에 자동으로 나타나요(3·4·5·7일 단계). 연속이 끊기면 사라지고, 다시 이어가면 돌아와요.
-                    <div style="margin-top:4px;">지금 연속 출석 <b style="color:var(--text-main);">${myStreak}일</b> → ${myTier ? `${myTier}일 단계 효과 적용 중` : '효과 없음 (3일부터 시작)'}</div>
+                    <div style="margin-top:4px;">지금 연속 출석 <b style="color:var(--text-main);">${myStreak}일</b> → ${decorateDraftStreakOff ? '효과를 꺼 둔 상태예요 (왼쪽 “연속 출석 효과”에서 켤 수 있어요)' : (myTier ? `${myTier}일 단계 효과 적용 중` : '효과 없음 (3일부터 시작)')}</div>
                 </div>`;
                 html += `<div class="deco-source-label">🏆 활동 업적 세트 <span style="font-weight:500; opacity:0.75;">· 레벨 효과(프레임/색/Glow/이름)와 함께 쓸 수 있어요</span></div>`;
                 html += `<div class="${gridClass}">${levelKeys.concat(achKeys).map(renderOptionCard).join('')}</div>`;
@@ -8966,8 +9072,12 @@
             const num = getMyStudentNum();
             if (!num || !decorateDraftAppearance) return;
             try {
-                await writeOwnProfileDoc(num, { appearance: decorateDraftAppearance });
+                setMyStreakOffLocal(decorateDraftStreakOff);
+                await writeOwnProfileDoc(num, { appearance: decorateDraftAppearance, streakOff: decorateDraftStreakOff });
                 closeDecorateModal();
+                authorViewsSig = null;
+                refreshAuthorViews();
+                renderSidebarNick();
             } catch (e) { alert('저장 중 오류가 발생했습니다.'); }
         }
 
@@ -14059,6 +14169,11 @@
 
         const AS_BASE_TITLE = document.title; // 앱 화면에서 바꾼 탭 제목을 되돌릴 때 쓴다
         const AS_CATEGORIES = ['유틸리티', '게임', '교육', '생산성', '엔터테인먼트', '도구', '기타'];
+        // 로그인하지 않은 방문자(게스트)에게는 보이지 않는 카테고리 - 목록/검색/추천/상세/실행 전부에서 숨긴다.
+        // (Supabase 는 Firebase 로그인 여부를 몰라 서버에서 걸러낼 수 없으므로 화면에서만 숨기는 정책이다.)
+        const AS_MEMBER_ONLY_CATEGORIES = ['게임', '엔터테인먼트'];
+        const asCanSee = (app) => !!AUTH().user() || !AS_MEMBER_ONLY_CATEGORIES.includes(app.category);
+        const asVisibleCategories = () => AUTH().user() ? AS_CATEGORIES : AS_CATEGORIES.filter(c => !AS_MEMBER_ONLY_CATEGORIES.includes(c));
         const AS_LIMITS = {
             html: 5 * 1024 * 1024, zip: 20 * 1024 * 1024, icon: 1 * 1024 * 1024,
             zipEntries: 400, zipFileBytes: 15 * 1024 * 1024, zipTotalBytes: 30 * 1024 * 1024,
@@ -14156,7 +14271,10 @@
         function asRenderList(root) {
             const user = AUTH().user();
             const q = AS.q.trim().toLowerCase();
-            const catChips = ['전체', ...AS_CATEGORIES, ...(user ? ['내 앱'] : [])].map(c => `<button class="as-cat ${AS.cat === c ? 'active' : ''}" data-as="cat" data-cat="${asEsc(c)}">${asEsc(c)}</button>`).join('');
+            const visibleApps = AS.apps.filter(asCanSee);
+            if (AS.cat === '내 앱' && !user) AS.cat = '전체';
+            if (AS_MEMBER_ONLY_CATEGORIES.includes(AS.cat) && !user) AS.cat = '전체';
+            const catChips = ['전체', ...asVisibleCategories(), ...(user ? ['내 앱'] : [])].map(c => `<button class="as-cat ${AS.cat === c ? 'active' : ''}" data-as="cat" data-cat="${asEsc(c)}">${asEsc(c)}</button>`).join('');
             let body = '';
             if (AS.cat === '내 앱') {
                 body = AS.mine === null ? '<div class="as-empty">불러오는 중…</div>'
@@ -14166,18 +14284,18 @@
             } else if (AS.loadError) {
                 body = `<div class="as-empty">${asEsc(AS.loadError)}</div>`;
             } else {
-                const filtered = AS.apps.filter(a => (AS.cat === '전체' || a.category === AS.cat) && (!q || `${a.name} ${a.description} ${a.author_name}`.toLowerCase().includes(q)));
+                const filtered = visibleApps.filter(a => (AS.cat === '전체' || a.category === AS.cat) && (!q || `${a.name} ${a.description} ${a.author_name}`.toLowerCase().includes(q)));
                 if (q || AS.cat !== '전체') {
                     body = filtered.length ? asSection(q ? `“${asEsc(AS.q.trim())}” 검색 결과` : asEsc(AS.cat), filtered) : '<div class="as-empty">조건에 맞는 앱이 없어요.</div>';
-                } else if (!AS.apps.length) {
+                } else if (!visibleApps.length) {
                     body = '<div class="as-empty">아직 등록된 앱이 없어요. 첫 번째 앱을 올려보세요! 🚀</div>';
                 } else {
-                    const popular = [...AS.apps].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
-                    const latest = AS.apps.slice(0, 6);
-                    let featured = AS.apps.filter(a => a.featured).slice(0, 6);
+                    const popular = [...visibleApps].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
+                    const latest = visibleApps.slice(0, 6);
+                    let featured = visibleApps.filter(a => a.featured).slice(0, 6);
                     if (!featured.length) { // 추천 앱을 따로 지정하지 않았다면 날짜마다 바뀌는 추천을 보여준다
                         const day = Math.floor(Date.now() / 86400000);
-                        featured = [...AS.apps].sort((a, b) => ((a.id.charCodeAt(0) * 31 + day) % 97) - ((b.id.charCodeAt(0) * 31 + day) % 97)).slice(0, Math.min(3, AS.apps.length));
+                        featured = [...visibleApps].sort((a, b) => ((a.id.charCodeAt(0) * 31 + day) % 97) - ((b.id.charCodeAt(0) * 31 + day) % 97)).slice(0, Math.min(3, visibleApps.length));
                     }
                     body = asSection('🔥 인기 앱', popular) + asSection('🆕 최신 앱', latest) + asSection('✨ 추천 앱', featured);
                 }
@@ -14202,6 +14320,7 @@
                 root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div><div class="card as-empty">존재하지 않거나 비공개로 바뀐 앱이에요.</div>`;
                 return;
             }
+            if (!asCanSee(app)) { asRenderMemberOnly(root); return; }
             AS.app = app;
             document.title = `${app.name} · 앱스토어`;
             asCountView(app);
@@ -14241,6 +14360,11 @@
                     <div class="as-link-row">주소 <code>${asEsc(location.origin)}/app/${asEsc(app.id)}</code></div>
                     ${versions.length ? `<h3 class="as-section-title" style="margin-top:22px;">업데이트 기록</h3><div class="as-versions">${versions.map(v => `<div class="as-version"><b>v${asEsc(v.version)}</b><span>${asFmtDate(v.created_at)}</span><p>${asEsc(v.changelog || '').replace(/\n/g, '<br>') || '<i>변경 내용 없음</i>'}</p></div>`).join('')}</div>` : ''}
                 </div>`;
+        }
+        function asRenderMemberOnly(root) {
+            document.title = AS_BASE_TITLE;
+            root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div>
+                <div class="card as-empty">🔒 이 앱은 로그인한 사용자에게만 보여요.<br><br><button class="auth-btn" data-as="login" style="max-width:220px;">🔑 로그인하고 보기</button></div>`;
         }
         function asCountView(app) {
             const key = `gmw_app_viewed:${app.id}`;
@@ -14514,6 +14638,7 @@
             const app = await asFindApp(id);
             if (AS.view !== 'run' || AS.appId !== id) return;
             if (!app) { root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div><div class="card as-empty">존재하지 않거나 비공개로 바뀐 앱이에요.</div>`; return; }
+            if (!asCanSee(app)) { asRenderMemberOnly(root); return; }
             if (asIsLink(app)) { asNavigate({ view: 'detail', appId: app.id }, false); return; } // 파일이 없는 외부 링크 앱은 실행 화면이 없다
             AS.app = app; document.title = `${app.name} · 앱스토어`;
             asCountView(app);
@@ -14759,6 +14884,7 @@
             else if (act === 'edit') { e.stopPropagation(); asRequireLogin(async () => { const app = await asFindApp(id); if (app) asNavigate({ view: 'form', appId: id, form: { mode: 'update', app } }, true); }); }
             else if (act === 'download') { const app = await asFindApp(id); if (app) asDownload(app); }
             else if (act === 'copylink') { const app = await asFindApp(id); if (app) asCopyLink(app); }
+            else if (act === 'login') AUTH().login(() => {});
             else if (act === 'submit') asSubmitForm();
             else if (act === 'delete') { if (AS.form && AS.form.app) asDeleteApp(AS.form.app); }
         });
@@ -14769,6 +14895,13 @@
                 asRenderList(document.getElementById('as-root'));
                 const input = document.getElementById('as-search'); input.focus(); try { input.setSelectionRange(pos, pos); } catch (err) {}
             }
+        });
+
+        // 로그인/로그아웃으로 보이는 앱이 달라지므로(게스트는 게임·엔터테인먼트 숨김) 앱스토어가 열려 있으면 다시 그린다
+        window.addEventListener('gmw:authchange', () => {
+            AS.mine = null;
+            const tab = document.getElementById('tab-appstore');
+            if (tab && tab.classList.contains('active')) asRender();
         });
 
         // 사이드바 "앱스토어"로 들어올 때는 항상 목록부터 보여준다
