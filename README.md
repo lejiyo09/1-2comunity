@@ -3,5 +3,5 @@
 한일고 1학년 2반 학급 커뮤니티 (정적 사이트: `index.html` 한 파일 + `assets/`).
 
 * **앱스토어**: HTML/ZIP 웹앱을 올려 `/app/<id>` 로 게시·실행·다운로드 → 설정과 구조는 [`docs/appstore.md`](docs/appstore.md)
-* **클래스룸 과제 위젯 · 플래너 사진 읽기(베타)**: 설정 방법과 한계는 [`docs/classroom.md`](docs/classroom.md)
+* **플래너 사진 읽기(베타)**: 사용 방법과 한계는 [`docs/planner-photo.md`](docs/planner-photo.md)
 * Supabase: `supabase/migrations/`(DB·Storage 설정 SQL), `supabase/functions/`(Edge Functions)

@@ -97,10 +97,16 @@
             background: rgba(15, 23, 42, 0.45);
             backdrop-filter: blur(14px) saturate(120%);
             -webkit-backdrop-filter: blur(14px) saturate(120%);
-            display: flex; justify-content: center; align-items: center; z-index: 9999;
+            display: none; /* 기본은 숨김 - 접속 직후 로그인 상태를 확인하는 동안 로그인 화면이 번쩍 보이지 않게 한다. showLoginScreen()이 flex 로 연다 */
+            justify-content: center; align-items: center; z-index: 9999;
             overflow: hidden;
             animation: gmw-auth-fade-in 0.2s ease;
         }
+        /* 접속 직후(로그인 상태 확인 중) 잠깐 보이는 로딩 화면. 앱 화면이 열리면(.authenticated) 자동으로 사라진다. */
+        #gmw-boot-splash { position: fixed; inset: 0; z-index: 9998; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg-color, #eef4ff); color: var(--text-secondary, #64748b); font-size: 14px; font-weight: 600; }
+        #gmw-boot-splash .gmw-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(100,116,139,0.25); border-top-color: var(--primary, #3b82f6); animation: gmw-spin 0.8s linear infinite; }
+        @keyframes gmw-spin { to { transform: rotate(360deg); } }
+        body:has(#app-container.authenticated) #gmw-boot-splash, body:has(#auth-container[style*="flex"]) #gmw-boot-splash { display: none; }
         @keyframes gmw-auth-fade-in { from { opacity: 0; } to { opacity: 1; } }
         /* 브랜드 배경화면 톤을 순수 CSS 블롭으로 은은하게 - 블러된 배경 위라 이전보다 옅게 둔다 */
         #auth-container::before, #auth-container::after {
@@ -2226,6 +2232,7 @@
 </script>
 </head>
 <body>
+    <div id="gmw-boot-splash" role="status" aria-live="polite"><div class="gmw-spin"></div><div>불러오는 중…</div></div>
     <div id="auth-container">
         <span id="auth-container-close" onclick="hideLoginScreen()" style="display:none; position:absolute; top:20px; right:24px; font-size:26px; color:var(--text-muted); cursor:pointer; z-index:2;">&times;</span>
         <div class="auth-card" id="login-form">
@@ -2700,10 +2707,6 @@
                     <div class="card clickable" data-widget-id="w-exam" onclick="switchTab('exam')">
                         <div class="card-title">주요 과목 시험범위 📝</div>
                         <div id="home-exam-summary" class="widget-text">불러오는 중...</div>
-                    </div>
-                    <div class="card" data-widget-id="w-classroom" id="classroom-widget">
-                        <div class="card-title">📚 클래스룸 과제 <button type="button" id="classroom-refresh" class="btn-sub" style="display:none; margin-left:auto; padding:3px 9px; font-size:11px;" onclick="ClassroomWidget.refresh()">↻ 새로고침</button></div>
-                        <div id="classroom-body" class="widget-text">불러오는 중...</div>
                     </div>
                     <div class="card clickable" data-widget-id="w-calendar" onclick="switchTab('schedule')">
                         <div class="card-title">일정 📅</div>
@@ -4623,7 +4626,6 @@
                 function initSignedInUser(d, user) {
                         currentUser = user;
                         currentUserInfo = d;
-                        notifyAuthChange(user.uid);
                         setGuestReadBanner(false);
                         // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
                         document.getElementById('guest-login-card').style.display = 'none';
@@ -4647,6 +4649,7 @@
                         isFounder = (d.grade === "1" && d.ban === "2" && parseInt(d.number) === 20);
                         if(isFounder) isAdmin = true;
                         isTeacherAccount = TEACHER_ACCOUNT_EMAILS.includes((user.email || "").trim().toLowerCase());
+                        notifyAuthChange(user.uid); // 선생님 여부가 정해진 뒤에 알린다(앱스토어가 카테고리 숨김을 이 값으로 판단)
                         isOperator = isOperatorAccount(user); // 1230 운영자 (isAdmin/isSubAdmin과는 별개 등급)
                         isRestrictedViewer = isTeacherAccount || !is2Ban; // 담임선생님 & 타반 학생: 동일하게 제한된 열람 권한
                         applyUserCustomization(d); // 개인 배경화면/강조색 커스텀 적용
@@ -4790,6 +4793,17 @@
             }
         });
 
+        // 로그인 상태 확인(게스트 세션 만들기 포함)이 오래 걸려도(느린 네트워크/오프라인) 로딩 화면에 갇히지 않도록,
+        // 6초가 지나도 앱 화면이 안 열렸으면 일단 게스트 화면으로 연다. 이후 인증이 끝나면 위 핸들러가 정상적으로 이어받는다.
+        setTimeout(() => {
+            const appEl = document.getElementById('app-container');
+            if (appEl && !appEl.classList.contains('authenticated') && document.getElementById('auth-container').style.display !== 'flex') {
+                appEl.classList.add('authenticated');
+                applyGuestUI();
+                notifyAuthChange('guest');
+            }
+        }, 6000);
+
         // 로그인 상태(게스트 ↔ 회원)가 바뀔 때만 다른 화면(앱스토어 등)에 알린다. initSignedInUser 는 같은 사용자로도 여러 번 불린다.
         let lastAuthKey = null;
         function notifyAuthChange(key) {
@@ -4880,7 +4894,8 @@
             user: () => currentUser,
             token: async () => (currentUser ? currentUser.getIdToken() : null),
             login: (cb) => showLoginScreen(cb),
-            displayName: () => getAuthorName()
+            displayName: () => getAuthorName(),
+            isTeacher: () => isTeacherAccount // 선생님 계정은 앱스토어의 게임/엔터테인먼트 카테고리를 숨긴다
         };
         window.hideLoginScreen = function() {
             // 사용자가 로그인 위젯을 스스로 닫으면(X 버튼 등), 하려던 작업도 취소된 것으로 본다 -
@@ -4907,13 +4922,15 @@
             { id: 'shortcuts', label: '🔗 바로가기', widgets: ['w-shortcuts'] },
             { id: 'priority-strip', label: '⏱ 우선순위 (날씨·미션·지금 학교는)', widgets: ['w-weather', 'w-missions', 'w-period'] },
             { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
-            { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-classroom', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
+            { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
             { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] }
             // 메모/사진 위젯은 기본으로 주어지지 않는다 - 사용자가 필요할 때 "+ 메모"/"+ 사진"으로 원하는 만큼
             // 추가하고 삭제하는 것이다(숨기기 개념이 아님). 그 위젯을 담을 카테고리도 사용자가 알아서 만든다.
         ];
         const DEFAULT_HOME_SECTION_IDS = DEFAULT_HOME_LAYOUT.map(s => s.id);
         const ALL_HOME_WIDGET_IDS = DEFAULT_HOME_LAYOUT.flatMap(s => s.widgets);
+        const REMOVED_HOME_WIDGET_IDS = ['w-classroom']; // 예전에 있었다가 삭제된 위젯 - 저장된 배치/숨김/크기 설정에서 정리한다
+        try { Object.keys(localStorage).filter(k => k.startsWith('gmw_classroom_cache_')).forEach(k => localStorage.removeItem(k)); } catch (e) {} // 클래스룸 위젯이 남긴 과제 목록 캐시 삭제
         let homeSectionEditMode = false;
 
         // =========================================================================
@@ -5005,7 +5022,9 @@
                     // 카테고리(섹션)는 기본이든 사용자가 만든 것이든 자유롭게 삭제할 수 있다 - 그래서 더 이상
                     // "기본 섹션이 전부 남아있어야" 신뢰하지 않는다. 다만 기본 위젯(앱 기능 자체)은 삭제되지
                     // 않고 다른 카테고리로 옮겨지기만 하므로, 위젯만큼은 빠짐없이 어딘가에 있어야 신뢰한다.
-                    // 새로 추가된 기본 위젯(예: 클래스룸 과제)이 예전에 저장된 배치에 아직 없으면, 배치를 통째로 되돌리지 않고
+                    // 없어진 위젯(클래스룸 과제 위젯은 삭제됨)이 예전에 저장된 배치에 남아 있으면 떼어낸다.
+                    saved.forEach(sec => { sec.widgets = sec.widgets.filter(wid => !REMOVED_HOME_WIDGET_IDS.includes(wid)); });
+                    // 새로 추가된 기본 위젯이 예전에 저장된 배치에 아직 없으면, 배치를 통째로 되돌리지 않고
                     // 그 위젯의 기본 카테고리(없으면 첫 카테고리)에 끼워 넣는다.
                     const have = new Set(saved.flatMap(s => s.widgets));
                     DEFAULT_HOME_LAYOUT.forEach(def => def.widgets.forEach(wid => {
@@ -5148,7 +5167,7 @@
         const HOME_WIDGET_LABELS = {
             'w-shortcuts': '🔗 바로가기', 'w-weather': '🪟 현재 날씨', 'w-missions': '🎯 오늘의 미션',
             'w-period': '🕒 지금 우리 학교는', 'w-meal': '🍱 오늘의 급식', 'w-timetable': '🗓️ 오늘의 시간표',
-            'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위', 'w-classroom': '📚 클래스룸 과제',
+            'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위',
             'w-calendar': '📅 일정', 'w-planner-time': '📖 오늘의 공부', 'w-planner-tasks': '📋 오늘 할 일',
             'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글'
         };
@@ -14405,173 +14424,6 @@
         }
     </script>
 
-    <script id="classroom-widget-script">
-    // ===== 구글 클래스룸 과제 위젯 =====
-    // 학생 본인의 Google 계정으로 로그인(OAuth, Google Identity Services)해서 Classroom API 로 "내 과제"를 읽어 마감 순으로 보여 준다.
-    // - 읽기 전용 권한만 요청한다: 수강 중인 수업 목록 + 내 과제/제출 상태(classroom.courses.readonly, classroom.coursework.me.readonly).
-    // - 액세스 토큰은 메모리에만 두고(새로고침하면 사라짐) 서버로 보내지 않는다. 불러온 과제 목록만 이 브라우저에 캐시한다(내 계정별).
-    // - 동작하려면 Google Cloud 의 OAuth 클라이언트 ID 가 필요하다 → 아래 상수에 넣는다. 만드는 방법은 docs/classroom.md 참고.
-    //   (학교 계정이 Google Workspace 라면 학교 관리자가 외부 앱의 Classroom 접근을 허용해야 할 수도 있다.)
-    (function () {
-        const GOOGLE_CLIENT_ID = ''; // 예: '1234567890-abcdefg.apps.googleusercontent.com'
-        const SCOPES = 'https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly';
-        const API = 'https://classroom.googleapis.com/v1';
-        const GSI_URL = 'https://accounts.google.com/gsi/client';
-        const CACHE_PREFIX = 'gmw_classroom_cache_';
-        const SHOW_LIMIT = 6;
-        let token = null, tokenExpires = 0, tokenClient = null, items = [], loadedAt = 0, busy = false, showAll = false, errorMsg = '';
-
-        const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const uid = () => { try { const u = window.__gmwAuth && window.__gmwAuth.user(); return u ? u.uid : null; } catch (e) { return null; } };
-        const body = () => document.getElementById('classroom-body');
-        const refreshBtn = () => document.getElementById('classroom-refresh');
-
-        function loadCache() {
-            const u = uid(); if (!u) return null;
-            try { const v = JSON.parse(localStorage.getItem(CACHE_PREFIX + u) || 'null'); return v && Array.isArray(v.items) ? v : null; } catch (e) { return null; }
-        }
-        function saveCache() { const u = uid(); if (!u) return; try { localStorage.setItem(CACHE_PREFIX + u, JSON.stringify({ items, loadedAt })); } catch (e) {} }
-        function clearCache() { const u = uid(); if (!u) return; try { localStorage.removeItem(CACHE_PREFIX + u); } catch (e) {} }
-
-        // 마감 시각: Classroom 은 dueDate/dueTime 을 UTC 로 준다. dueDate 가 없으면 마감 없음.
-        function dueMs(cw) {
-            const d = cw && cw.dueDate; if (!d || !d.year) return null;
-            const t = cw.dueTime || {};
-            return Date.UTC(d.year, (d.month || 1) - 1, d.day || 1, t.hours || 0, t.minutes || 0);
-        }
-        function fmtDue(ms) {
-            if (ms == null) return { label: '마감 없음', cls: '' };
-            const now = new Date(); const due = new Date(ms);
-            const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-            const diff = Math.round((startOf(due) - startOf(now)) / 86400000);
-            const pad = (n) => String(n).padStart(2, '0');
-            const when = `${due.getMonth() + 1}/${due.getDate()} ${pad(due.getHours())}:${pad(due.getMinutes())}`;
-            if (ms < now.getTime()) return { label: `마감 지남 · ${when}`, cls: 'late' };
-            return { label: `${diff === 0 ? '오늘' : 'D-' + diff} · ${when}`, cls: diff <= 1 ? 'soon' : '' };
-        }
-
-        function loadGsi() {
-            if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
-            return new Promise((resolve, reject) => {
-                const sc = document.createElement('script'); sc.src = GSI_URL; sc.async = true;
-                sc.onload = () => (window.google && window.google.accounts && window.google.accounts.oauth2) ? resolve() : reject(new Error('Google 로그인 도구를 불러오지 못했어요.'));
-                sc.onerror = () => reject(new Error('Google 로그인 도구를 내려받지 못했어요. 인터넷 연결을 확인해 주세요.'));
-                document.head.appendChild(sc);
-            });
-        }
-        // 토큰 받기(팝업). prompt: '' 이면 이미 동의한 계정은 창 없이 바로 새 토큰을 받는다.
-        function requestToken(prompt) {
-            return loadGsi().then(() => new Promise((resolve, reject) => {
-                if (!tokenClient) {
-                    tokenClient = window.google.accounts.oauth2.initTokenClient({
-                        client_id: GOOGLE_CLIENT_ID, scope: SCOPES,
-                        callback: (resp) => {
-                            if (resp && resp.access_token) { token = resp.access_token; tokenExpires = Date.now() + (Number(resp.expires_in) || 3600) * 1000 - 30000; tokenClient._resolve && tokenClient._resolve(); }
-                            else tokenClient._reject && tokenClient._reject(new Error((resp && resp.error) === 'access_denied' ? '연결을 허용하지 않았어요.' : 'Google 연결에 실패했어요.'));
-                        },
-                        error_callback: (err) => { tokenClient._reject && tokenClient._reject(new Error(err && err.type === 'popup_closed' ? '창이 닫혀서 연결하지 못했어요.' : (err && err.type === 'popup_failed_to_open' ? '팝업이 막혔어요. 팝업을 허용해 주세요.' : 'Google 연결에 실패했어요.'))); }
-                    });
-                }
-                tokenClient._resolve = resolve; tokenClient._reject = reject;
-                tokenClient.requestAccessToken({ prompt: prompt == null ? '' : prompt });
-            }));
-        }
-
-        async function api(path) {
-            const resp = await fetch(API + path, { headers: { Authorization: 'Bearer ' + token } });
-            if (resp.status === 401) { token = null; throw Object.assign(new Error('연결이 만료됐어요. 다시 연결해 주세요.'), { code: 401 }); }
-            if (resp.status === 403) throw Object.assign(new Error('클래스룸 접근이 허용되지 않았어요. 학교 관리자가 외부 앱을 막았거나 권한이 없을 수 있어요.'), { code: 403 });
-            if (!resp.ok) throw new Error(`클래스룸에서 정보를 가져오지 못했어요 (${resp.status}).`);
-            return resp.json();
-        }
-        async function fetchAssignments() {
-            const courseRes = await api('/courses?courseStates=ACTIVE&studentId=me&pageSize=30');
-            const courses = courseRes.courses || [];
-            const lists = await Promise.all(courses.map(async (c) => {
-                const [cwRes, subRes] = await Promise.all([
-                    api(`/courses/${encodeURIComponent(c.id)}/courseWork?courseWorkStates=PUBLISHED&orderBy=dueDate%20desc&pageSize=30`),
-                    api(`/courses/${encodeURIComponent(c.id)}/courseWork/-/studentSubmissions?userId=me&pageSize=100`).catch(() => ({ studentSubmissions: [] }))
-                ]);
-                const state = {}; (subRes.studentSubmissions || []).forEach(s => { state[s.courseWorkId] = s.state; });
-                return (cwRes.courseWork || []).map(cw => ({
-                    id: cw.id, course: c.name || '수업', title: cw.title || '제목 없음', link: cw.alternateLink || '', due: dueMs(cw),
-                    done: ['TURNED_IN', 'RETURNED'].includes(state[cw.id])
-                }));
-            }));
-            return lists.flat();
-        }
-        // 화면에 보여줄 목록: 제출 안 한 것만, 마감 지남(최근 7일 이내) → 임박순, 마감 없는 건 맨 뒤
-        function pickVisible(all) {
-            const now = Date.now(), weekAgo = now - 7 * 86400000;
-            return all.filter(a => !a.done && (a.due == null || a.due >= weekAgo))
-                .sort((a, b) => (a.due == null ? Infinity : a.due) - (b.due == null ? Infinity : b.due));
-        }
-
-        function render() {
-            const el = body(); if (!el) return;
-            const rb = refreshBtn();
-            if (!uid()) { el.innerHTML = '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">로그인하면 내 클래스룸 과제를 볼 수 있어요.</div><button class="btn-sub" style="margin-top:8px; font-size:12px;" onclick="showLoginScreen()">🔑 로그인</button>'; if (rb) rb.style.display = 'none'; return; }
-            if (!GOOGLE_CLIENT_ID) { el.innerHTML = '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">클래스룸 연동은 아직 준비 중이에요. 🛠</div>'; if (rb) rb.style.display = 'none'; return; }
-            if (rb) rb.style.display = (token || items.length) ? '' : 'none';
-            let html = '';
-            if (errorMsg) html += `<div class="classroom-err" style="font-size:12.5px; color:#dc2626; line-height:1.5; margin-bottom:8px;">${esc(errorMsg)}</div>`;
-            if (busy) { el.innerHTML = html + '<div style="font-size:13px; color:var(--text-secondary);">불러오는 중…</div>'; return; }
-            if (!token && !items.length) {
-                el.innerHTML = html + '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:8px;">구글 클래스룸의 내 과제를 마감 순으로 보여 줘요. (읽기만 하고, 비밀번호는 우리 사이트가 받지 않아요)</div><button class="auth-btn" style="width:auto; padding:9px 16px; font-size:13px; margin-top:0;" onclick="ClassroomWidget.connect()">🔗 Google 클래스룸 연결</button>';
-                return;
-            }
-            const list = pickVisible(items); const shown = showAll ? list : list.slice(0, SHOW_LIMIT);
-            if (!list.length) html += '<div style="font-size:13px; color:var(--text-secondary);">제출할 과제가 없어요 🎉</div>';
-            html += shown.map(a => {
-                const d = fmtDue(a.due); const color = d.cls === 'late' ? '#dc2626' : (d.cls === 'soon' ? '#ea580c' : 'var(--text-muted)');
-                const titleHtml = a.link && /^https:\/\/classroom\.google\.com\//.test(a.link) ? `<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" style="color:var(--text-main); font-weight:700; text-decoration:none;">${esc(a.title)}</a>` : `<span style="font-weight:700;">${esc(a.title)}</span>`;
-                return `<div class="classroom-item" data-cw="${esc(a.id)}" style="display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed var(--border-color); font-size:13px;"><div style="flex:1; min-width:0;"><div style="overflow-wrap:anywhere;">${titleHtml}</div><div style="font-size:11.5px; color:var(--text-muted);">${esc(a.course)} · <span style="color:${color}; font-weight:700;">${esc(d.label)}</span></div></div><button type="button" class="btn-sub" style="padding:3px 9px; font-size:11px; flex-shrink:0;" onclick="ClassroomWidget.addToPlanner('${esc(a.id)}')">＋ 할 일</button></div>`;
-            }).join('');
-            if (list.length > SHOW_LIMIT) html += `<button type="button" class="btn-sub" style="margin-top:8px; font-size:12px;" onclick="ClassroomWidget.toggleAll()">${showAll ? '접기' : `더 보기 (${list.length - SHOW_LIMIT}개)`}</button>`;
-            if (!token) html += '<div style="font-size:11.5px; color:var(--text-muted); margin-top:8px;">마지막으로 불러온 내용이에요. “새로고침”으로 다시 연결하면 최신으로 바뀌어요.</div>';
-            else html += '<div style="margin-top:8px;"><button type="button" class="btn-sub" style="font-size:11px; padding:3px 9px;" onclick="ClassroomWidget.disconnect()">연결 해제</button></div>';
-            el.innerHTML = html;
-        }
-
-        async function load(promptMode) {
-            if (busy) return; busy = true; errorMsg = ''; render();
-            try {
-                if (!token || Date.now() > tokenExpires) await requestToken(promptMode);
-                items = await fetchAssignments(); loadedAt = Date.now(); saveCache();
-            } catch (e) {
-                errorMsg = (e && e.message) || '불러오지 못했어요.';
-                if (e && e.code === 403) { items = items; }
-            }
-            busy = false; render();
-        }
-        window.ClassroomWidget = {
-            connect() { return load(''); },
-            refresh() { return load(''); },
-            toggleAll() { showAll = !showAll; render(); },
-            disconnect() {
-                try { if (token && window.google && window.google.accounts && window.google.accounts.oauth2) window.google.accounts.oauth2.revoke(token, () => {}); } catch (e) {}
-                token = null; tokenExpires = 0; items = []; clearCache(); errorMsg = ''; render();
-            },
-            addToPlanner(id) {
-                const a = items.find(x => String(x.id) === String(id)); if (!a) return;
-                if (!window.PlannerApp || !window.PlannerApp.addExternalTasks) return;
-                const n = window.PlannerApp.addExternalTasks([`[${a.course}] ${a.title}`.slice(0, 60)], null, 30);
-                const item = document.querySelector(`.classroom-item[data-cw="${CSS.escape(String(id))}"] button`);
-                if (item) { item.textContent = n ? '✓ 추가됨' : '추가 못 함'; item.disabled = true; }
-            },
-            _render: render, _state: () => ({ token: !!token, count: items.length })
-        };
-        // 로그인 상태가 바뀌면 캐시를 읽어 다시 그린다(게스트→회원, 계정 전환)
-        window.addEventListener('gmw:authchange', () => {
-            token = null; tokenExpires = 0; items = []; errorMsg = ''; showAll = false;
-            const c = loadCache(); if (c) { items = c.items; loadedAt = c.loadedAt || 0; }
-            render();
-        });
-        function init() { const c = loadCache(); if (c) { items = c.items; loadedAt = c.loadedAt || 0; } render(); }
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-    })();
-    </script>
-
     <script type="module" id="appstore-module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -14596,9 +14448,12 @@
         const AS_CATEGORIES = ['유틸리티', '게임', '교육', '생산성', '엔터테인먼트', '도구', '기타'];
         // 로그인하지 않은 방문자(게스트)에게는 보이지 않는 카테고리 - 목록/검색/추천/상세/실행 전부에서 숨긴다.
         // (Supabase 는 Firebase 로그인 여부를 몰라 서버에서 걸러낼 수 없으므로 화면에서만 숨기는 정책이다.)
+        // 선생님 계정에도 같은 카테고리를 숨긴다(학생 계정에서만 보임).
         const AS_MEMBER_ONLY_CATEGORIES = ['게임', '엔터테인먼트'];
-        const asCanSee = (app) => !!AUTH().user() || !AS_MEMBER_ONLY_CATEGORIES.includes(app.category);
-        const asVisibleCategories = () => AUTH().user() ? AS_CATEGORIES : AS_CATEGORIES.filter(c => !AS_MEMBER_ONLY_CATEGORIES.includes(c));
+        const asIsTeacher = () => { try { return !!(AUTH().isTeacher && AUTH().isTeacher()); } catch (e) { return false; } };
+        const asHidesRestricted = () => !AUTH().user() || asIsTeacher(); // 게스트 또는 선생님
+        const asCanSee = (app) => !asHidesRestricted() || !AS_MEMBER_ONLY_CATEGORIES.includes(app.category);
+        const asVisibleCategories = () => asHidesRestricted() ? AS_CATEGORIES.filter(c => !AS_MEMBER_ONLY_CATEGORIES.includes(c)) : AS_CATEGORIES;
         const AS_LIMITS = {
             html: 5 * 1024 * 1024, zip: 20 * 1024 * 1024, icon: 1 * 1024 * 1024,
             zipEntries: 400, zipFileBytes: 15 * 1024 * 1024, zipTotalBytes: 30 * 1024 * 1024,
@@ -14698,7 +14553,7 @@
             const q = AS.q.trim().toLowerCase();
             const visibleApps = AS.apps.filter(asCanSee);
             if (AS.cat === '내 앱' && !user) AS.cat = '전체';
-            if (AS_MEMBER_ONLY_CATEGORIES.includes(AS.cat) && !user) AS.cat = '전체';
+            if (AS_MEMBER_ONLY_CATEGORIES.includes(AS.cat) && asHidesRestricted()) AS.cat = '전체';
             const catChips = ['전체', ...asVisibleCategories(), ...(user ? ['내 앱'] : [])].map(c => `<button class="as-cat ${AS.cat === c ? 'active' : ''}" data-as="cat" data-cat="${asEsc(c)}">${asEsc(c)}</button>`).join('');
             let body = '';
             if (AS.cat === '내 앱') {
@@ -14789,7 +14644,7 @@
         function asRenderMemberOnly(root) {
             document.title = AS_BASE_TITLE;
             root.innerHTML = `<div class="community-back-link" data-as="home">← 앱스토어</div>
-                <div class="card as-empty">🔒 이 앱은 로그인한 사용자에게만 보여요.<br><br><button class="auth-btn" data-as="login" style="max-width:220px;">🔑 로그인하고 보기</button></div>`;
+                <div class="card as-empty">🔒 ${AUTH().user() ? '이 앱은 학생 계정에게만 보여요.' : '이 앱은 로그인한 학생에게만 보여요.'}${AUTH().user() ? '' : '<br><br><button class="auth-btn" data-as="login" style="max-width:220px;">🔑 로그인하고 보기</button>'}</div>`;
         }
         function asCountView(app) {
             const key = `gmw_app_viewed:${app.id}`;
@@ -15167,7 +15022,7 @@
                     <label class="as-label">앱 이름 *<input id="as-f-name" class="auth-input" maxlength="40" placeholder="예: 계산기" value="${asEsc(app ? app.name : '')}"></label>
                     <label class="as-label">설명<textarea id="as-f-desc" class="auth-input as-textarea" maxlength="1000" placeholder="어떤 앱인지 간단히 알려주세요">${asEsc(app ? app.description : '')}</textarea></label>
                     <div class="as-row">
-                        <label class="as-label">카테고리<select id="as-f-cat" class="auth-select">${AS_CATEGORIES.map(c => `<option ${app && app.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+                        <label class="as-label">카테고리<select id="as-f-cat" class="auth-select">${AS_CATEGORIES.filter(c => asVisibleCategories().includes(c) || (app && app.category === c)).map(c => `<option ${app && app.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
                         <label class="as-label">버전<input id="as-f-ver" class="auth-input" maxlength="20" placeholder="1.0.0" value="${asEsc(app ? app.version : '1.0.0')}"></label>
                     </div>
                     <div class="as-label">아이콘 <span class="as-hint">(PNG·JPG·WEBP·GIF, 1MB 이하 · 선택)</span>
