@@ -32,10 +32,10 @@
 * sandbox 안에서는 `localStorage` 가 막히므로, 앱 안에 **대용품(shim)** 을 넣어 주고 내용은 부모가 `postMessage` 로 받아 **앱·계정별 키**(`gmw_appdata:<앱ID>:<uid|guest>`)에 저장한다(앱당 512KB, 전체 2MB 제한, 메시지 출처/앱 ID 검증).
 * ZIP 은 서버가 아니라 **브라우저 메모리에서만** 푼다(외부 라이브러리 없이 직접 파싱). 절대 경로·`../`·역슬래시 경로가 하나라도 있으면 ZIP 전체를 거부, 파일 400개·파일당 15MB·압축 해제 합계 30MB·비정상 압축률(압축 폭탄) 제한, 암호 ZIP/ZIP64 거부, `index.html`(최상위 또는 하나뿐인 폴더 안) 필수.
   푼 파일은 **data URL 로 인라인**해서 실행한다(sandbox 의 opaque 출처에서는 부모가 만든 blob URL 을 읽을 수 없기 때문). `fetch()`/`XMLHttpRequest`/`new Audio()`/`img.src = ...` 같은 동적 상대 경로는 shim 이 ZIP 안 파일로 연결한다.
-* 앱 파일 제한: HTML 5MB, ZIP 20MB, 아이콘 1MB(PNG/JPG/WEBP/GIF — SVG 는 스크립트를 담을 수 있어 불허), 사용자당 앱 50개. 서버(`apps-write`)와 버킷(`file_size_limit`, `allowed_mime_types`)이 같은 제한을 다시 검사한다.
+* 앱 파일 제한: 단일 HTML **800KB**, ZIP **800KB**, 아이콘 1MB(PNG/JPG/WEBP/GIF — SVG 는 스크립트를 담을 수 있어 불허), 사용자당 앱 50개. 서버(`apps-write`)와 버킷(`file_size_limit`, `allowed_mime_types`)이 같은 제한을 다시 검사한다.
 
 ### 큰 앱: 외부 링크(Netlify 등)로 등록
-HTML 5MB / ZIP 20MB 를 넘어 올릴 수 없는 앱은 **"🌐 외부 링크만"** 방식으로 등록한다. 파일은 올리지 않고 제작자가 Netlify 등에 직접 배포한 `https://` 주소만 건다(`file_type='link'`, `file_path='external'`).
+HTML/ZIP 이 800KB 를 넘어 올릴 수 없는 앱은 **"🌐 외부 링크만"** 방식으로 등록한다. 파일은 올리지 않고 제작자가 Netlify 등에 직접 배포한 `https://` 주소만 건다(`file_type='link'`, `file_path='external'`).
 * 앱스토어 안에서의 실행·다운로드는 없고, 상세 화면의 **"외부 링크로 열기"**(새 탭, `noopener noreferrer nofollow`)로만 연결한다. `/app/<id>/run` 으로 들어와도 상세 화면으로 돌려보낸다.
 * 파일을 올린 앱에도 **선택 항목**으로 외부 공유 링크를 덧붙일 수 있다(`apps.external_url`). 이 경우 실행/다운로드 버튼과 외부 링크 버튼이 같이 보인다.
 * 외부 링크는 서버(`apps-write`)와 화면이 같은 규칙으로 검사한다: `https` 만, 아이디/비밀번호 포함 금지, `localhost`/IP/내부 주소 금지, 500자 이하. DB 에도 `https://` 로 시작하는지 CHECK 제약이 있다.
@@ -67,7 +67,7 @@ JS 로 만든 `style.backgroundImage = "url(x.png)"` 같은 문자열 안의 상
    (대시보드에서 하려면 Edge Functions → New Function → 이름 `apps-write` → `supabase/functions/apps-write/index.ts` 내용 붙여넣기 → **Verify JWT 끄기** → Deploy.)
 
    `SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_URL` 은 Supabase 가 Edge Function 에 **자동으로 넣어 주는 값**이라 Secrets 에 직접 등록하지 않는다(등록하려 하면 `Name must not start with the SUPABASE_ prefix` 오류가 난다).
-3. Storage 에 `webapps` 버킷이 생겼는지, **Public** 이고 크기 제한이 20MB 인지 확인.
+3. Storage 에 `webapps` 버킷이 생겼는지, **Public** 이고 크기 제한이 1MB 인지 확인(단일 HTML/ZIP 의 800KB 제한은 `apps-write` 가 검사).
 
 ### 2) Render (Static Site `one-2comunity-test`)
 

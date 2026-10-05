@@ -31,7 +31,8 @@
         const asCanSee = (app) => !asHidesRestricted() || !AS_MEMBER_ONLY_CATEGORIES.includes(app.category);
         const asVisibleCategories = () => asHidesRestricted() ? AS_CATEGORIES.filter(c => !AS_MEMBER_ONLY_CATEGORIES.includes(c)) : AS_CATEGORIES;
         const AS_LIMITS = {
-            html: 5 * 1024 * 1024, zip: 20 * 1024 * 1024, icon: 1 * 1024 * 1024,
+            html: 800 * 1024, // 단일 HTML 은 800KB 까지(더 큰 앱은 ZIP 또는 외부 링크)
+             zip: 800 * 1024, icon: 1 * 1024 * 1024,
             zipEntries: 400, zipFileBytes: 15 * 1024 * 1024, zipTotalBytes: 30 * 1024 * 1024,
             appData: 512 * 1024, // 앱이 sandbox 안에서 쓰는 localStorage 대용품을 이 브라우저에 저장하는 최대 크기(앱당)
             appDataTotal: 2 * 1024 * 1024 // 모든 앱을 합친 최대 크기(앱이 이 사이트의 저장 공간을 다 차지해 버리지 못하게)
@@ -486,7 +487,7 @@
                             <li>그 <b>https 주소를 복사</b>해서 위의 <b>외부 링크 주소</b>에 붙여넣고 게시하면 끝!</li>
                         </ol>
                     </div>
-                    <div class="as-deploy-note">💡 파일이 5MB(HTML)/20MB(ZIP) 이하이면 외부 서비스 없이 위의 <b>“📦 파일 올리기”</b>로 바로 앱스토어에서 실행되게 할 수도 있어요. 외부 링크는 앱스토어의 격리 보호가 적용되지 않으니 본인이 만든 앱만 연결해 주세요. (화면 문구는 서비스 사정에 따라 조금 다를 수 있어요)</div>
+                    <div class="as-deploy-note">💡 파일이 800KB 이하(HTML·ZIP 모두)이면 외부 서비스 없이 위의 <b>“📦 파일 올리기”</b>로 바로 앱스토어에서 실행되게 할 수도 있어요. 외부 링크는 앱스토어의 격리 보호가 적용되지 않으니 본인이 만든 앱만 연결해 주세요. (화면 문구는 서비스 사정에 따라 조금 다를 수 있어요)</div>
                 </div>
             </details>`;
         }
@@ -523,7 +524,7 @@
                     </div>`}
                     ${isLinkApp ? '' : `<div class="as-label" id="as-f-file-block">${isEdit ? '새 버전 파일로 교체 <span class="as-hint">(선택 · 비워 두면 파일은 그대로)</span>' : 'HTML 또는 ZIP 파일 *'}
                         <input id="as-f-file" type="file" accept=".html,.htm,.zip">
-                        <div class="as-hint">${isEdit ? `현재: ${app.file_type === 'zip' ? 'ZIP' : 'HTML'} · ${asFmtSize(app.file_size || 0)} · ` : ''}HTML 한 파일이면 <b>.html</b>(5MB 이하), 여러 파일이면 <b>.zip</b>(20MB 이하, 맨 위에 <b>index.html</b>)으로 올려요. 주소는 수정해도 바뀌지 않아요.</div>
+                        <div class="as-hint">${isEdit ? `현재: ${app.file_type === 'zip' ? 'ZIP' : 'HTML'} · ${asFmtSize(app.file_size || 0)} · ` : ''}HTML 한 파일이면 <b>.html</b>, 여러 파일이면 <b>.zip</b>(맨 위에 <b>index.html</b>)으로 올려요. <b>둘 다 800KB 이하</b>만 돼요(더 크면 외부 링크로)으로 올려요. 주소는 수정해도 바뀌지 않아요.</div>
                     </div>`}
                     <label class="as-label" id="as-f-ext-block"><span id="as-f-ext-label">${isLinkApp ? AS_EXT_LABEL_LINK : AS_EXT_LABEL_OPT}</span>
                         <input id="as-f-ext" class="auth-input" type="url" maxlength="500" inputmode="url" placeholder="https://내앱.netlify.app" value="${asEsc(app && app.external_url ? app.external_url : '')}">
@@ -598,7 +599,7 @@
                 const n = file.name.toLowerCase();
                 fileType = /\.html?$/.test(n) ? 'html' : (/\.zip$/.test(n) ? 'zip' : null);
                 if (!fileType) return asFormError('.html 또는 .zip 파일만 올릴 수 있어요.');
-                if (file.size > AS_LIMITS[fileType]) return asFormError(`${fileType === 'zip' ? 'ZIP은 20MB' : 'HTML은 5MB'} 이하만 올릴 수 있어요.`);
+                if (file.size > AS_LIMITS[fileType]) return asFormError(`${fileType === 'zip' ? 'ZIP은' : 'HTML은'} 800KB 이하만 올릴 수 있어요. 더 크면 “🌐 외부 링크만”으로 등록해 주세요.`);
                 if (fileType === 'zip') { // 서버로 보내기 전에 구조/경로/크기를 미리 검사한다
                     try { zipOpen(await file.arrayBuffer()); } catch (e) { return asFormError(e instanceof ZipError ? e.message : 'ZIP 파일을 읽지 못했어요.'); }
                 }
