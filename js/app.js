@@ -4982,7 +4982,7 @@
             const level = decorateDraftLevel;
             const num = getMyStudentNum();
             const sData = (num && profilesData[`student_${num}`]) || {};
-            const photo = sData.photo || (decorateOperatorMode ? 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#94a3b8"/><circle cx="40" cy="32" r="14" fill="#e2e8f0"/><rect x="14" y="52" width="52" height="30" rx="16" fill="#e2e8f0"/></svg>') : 'https://via.placeholder.com/150');
+            const photo = sData.photo || (decorateOperatorMode ? 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#94a3b8"/><circle cx="40" cy="32" r="14" fill="#e2e8f0"/><rect x="14" y="52" width="52" height="30" rx="16" fill="#e2e8f0"/></svg>') : 'data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27150%27%3E%3Crect width=%27150%27 height=%27150%27 fill=%27%23e5e7eb%27/%3E%3C/svg%3E');
             const displayName = decorateOperatorMode ? ((currentUserInfo && currentUserInfo.nickname) || '운영자') : (isRestrictedViewer ? (FIXED_PROFILE_ROSTER[num] || `${num}번`) : (sData.name || '미등록'));
             const title = parseTierTitle(window.PlannerApp.getTierInfo(decorateOperatorMode ? 1e9 : window.PlannerApp.getXP()).name);
             const isActiveNow = decorateActiveChecker();
@@ -10092,7 +10092,7 @@
                 for(let i = 1; i <= 26; i++) {
                     const sData = profilesData[`student_${i}`] || {};
                     const displayName = isRestrictedViewer ? (FIXED_PROFILE_ROSTER[i] || `${i}번`) : (sData.name || '미등록');
-                    const thumbPhoto = isRestrictedViewer ? 'https://via.placeholder.com/150' : (sData.photo || 'https://via.placeholder.com/150');
+                    const thumbPhoto = isRestrictedViewer ? 'data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27150%27%3E%3Crect width=%27150%27 height=%27150%27 fill=%27%23e5e7eb%27/%3E%3C/svg%3E' : (sData.photo || 'data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27150%27%3E%3Crect width=%27150%27 height=%27150%27 fill=%27%23e5e7eb%27/%3E%3C/svg%3E');
                     const appearance = getStudentAppearance(i, sData);
                     const nameHtml = renderStyledName(displayName, appearance);
                     const levelLine = `<div class="profile-thumb-level" style="color:var(--primary);">Lv.${appearance.level} · ${appearance.title}</div>`;
@@ -10139,7 +10139,7 @@
 
             onSnapshot(doc(fdb, 'profiles', `student_${num}`), (snap) => {
                 const sData = snap.exists() ? snap.data() : {};
-                document.getElementById('modal-img').src = isRestrictedViewer ? 'https://via.placeholder.com/150' : (sData.photo || 'https://via.placeholder.com/150');
+                document.getElementById('modal-img').src = isRestrictedViewer ? 'data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27150%27%3E%3Crect width=%27150%27 height=%27150%27 fill=%27%23e5e7eb%27/%3E%3C/svg%3E' : (sData.photo || 'data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27150%27%3E%3Crect width=%27150%27 height=%27150%27 fill=%27%23e5e7eb%27/%3E%3C/svg%3E');
                 const appearance = getStudentAppearance(num, sData);
                 document.getElementById('modal-level-line').textContent = `Lv.${appearance.level} · ${appearance.title}`;
                 const nameInput = document.getElementById('modal-name-input');
