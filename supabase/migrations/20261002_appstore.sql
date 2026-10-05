@@ -93,10 +93,10 @@ grant execute on function public.increment_app_views(text) to anon, authenticate
 -- 5) Storage 버킷 ---------------------------------------------------------------
 -- 공개 버킷: 앱 실행/다운로드가 로그인 없이도 되어야 하므로 읽기는 공개다. 쓰기(업로드)는 Edge Function이 발급한
 -- "서명된 업로드 URL"로만 가능하다(anon에게 storage.objects INSERT 정책을 주지 않는다).
--- 파일 크기 20MB 제한, 허용 형식은 HTML/ZIP/이미지(아이콘)만. (SVG 아이콘은 스크립트를 담을 수 있어 허용하지 않는다.)
+-- 파일 크기 1MB 제한(단일 HTML/ZIP 은 앱 서버가 800KB 로, 아이콘은 1MB 로 다시 제한한다), 허용 형식은 HTML/ZIP/이미지(아이콘)만. (SVG 아이콘은 스크립트를 담을 수 있어 허용하지 않는다.)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
-    'webapps', 'webapps', true, 20971520,
+    'webapps', 'webapps', true, 1048576,
     array['text/html', 'application/zip', 'application/x-zip-compressed', 'application/octet-stream',
           'image/png', 'image/jpeg', 'image/webp', 'image/gif']
 )

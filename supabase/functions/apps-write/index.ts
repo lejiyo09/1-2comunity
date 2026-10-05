@@ -36,8 +36,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const BUCKET = "webapps";
 
 // ---- 제한값 (클라이언트에도 같은 값이 있지만, 신뢰는 항상 이 서버 값이다) ----
-const MAX_HTML_BYTES = 5 * 1024 * 1024;   // 단일 HTML 5MB
-const MAX_ZIP_BYTES = 20 * 1024 * 1024;   // ZIP 20MB (버킷 제한과 동일)
+const MAX_HTML_BYTES = 800 * 1024;        // 단일 HTML 800KB (그보다 큰 앱은 ZIP 또는 외부 링크로)
+const MAX_ZIP_BYTES = 800 * 1024;         // ZIP 800KB (HTML 과 같은 제한. 더 큰 앱은 외부 링크로)
 const MAX_ICON_BYTES = 1 * 1024 * 1024;   // 아이콘 1MB
 const MAX_APPS_PER_USER = 50;
 const CATEGORIES = ["유틸리티", "게임", "교육", "생산성", "엔터테인먼트", "도구", "기타"];
@@ -126,11 +126,11 @@ function mainFileInfo(file: any): { fileType: "html" | "zip"; fileName: string; 
     const size = Number(file?.size);
     if (!Number.isFinite(size) || size <= 0) throw new HttpError("파일이 비어 있습니다.");
     if (/\.html?$/.test(name)) {
-        if (size > MAX_HTML_BYTES) throw new HttpError("HTML 파일은 5MB 이하만 올릴 수 있어요.");
+        if (size > MAX_HTML_BYTES) throw new HttpError("HTML 파일은 800KB 이하만 올릴 수 있어요. 더 크면 외부 링크로 등록해 주세요.");
         return { fileType: "html", fileName: "app.html", maxBytes: MAX_HTML_BYTES };
     }
     if (/\.zip$/.test(name)) {
-        if (size > MAX_ZIP_BYTES) throw new HttpError("ZIP 파일은 20MB 이하만 올릴 수 있어요.");
+        if (size > MAX_ZIP_BYTES) throw new HttpError("ZIP 파일은 800KB 이하만 올릴 수 있어요. 더 크면 외부 링크로 등록해 주세요.");
         return { fileType: "zip", fileName: "app.zip", maxBytes: MAX_ZIP_BYTES };
     }
     throw new HttpError(".html 또는 .zip 파일만 올릴 수 있어요.");
