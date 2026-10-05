@@ -10,7 +10,7 @@
 // 배포 방법 (Supabase CLI 필요, `npm i -g supabase` 또는 `brew install supabase/tap/supabase`):
 //   1. supabase login
 //   2. supabase link --project-ref cryeosgmuxqyphntqqlc   (자료실 업로드 Edge Function과 같은 프로젝트)
-//   3. supabase secrets set FREEIMAGE_API_KEY=6d207e02198a847aa98d0a2a901485a5
+//   3. supabase secrets set FREEIMAGE_API_KEY=<freeimage.host API 키>   (키를 이 파일/저장소에 적지 않는다)
 //   4. supabase functions deploy upload-freeimage --no-verify-jwt
 //      (--no-verify-jwt: Supabase 플랫폼 레벨 JWT 검증을 끄고, 이 함수 안에서 Firebase ID 토큰을
 //       직접 검증한다 - upload-material 등 기존 Edge Function들과 동일한 패턴)
@@ -19,7 +19,7 @@
 // → 이 파일 내용 붙여넣기 → Deploy. Secrets는 Edge Functions → Manage secrets에서 등록한다.
 
 const FIREBASE_API_KEY = "AIzaSyDQaFGU_N0NyDr6yZChZJKPplJgQL6bfJA";
-const FREEIMAGE_API_KEY = Deno.env.get("FREEIMAGE_API_KEY") ?? "6d207e02198a847aa98d0a2a901485a5";
+const FREEIMAGE_API_KEY = Deno.env.get("FREEIMAGE_API_KEY") ?? ""; // 반드시 Supabase Secrets 로만 넣는다(코드에 기본값을 두지 않는다)
 
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -57,6 +57,10 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
+        if (!FREEIMAGE_API_KEY) {
+            console.error("FREEIMAGE_API_KEY 가 설정되지 않았습니다.");
+            return jsonResponse({ error: "서버 설정(FREEIMAGE_API_KEY)이 아직 안 되어 있어요." }, 500);
+        }
         const formData = await req.formData();
         const idToken = formData.get("firebaseIdToken");
         const source = formData.get("source");

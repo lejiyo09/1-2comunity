@@ -4152,6 +4152,8 @@
         // freeimage.host는 브라우저에서 직접 fetch하면 CORS로 100% 차단된다(콘솔에서 확인됨) - 이 Edge
         // Function이 서버에서 대신 업로드해준다(서버끼리는 CORS 제약이 없음). 반드시 별도로 배포해야 동작한다.
         const FREEIMAGE_UPLOAD_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/upload-freeimage`;
+        // 날씨/학사일정(NEIS) 외부 API 는 인증키를 서버(Edge Function api-proxy)에만 두고 이 주소로 부른다 - 키가 브라우저에 내려오지 않는다.
+        const API_PROXY_URL = `${SUPABASE_URL}/functions/v1/api-proxy`;
 
         // ===============================
         // SUPABASE CONFIG — 1-2 Music 전용 (자료실용 Supabase 프로젝트와는 완전히 다른 별도 프로젝트)
@@ -5835,9 +5837,7 @@
         }
 
         async function fetchWeather() {
-            const WEATHER_API_KEY = 'f8e293d6dfb6429995273008260707';
-            const lat = 36.4555;
-            const lon = 127.1264;
+            // (인증키/좌표는 서버 api-proxy 가 가지고 있다)
 
             // 외부 API라 브라우저 자체 오프라인 캐시가 없다 - 요청을 보내기 전에 마지막으로 성공한 날씨를 먼저 보여준다.
             const cachedWeather = loadInfoCache('weather');
@@ -5847,7 +5847,7 @@
             }
 
             try {
-                const url = `https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${lat},${lon}&days=1&aqi=yes&lang=ko`;
+                const url = `${API_PROXY_URL}?service=weather`;
                 const res = await fetch(url);
                 const data = await res.json();
             
@@ -6396,7 +6396,7 @@
 
         // =========================================================================
         // 🎨 개인 UI 커스텀 (배경화면/강조색)
-        // - 새로운 저장소를 만들지 않는다: 이미지는 기존 uploadImageToImgbb()로 올리고,
+        // - 새로운 저장소를 만들지 않는다: 이미지는 기존 uploadImageToFreeImageHost()로 올리고,
         //   URL/색상값만 Firebase RTDB의 기존 users/{uid} 문서에 필드로 추가한다.
         // - 다른 사용자에게는 영향 없음 (본인 계정에만 적용되는 개인 설정).
         // =========================================================================
@@ -9797,12 +9797,10 @@
         // NEIS 학사일정 자동 연동 (한일고등학교)
         // - 기존 dashboard/shared_schedule / scheduleCache / renderScheduleCalendar()를 그대로 재사용한다.
         // - 이 블록이 관리하는 것은 source === 'neis' 인 항목뿐이며, manual/assessment 일정은 절대 건드리지 않는다.
-        // - 키(NEIS API 인증키 등)는 이 블록에서만 관리한다.
+        // - NEIS 인증키는 서버(Edge Function api-proxy)에만 있다. 브라우저는 프록시에 경로/조건만 보낸다.
         // =========================================================================
-        const NEIS_API_KEY = "8540f31cf4a84f6fb377f1e063f54f73";
         const NEIS_SCHOOL_NAME = "한일고등학교";
-        const NEIS_SCHOOL_INFO_URL = "https://open.neis.go.kr/hub/schoolInfo";
-        const NEIS_SCHEDULE_URL = "https://open.neis.go.kr/hub/SchoolSchedule";
+        const neisProxyUrl = (path) => { const u = new URL(API_PROXY_URL); u.searchParams.set('service', 'neis'); u.searchParams.set('path', path); return u; };
         const NEIS_SCHOOL_INFO_CACHE_KEY = "hanilgo_neis_school_info";
         const NEIS_LAST_SYNC_KEY = "hanilgo_neis_last_sync";
         const NEIS_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6시간 - 열 때마다 과도하게 호출하지 않기 위한 최소 간격(브라우저별)
@@ -9848,9 +9846,7 @@
                 if (cached && cached.officeCode && cached.schoolCode) return cached;
             } catch (e) {}
 
-            const url = new URL(NEIS_SCHOOL_INFO_URL);
-            url.searchParams.set('KEY', NEIS_API_KEY);
-            url.searchParams.set('Type', 'json');
+            const url = neisProxyUrl('schoolInfo');
             url.searchParams.set('pIndex', '1');
             url.searchParams.set('pSize', '100');
             url.searchParams.set('SCHUL_NM', NEIS_SCHOOL_NAME);
@@ -9873,9 +9869,7 @@
             let pIndex = 1;
             let all = [];
             while (pIndex <= 10) { // 안전장치: 최대 10페이지(1만 건)까지만
-                const url = new URL(NEIS_SCHEDULE_URL);
-                url.searchParams.set('KEY', NEIS_API_KEY);
-                url.searchParams.set('Type', 'json');
+                const url = neisProxyUrl('SchoolSchedule');
                 url.searchParams.set('pIndex', String(pIndex));
                 url.searchParams.set('pSize', String(pSize));
                 url.searchParams.set('ATPT_OFCDC_SC_CODE', officeCode);
@@ -9952,26 +9946,6 @@
                 const last = parseInt(localStorage.getItem(NEIS_LAST_SYNC_KEY) || '0', 10);
                 return (Date.now() - last) > NEIS_SYNC_INTERVAL_MS;
             } catch (e) { return true; }
-        }
-
-        async function uploadImageToImgbb(file) {
-            const formData = new FormData();
-            formData.append("image", file);
-            const IMGBB_API_KEY = "075c3324867eb29b9d648b286c0ccfaf";
-            // 네트워크가 불안정하면 fetch가 끝없이 매달릴 수 있으므로, 20초 넘게 응답이 없으면
-            // 포기하고 에러로 던진다 (호출부들이 이미 catch에서 "업로드 실패" 알림을 처리한다).
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000);
-            try {
-                const res = await (await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData, signal: controller.signal })).json();
-                if (!res.success) throw new Error('업로드 실패');
-                return res.data.url;
-            } catch (e) {
-                if (e && e.name === 'AbortError') throw new Error('업로드 시간이 초과되었습니다 (네트워크 확인 필요)');
-                throw e;
-            } finally {
-                clearTimeout(timeoutId);
-            }
         }
 
         // freeimage.host는 브라우저에서 직접 fetch하면 CORS로 100% 차단된다(콘솔에서 "No
@@ -11091,14 +11065,10 @@
 
             let imageUrl = ""; 
             if (fileInput.files.length > 0) {
-                const formData = new FormData(); 
-                formData.append("image", fileInput.files[0]);
-                const IMGBB_API_KEY = "075c3324867eb29b9d648b286c0ccfaf"; 
                 try {
                     document.querySelector("button[onclick='handleArchiveSubmit()']").innerText = "업로드 중...⏳";
-                    const res = await (await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData })).json();
-                    if (res.success) imageUrl = res.data.url; else return alert("업로드 실패");
-                } catch (e) { return alert("통신 오류"); }
+                    imageUrl = await uploadImageToFreeImageHost(fileInput.files[0]); // 이미지 호스팅 키는 서버(Edge Function)에만 있다
+                } catch (e) { return alert((e && e.message) || "업로드 실패"); }
                 finally { document.querySelector("button[onclick='handleArchiveSubmit()']").innerText = "추억 등록하기"; }
             }
 
