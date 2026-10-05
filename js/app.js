@@ -14,25 +14,15 @@
         // ⚠️ 자료실 전용 Supabase Storage/Database 연동 (Firebase는 그대로 로그인/인증/기존 데이터 담당).
         // Firebase Auth를 대체하지 않는다 - 로그인은 100% 기존 Firebase 그대로, 파일 저장소만 Supabase를 쓴다.
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+        import { firebaseConfig, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_MUSIC_URL, SUPABASE_MUSIC_KEY } from "./config.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDQaFGU_N0NyDr6yZChZJKPplJgQL6bfJA",
-            authDomain: "over-2a177.firebaseapp.com",
-            databaseURL: "https://over-2a177-default-rtdb.firebaseio.com",
-            projectId: "over-2a177",
-            storageBucket: "over-2a177.firebasestorage.app",
-            messagingSenderId: "534387478870",
-            appId: "1:534387478870:web:af79f9e093fa4decf386f7",
-            measurementId: "G-SFWHLMWJRC"
-        };
+        // (Firebase 설정/Supabase 주소·공개 키는 js/config.js 에 모아 두었다)
         const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
 
         // ===============================
         // SUPABASE CONFIG (자료실 전용 - Firebase 설정과는 완전히 별개)
         // ⚠️ 여기 쓰는 키는 반드시 publishable(anon) key여야 한다. service_role/secret 키는 절대 넣지 않는다.
         // ===============================
-        const SUPABASE_URL = "https://cryeosgmuxqyphntqqlc.supabase.co";
-        const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oXzL8eqnE-eVeBv4SGUIIA_c8wFi8u2";
         const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
         const MATERIALS_BUCKET = 'materials';
         // 업로드/삭제는 anon 키로 직접 하지 않고, 전부 Edge Function(서버에서 Firebase ID 토큰 검증 후
@@ -53,8 +43,6 @@
         // SUPABASE CONFIG — 1-2 Music 전용 (자료실용 Supabase 프로젝트와는 완전히 다른 별도 프로젝트)
         // ⚠️ 여기도 publishable(anon) key만 넣는다. service_role은 절대 넣지 않는다.
         // ===============================
-        const SUPABASE_MUSIC_URL = "https://robineymrvvtetuphkjt.supabase.co";
-        const SUPABASE_MUSIC_KEY = "sb_publishable_qP4gdsjkyT9ee3HcY3YikA_lINsb52Q";
         const sbMusic = createClient(SUPABASE_MUSIC_URL, SUPABASE_MUSIC_KEY);
         const MUSIC_BUCKET = 'music';
         // 자료실과 동일한 패턴: anon 키로는 직접 쓰기(공유/좋아요/다운로드기록)를 하지 않고 전부 Edge Function을 거친다.

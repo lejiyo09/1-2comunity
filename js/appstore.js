@@ -1,5 +1,7 @@
 
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+        import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./config.js";
+        import { ZipError, zipSafePath, zipInflate, zipOpen as zipOpenRaw, makeZip as asMakeZip } from "./appstore-zip.js";
 
         // =========================================================================
         // 앱스토어: HTML 웹앱(단일 .html 또는 .zip)을 올려 게시하고, 누구나 /app/<id> 에서 실행·다운로드하는 기능.
@@ -11,8 +13,8 @@
         //   iframe 안에서만 실행되어 "고유하지 않은(opaque) 출처"가 되므로 부모 DOM/localStorage/Firebase·Supabase 토큰/쿠키에 접근할 수 없다.
         // - 로그인 정보는 main 스크립트가 노출한 window.__gmwAuth 브리지로만 받는다(토큰은 apps-write 호출에만 쓴다).
         // =========================================================================
-        const AS_SB_URL = "https://cryeosgmuxqyphntqqlc.supabase.co";
-        const AS_SB_KEY = "sb_publishable_oXzL8eqnE-eVeBv4SGUIIA_c8wFi8u2";
+        const AS_SB_URL = SUPABASE_URL; // js/config.js 의 같은 Supabase 프로젝트
+        const AS_SB_KEY = SUPABASE_PUBLISHABLE_KEY;
         const AS_BUCKET = "webapps";
         const AS_FN_URL = `${AS_SB_URL}/functions/v1/apps-write`;
         // 자료실 클라이언트(위쪽 sb)와 같은 프로젝트라 저장 키가 같으면 "Multiple GoTrueClient instances" 경고가 나므로 키를 따로 쓴다(이 클라이언트는 세션을 저장하지 않는다).
@@ -227,81 +229,7 @@
             sbApps.rpc('increment_app_views', { p_app_id: app.id }).then(() => {}, () => {});
         }
 
-        // ---------------------------------------------------------------- ZIP 읽기(외부 라이브러리 없이) - 경로 조작/압축 폭탄을 막으면서 메모리에서만 푼다
-        class ZipError extends Error {}
-        function zipSafePath(raw) {
-            const name = String(raw).replace(/\\/g, '/');
-            if (name.includes('\0')) throw new ZipError('ZIP 안에 올바르지 않은 파일 이름이 있어요.');
-            if (name.startsWith('/') || /^[A-Za-z]:/.test(name)) throw new ZipError(`ZIP 안에 절대 경로가 있어요: ${name}`);
-            const parts = name.split('/');
-            if (parts.some(p => p === '..')) throw new ZipError(`ZIP 안에 허용되지 않는 경로(../)가 있어요: ${name}`);
-            return parts.filter(p => p && p !== '.').join('/') + (name.endsWith('/') ? '/' : '');
-        }
-        async function zipInflate(bytes, expectedSize) {
-            if (typeof DecompressionStream === 'undefined') throw new ZipError('이 브라우저는 ZIP 앱 실행을 지원하지 않아요. 최신 Chrome / Safari / Firefox 로 열어주세요.');
-            const ds = new DecompressionStream('deflate-raw');
-            const reader = new Blob([bytes]).stream().pipeThrough(ds).getReader();
-            const out = new Uint8Array(expectedSize);
-            let off = 0;
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                if (off + value.length > expectedSize) { try { reader.cancel(); } catch (e) {} throw new ZipError('압축 해제 크기가 ZIP에 적힌 값과 달라요.'); }
-                out.set(value, off); off += value.length;
-            }
-            if (off !== expectedSize) throw new ZipError('압축 해제 크기가 ZIP에 적힌 값과 달라요.');
-            return out;
-        }
-        // 목록만 읽고(파일 내용은 아직 안 푼다) 안전성을 먼저 검사한 뒤, 필요한 파일만 extract()로 푼다.
-        function zipOpen(buf) {
-            const u8 = new Uint8Array(buf), view = new DataView(buf);
-            let eocd = -1;
-            for (let i = u8.length - 22; i >= Math.max(0, u8.length - 22 - 65535); i--) { if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
-            if (eocd < 0) throw new ZipError('올바른 ZIP 파일이 아니에요.');
-            const total = view.getUint16(eocd + 10, true), cdOff = view.getUint32(eocd + 16, true);
-            if (total === 0xffff || cdOff === 0xffffffff) throw new ZipError('ZIP64 형식은 지원하지 않아요. 파일을 다시 압축해주세요.');
-            if (total > AS_LIMITS.zipEntries) throw new ZipError(`ZIP 안의 파일이 너무 많아요 (최대 ${AS_LIMITS.zipEntries}개).`);
-            const entries = new Map(); let p = cdOff, totalSize = 0;
-            const dec = new TextDecoder('utf-8');
-            for (let i = 0; i < total; i++) {
-                if (p + 46 > u8.length || view.getUint32(p, true) !== 0x02014b50) throw new ZipError('ZIP 파일이 손상됐어요.');
-                const flags = view.getUint16(p + 8, true), method = view.getUint16(p + 10, true);
-                const csize = view.getUint32(p + 20, true), usize = view.getUint32(p + 24, true);
-                const nlen = view.getUint16(p + 28, true), elen = view.getUint16(p + 30, true), clen = view.getUint16(p + 32, true);
-                const lho = view.getUint32(p + 42, true);
-                const rawName = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
-                p += 46 + nlen + elen + clen;
-                const name = zipSafePath(rawName); // 위험한 경로가 하나라도 있으면 ZIP 전체를 거부한다
-                if (!name || name.endsWith('/')) continue; // 폴더
-                if (name.startsWith('__MACOSX/') || name.split('/').pop() === '.DS_Store') continue;
-                if (flags & 1) throw new ZipError('암호가 걸린 ZIP은 올릴 수 없어요.');
-                if (method !== 0 && method !== 8) throw new ZipError(`지원하지 않는 압축 방식이에요: ${name}`);
-                if (usize > AS_LIMITS.zipFileBytes) throw new ZipError(`파일이 너무 커요(최대 ${asFmtSize(AS_LIMITS.zipFileBytes)}): ${name}`);
-                if (usize > 1048576 && csize > 0 && usize / csize > 200) throw new ZipError(`비정상적으로 높은 압축률의 파일이 있어요: ${name}`);
-                totalSize += usize;
-                if (totalSize > AS_LIMITS.zipTotalBytes) throw new ZipError(`압축을 풀면 너무 커요 (최대 ${asFmtSize(AS_LIMITS.zipTotalBytes)}).`);
-                if (entries.has(name)) throw new ZipError(`같은 이름의 파일이 두 번 들어 있어요: ${name}`);
-                entries.set(name, { name, method, csize, usize, lho });
-            }
-            // 진입점: 최상위 index.html, 아니면 모든 파일이 한 폴더 안에 있고 그 안에 index.html 이 있을 때
-            let root = '';
-            if (!entries.has('index.html')) {
-                const tops = new Set([...entries.keys()].map(n => n.split('/')[0]));
-                const only = tops.size === 1 ? [...tops][0] : null;
-                if (only && entries.has(`${only}/index.html`) && [...entries.keys()].every(n => n.startsWith(only + '/'))) root = only + '/';
-                else throw new ZipError('ZIP 맨 위(또는 하나뿐인 폴더 안)에 index.html 이 있어야 해요.');
-            }
-            async function extract(name) {
-                const e = entries.get(name); if (!e) return null;
-                if (view.getUint32(e.lho, true) !== 0x04034b50) throw new ZipError('ZIP 파일이 손상됐어요.');
-                const start = e.lho + 30 + view.getUint16(e.lho + 26, true) + view.getUint16(e.lho + 28, true);
-                if (start + e.csize > u8.length) throw new ZipError('ZIP 파일이 손상됐어요.');
-                const data = u8.subarray(start, start + e.csize);
-                if (e.method === 0) { if (e.csize !== e.usize) throw new ZipError('ZIP 파일이 손상됐어요.'); return data.slice(); }
-                return zipInflate(data, e.usize);
-            }
-            return { entries, root, extract, count: entries.size };
-        }
+        const zipOpen = (buf) => zipOpenRaw(buf, AS_LIMITS, asFmtSize); // 한도/크기 표시는 이 파일이 정하고, ZIP 검사 자체는 appstore-zip.js
 
         // ---------------------------------------------------------------- 실행 문서 만들기 (srcdoc)
         function asBytesToB64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
@@ -530,25 +458,6 @@
         // ---------------------------------------------------------------- 렌더링: 등록/수정 폼
         // ---- 배포 도우미: Netlify/Render 에 올리는 방법 안내 + "index.html 이 들어 있는 ZIP" 만들어 주기 ----
         // (Netlify Drop 은 폴더/ZIP 맨 위에 index.html 이 있어야 한다. 파일 이름이 game.html 처럼 다르면 그대로는 안 열려서 이름을 바꿔 담아 준다.)
-        const asCrcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
-        function asCrc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = asCrcTable[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-        function asMakeZip(entries) { // 압축 없이 담기(store) - 구조가 단순해서 어디서나 열린다
-            const enc = new TextEncoder(); const chunks = []; const central = []; let offset = 0;
-            const now = new Date(); const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1); const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
-            for (const e of entries) {
-                const name = enc.encode(e.name), data = e.data, crc = asCrc32(data);
-                const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
-                lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
-                chunks.push(new Uint8Array(lh.buffer), name, data);
-                const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
-                ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
-                central.push(new Uint8Array(ch.buffer), name);
-                offset += 30 + name.length + data.length;
-            }
-            const centralSize = central.reduce((n, c) => n + c.length, 0);
-            const end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, centralSize, true); end.setUint32(16, offset, true);
-            return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
-        }
         function asDeployGuideHtml() {
             return `<details class="as-deploy" id="as-deploy">
                 <summary>🚀 Netlify · Render 에 올리는 방법 (처음이어도 따라 하면 돼요)</summary>
