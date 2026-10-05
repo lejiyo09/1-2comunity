@@ -1,0 +1,7 @@
+{
+  "name": "gmw-tailwind-build",
+  "private": true,
+  "description": "플래너용 Tailwind CSS 를 미리 빌드한다. 호스팅 쪽에서는 실행하지 않는다(결과물 css/tailwind.css 를 커밋).",
+  "scripts": { "build": "tailwindcss -c ./tailwind.config.js -i ./input.css -o ../../css/tailwind.css --minify" },
+  "devDependencies": { "tailwindcss": "3.4.17" }
+}

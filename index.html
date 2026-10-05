@@ -10,6 +10,12 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://esm.sh" crossorigin>
     <link rel="preconnect" href="https://cryeosgmuxqyphntqqlc.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js">
+    <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2">
     <link rel="modulepreload" href="/js/config.js">
     <link rel="modulepreload" href="/js/app.js">
     <link rel="icon" href="/assets/icon-192.png" type="image/png">
@@ -23,12 +29,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>이리</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"></noscript>
     <link rel="stylesheet" href="/css/main.css">
 
 <link rel="stylesheet" href="/css/planner.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="/js/tailwind-config.js" charset="utf-8"></script>
+<link rel="stylesheet" href="/css/tailwind.css">
 </head>
 <body>
     <div id="gmw-boot-splash" role="status" aria-live="polite"><div class="gmw-spin"></div><div>불러오는 중…</div></div>
@@ -1191,7 +1197,7 @@
                         <span class="close-btn" onclick="closeProfileModal()">&times;</span>
                         <div class="modal-profile-header">
                             <div class="profile-avatar-container">
-                                <img id="modal-img" src="https://via.placeholder.com/150" alt="프로필 사진" onclick="easterEggBumpProfileXP()">
+                                <img id="modal-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="프로필 사진" onclick="easterEggBumpProfileXP()">
                                 <input type="file" id="modal-file-input" style="display:none;" onchange="uploadProfileImage()">
                                 <button onclick="document.getElementById('modal-file-input').click()" class="btn-sub" id="btn-edit-photo">사진 변경</button>
                             </div>
