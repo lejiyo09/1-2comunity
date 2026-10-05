@@ -6,6 +6,12 @@
         // 여기서 주소창을 원래 주소(/app/<id>)로 복원해서, 앱스토어 라우터가 평소처럼 /app/<id> 를 읽게 한다.
         (function () { try { var r = new URLSearchParams(location.search).get('gmw_route'); if (r && /^\/app\/[a-z0-9]{6,12}(\/run)?\/?$/.test(r)) history.replaceState(null, '', r); } catch (e) {} })();
     </script>
+    <!-- 첫 화면을 빨리 띄우기 위한 미리 연결/미리 받기: 곧 부를 외부 서버와 핵심 코드 -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://esm.sh" crossorigin>
+    <link rel="preconnect" href="https://cryeosgmuxqyphntqqlc.supabase.co" crossorigin>
+    <link rel="modulepreload" href="/js/config.js">
+    <link rel="modulepreload" href="/js/app.js">
     <link rel="icon" href="/assets/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
     <link rel="manifest" href="/manifest.webmanifest">
@@ -92,7 +98,6 @@
                         </div>
                     </div>
                     <div class="user-profile" id="guest-login-card" style="display:none;">
-                        <div style="margin-bottom:8px; font-size:12.5px; color:var(--text-secondary);">로그인하지 않은 상태예요. 둘러보는 건 자유롭지만, 글쓰기·좋아요 같은 활동은 로그인이 필요해요.</div>
                         <button onclick="showLoginScreen()" style="width:100%; padding:8px; font-size:13px; border-radius:6px; border:none; background:var(--primary); color:#fff; font-weight:700; cursor:pointer;">🔑 로그인</button>
                     </div>
                 </div>
