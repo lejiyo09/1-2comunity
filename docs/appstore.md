@@ -42,6 +42,12 @@ HTML 5MB / ZIP 20MB 를 넘어 올릴 수 없는 앱은 **"🌐 외부 링크만
 * 외부 사이트는 앱스토어의 sandbox 보호가 적용되지 않으므로 상세 화면에 경고 문구와 도메인을 함께 보여준다.
 * 이미 마이그레이션을 실행했다면 `20261002_appstore.sql` 을 **다시 실행**하고(idempotent) `apps-write` 함수를 **다시 배포**해야 한다.
 
+### 배포 도우미 (앱 등록/수정 화면)
+등록/수정 화면 아래쪽의 **"🚀 Netlify · Render 에 올리는 방법"** 을 펼치면 단계별 안내가 나온다.
+* **Netlify**(가장 쉬움): `.html` 파일을 고르면 `index.html` 이 들어 있는 **배포용 ZIP** 을 만들어 주고(브라우저 안에서만 만들며 서버로 보내지 않는다), Netlify Drop(`app.netlify.com/drop`)에 끌어다 놓는 방법과 생성된 `https://…netlify.app` 주소를 "외부 링크 주소"에 붙여넣는 방법을 안내한다. (Drop 으로 만든 사이트는 로그인해서 내 계정에 저장해 두지 않으면 사라질 수 있다.)
+* **Render**: GitHub 저장소 → Static Site(Build Command 비움, Publish Directory `.`) 순서를 안내한다.
+* 사이트가 외부 서비스 계정(토큰)을 대신 받아 자동 배포하지는 않는다 - 토큰을 사이트에 입력하게 하는 방식은 위험해서 안내만 한다.
+
 ### 알려진 제한 (앱이 지원하지 않는 것)
 
 IndexedDB·쿠키, Web Worker/Service Worker, ES 모듈 `import`(상대 경로), 여러 HTML 페이지 사이 이동(`<a href="page2.html">`; `#해시` 기반 단일 페이지 앱은 가능),

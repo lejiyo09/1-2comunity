@@ -543,6 +543,19 @@
         .as-chip-ext { background:#e0f2fe; color:#0369a1; }
         .as-ext-box { margin:14px 0 4px; padding:12px 14px; border-radius:14px; background:var(--surface-secondary); border:1px solid var(--border-color); font-size:13px; line-height:1.55; color:var(--text-secondary); }
         .as-ext-box a { word-break:break-all; font-weight:700; }
+        .as-deploy { margin-top:10px; border:1px solid var(--border-color); border-radius:14px; background:var(--surface-secondary); overflow:hidden; }
+        .as-deploy > summary { cursor:pointer; padding:11px 14px; font-size:13px; font-weight:700; color:var(--primary); list-style:none; }
+        .as-deploy > summary::-webkit-details-marker { display:none; }
+        .as-deploy-body { padding:2px 14px 14px; font-size:12.5px; line-height:1.6; color:var(--text-secondary); }
+        .as-deploy-tabs { display:flex; gap:6px; margin:6px 0 10px; }
+        .as-deploy-tab { font-size:12px; font-weight:700; padding:6px 13px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-muted); cursor:pointer; }
+        .as-deploy-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .as-deploy-steps { margin:0; padding-left:20px; }
+        .as-deploy-steps li { margin-bottom:8px; }
+        .as-deploy-steps code { font-size:11.5px; background:var(--card-bg); padding:1px 6px; border-radius:6px; border:1px solid var(--border-color); }
+        .as-deploy-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+        .as-deploy-actions a, .as-deploy-actions button { text-decoration:none; font-size:12px; }
+        .as-deploy-note { margin-top:10px; padding:8px 10px; border-radius:10px; background:var(--card-bg); border:1px dashed var(--border-color); font-size:11.5px; }
         .as-kind { display:flex; gap:8px; margin:2px 0 4px; flex-wrap:wrap; }
         .as-kind label { flex:1 1 150px; display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; font-size:13px; font-weight:600; cursor:pointer; }
         .as-kind label:has(input:checked) { border-color:var(--primary); background:var(--primary-soft); color:var(--primary); }
@@ -2571,6 +2584,10 @@
         </div>
 
         <main class="main">
+            <div id="guest-read-banner" style="display:none; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; padding:10px 14px; border-radius:14px; background:var(--card-bg); border:1px solid var(--border-color); font-size:13px; color:var(--text-secondary);">
+                <span>🔒 지금은 로그인해야 커뮤니티 글·공지·자료를 볼 수 있어요.</span>
+                <button type="button" onclick="showLoginScreen()" style="padding:6px 14px; font-size:12.5px; border-radius:8px; border:none; background:var(--primary); color:#fff; font-weight:700; cursor:pointer;">🔑 로그인</button>
+            </div>
             <div id="tab-home" class="tab-content active">
                 <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
                     <div>
@@ -3480,6 +3497,7 @@
         </button>
         <div id="menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-44 bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-700/60">
           <button onclick="PlannerApp.openCalendarModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-indigo-400 w-4">📅</span> <span>달력 (기록 열람)</span></button>
+          <button onclick="PlannerApp.openMonthlyModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-sky-400 w-4">🗓️</span> <span>월별 계획</span></button>
           <button onclick="PlannerApp.openDiaryModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-emerald-400 w-4">📖</span> <span>날짜별 기록장</span></button>
           <button onclick="PlannerApp.openStatsModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-amber-400 w-4">📊</span> <span>과목별 통계</span></button>
           <button onclick="PlannerApp.openSettingsModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-slate-400 w-4">⚙️</span> <span>플래너 설정</span></button>
@@ -3640,6 +3658,35 @@
       <div class="flex items-center justify-between mb-3 bg-slate-900/50 p-2.5 rounded-xl border border-slate-700/80"><span class="text-[10px] font-semibold text-slate-400 pl-1">오늘의 공부 만족도:</span><div class="flex gap-1.5" id="diary-mood-selector"><button onclick="PlannerApp.selectDiaryMood('🔥')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="🔥">🔥 완벽함</button><button onclick="PlannerApp.selectDiaryMood('💡')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="💡">💡 깨달음</button><button onclick="PlannerApp.selectDiaryMood('🐢')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="🐢">🐢 전진</button><button onclick="PlannerApp.selectDiaryMood('💤')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" data-mood="💤">💤 휴식</button></div></div>
       <div class="flex-1 mb-4 overflow-hidden border border-slate-600 rounded-xl bg-slate-900"><textarea id="diary-textarea" rows="12" class="w-full h-full notebook-lines border-none outline-none resize-none" placeholder="이곳에 오늘 하루의 배움, 부족했던 점, 내일의 다짐을 줄글 노트에 적듯 자유롭게 기록해보세요..." oninput="PlannerApp.updateCharCount()"></textarea></div>
       <div class="flex justify-between items-center"><span id="diary-char-count" class="text-[10px] text-slate-400 font-mono">0 글자 작성 중</span><div class="flex gap-2"><button onclick="PlannerApp.closeModal('modal-diary')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition">닫기</button><button onclick="PlannerApp.saveDiary(true)" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-lg flex items-center gap-1.5"><span>✓</span> 저장하기</button></div></div>
+    </div>
+  </div>
+
+  <!-- 월별 계획: 이달의 목표 + 날짜별 계획(이 브라우저의 localStorage 에 저장, 플래너 기록과 같은 방식) -->
+  <div id="modal-monthly" class="fixed inset-0 modal-backdrop hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/90">
+        <h3 class="text-base font-black text-slate-100 flex items-center gap-2"><span class="text-sky-400">🗓️</span><span id="monthly-title"></span></h3>
+        <div class="flex gap-2 items-center">
+          <button onclick="PlannerApp.changeMonthlyMonth(-1)" class="px-2.5 py-1 bg-slate-700 rounded hover:bg-slate-600 transition text-xs">‹</button>
+          <button onclick="PlannerApp.changeMonthlyMonth(0)" class="px-2.5 py-1 bg-slate-700 rounded hover:bg-slate-600 transition text-[11px] font-bold">이번 달</button>
+          <button onclick="PlannerApp.changeMonthlyMonth(1)" class="px-2.5 py-1 bg-slate-700 rounded hover:bg-slate-600 transition text-xs">›</button>
+          <button onclick="PlannerApp.closeModal('modal-monthly')" class="ml-1 text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto bg-slate-900/40">
+        <label class="block text-[11px] font-bold text-slate-400 mb-1">🎯 이달의 목표</label>
+        <textarea id="monthly-goal" rows="3" maxlength="600" oninput="PlannerApp.onMonthlyGoalInput()" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-sm text-slate-100 outline-none focus:border-sky-500 resize-none" placeholder="예) 수학 문제집 1권 끝내기 / 영단어 하루 30개 / 중간고사 대비 계획 세우기"></textarea>
+        <div class="grid grid-cols-7 gap-1.5 text-center text-[10px] font-black mt-4 mb-1.5"><div class="text-red-400">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-400">토</div></div>
+        <div id="monthly-grid" class="grid grid-cols-7 gap-1.5"></div>
+        <div id="monthly-editor" class="mt-4 p-3 rounded-xl border border-slate-700 bg-slate-800/70">
+          <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <span id="monthly-editor-label" class="text-xs font-bold text-slate-200"></span>
+            <button id="monthly-goto-btn" onclick="PlannerApp.gotoMonthlyDay()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition">📝 이 날 플래너 열기</button>
+          </div>
+          <textarea id="monthly-day-text" rows="3" maxlength="300" oninput="PlannerApp.onMonthlyDayInput()" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-sm text-slate-100 outline-none focus:border-sky-500 resize-none" placeholder="그날 할 일·시험·제출 마감 등을 적어 두세요 (자동 저장)"></textarea>
+          <div class="text-[10px] text-slate-500 mt-1.5">날짜 칸을 누르면 그날의 계획을 쓸 수 있어요. 입력하면 바로 이 기기에 저장돼요.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -4504,6 +4551,7 @@
                         currentUser = user;
                         currentUserInfo = d;
                         notifyAuthChange(user.uid);
+                        setGuestReadBanner(false);
                         // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
                         document.getElementById('guest-login-card').style.display = 'none';
                         document.getElementById('user-profile-card').style.display = 'block';
@@ -4674,6 +4722,20 @@
             if (lastAuthKey === key) return;
             lastAuthKey = key;
             window.dispatchEvent(new Event('gmw:authchange'));
+        }
+
+        // 게스트가 읽는 Firestore 컬렉션(글/공지/설문/자료)이 "로그인 필요" 규칙에 막히면(permission-denied) 콘솔에 "Uncaught Error in snapshot listener"
+        // 만 쌓이고 화면은 "아직 글이 없어요"처럼 보인다. 이 경우 안내 배너를 띄우고, 로그인하면 숨긴다.
+        // (근본 해결: Firebase 콘솔에서 익명 로그인을 켜거나, 해당 컬렉션을 공개 읽기로 허용)
+        function setGuestReadBanner(on) {
+            const el = document.getElementById('guest-read-banner');
+            if (el) el.style.display = on ? 'flex' : 'none';
+        }
+        function onReadDenied(label) {
+            return (err) => {
+                console.warn(`${label} 읽기 실패:`, err && err.code);
+                if (!currentUser && err && err.code === 'permission-denied') setGuestReadBanner(true);
+            };
         }
 
         // ===== 게스트(비로그인) 열람 모드 =====
@@ -6994,7 +7056,7 @@
                 renderNoticePopup();
                 renderNotificationBell();
                 tryConsumePendingShareTarget();
-            });
+            }, onReadDenied('공지'));
             // notice_reads는 flat 컬렉션(문서ID "{noticeId}_{uid}")이라, 기존 코드가 기대하는
             // { noticeId: { uid: timestamp } } 모양으로 다시 묶어준다.
             onSnapshot(collection(fdb, 'notice_reads'), (snapshot) => {
@@ -7351,7 +7413,7 @@
                 renderPollWidget();
                 renderNoticeHub();
                 if (currentOpenPollDetailId && pollsCache[currentOpenPollDetailId]) renderPollDetailBody(currentOpenPollDetailId);
-            });
+            }, onReadDenied('설문'));
             // poll_votes는 flat 컬렉션(문서ID "{pollId}_{uid}")이라, 기존 코드가 기대하는
             // { pollId: { uid: {optionIds, votedAt} } } 모양으로 다시 묶어준다.
             onSnapshot(collection(fdb, 'poll_votes'), (snapshot) => {
@@ -10356,7 +10418,7 @@
                 });
 
                 renderPostsList(postsData);
-            });
+            }, onReadDenied('커뮤니티 글'));
         }
 
         const COMMUNITY_SPECIAL_EMAIL = "20261211@hanilgo.cnehs.kr";
@@ -13225,14 +13287,14 @@
             onSnapshot(collection(fdb, 'archiveStudy'), (snapshot) => {
                 materialsStudyCache = fsSnapshotToMap(snapshot);
                 renderMergedMaterials();
-            });
+            }, onReadDenied('공부 자료'));
         }
 
         function listenToArchiveEtc() {
             onSnapshot(collection(fdb, 'archiveEtc'), (snapshot) => {
                 materialsEtcCache = fsSnapshotToMap(snapshot);
                 renderMergedMaterials();
-            });
+            }, onReadDenied('기타 자료'));
         }
     
         // --- 스쿼드 메이커 ---
@@ -14165,7 +14227,8 @@
         const AS_SB_KEY = "sb_publishable_oXzL8eqnE-eVeBv4SGUIIA_c8wFi8u2";
         const AS_BUCKET = "webapps";
         const AS_FN_URL = `${AS_SB_URL}/functions/v1/apps-write`;
-        const sbApps = createClient(AS_SB_URL, AS_SB_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+        // 자료실 클라이언트(위쪽 sb)와 같은 프로젝트라 저장 키가 같으면 "Multiple GoTrueClient instances" 경고가 나므로 키를 따로 쓴다(이 클라이언트는 세션을 저장하지 않는다).
+        const sbApps = createClient(AS_SB_URL, AS_SB_KEY, { auth: { storageKey: 'gmw-appstore-anon', persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 
         const AS_BASE_TITLE = document.title; // 앱 화면에서 바꾼 탭 제목을 되돌릴 때 쓴다
         const AS_CATEGORIES = ['유틸리티', '게임', '교육', '생산성', '엔터테인먼트', '도구', '기타'];
@@ -14674,6 +14737,59 @@
         }
 
         // ---------------------------------------------------------------- 렌더링: 등록/수정 폼
+        // ---- 배포 도우미: Netlify/Render 에 올리는 방법 안내 + "index.html 이 들어 있는 ZIP" 만들어 주기 ----
+        // (Netlify Drop 은 폴더/ZIP 맨 위에 index.html 이 있어야 한다. 파일 이름이 game.html 처럼 다르면 그대로는 안 열려서 이름을 바꿔 담아 준다.)
+        const asCrcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+        function asCrc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = asCrcTable[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+        function asMakeZip(entries) { // 압축 없이 담기(store) - 구조가 단순해서 어디서나 열린다
+            const enc = new TextEncoder(); const chunks = []; const central = []; let offset = 0;
+            const now = new Date(); const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1); const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+            for (const e of entries) {
+                const name = enc.encode(e.name), data = e.data, crc = asCrc32(data);
+                const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+                lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+                chunks.push(new Uint8Array(lh.buffer), name, data);
+                const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+                ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+                central.push(new Uint8Array(ch.buffer), name);
+                offset += 30 + name.length + data.length;
+            }
+            const centralSize = central.reduce((n, c) => n + c.length, 0);
+            const end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, centralSize, true); end.setUint32(16, offset, true);
+            return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+        }
+        function asDeployGuideHtml() {
+            return `<details class="as-deploy" id="as-deploy">
+                <summary>🚀 Netlify · Render 에 올리는 방법 (처음이어도 따라 하면 돼요)</summary>
+                <div class="as-deploy-body">
+                    <div class="as-deploy-tabs">
+                        <button type="button" class="as-deploy-tab active" data-as-deploy="netlify">Netlify (가장 쉬움)</button>
+                        <button type="button" class="as-deploy-tab" data-as-deploy="render">Render</button>
+                    </div>
+                    <div id="as-deploy-netlify">
+                        <ol class="as-deploy-steps">
+                            <li><b>배포용 ZIP 만들기</b> — 앱의 <b>.html 파일</b>을 고르면 <code>index.html</code> 이 들어 있는 ZIP 을 만들어 줘요. (이미 <code>index.html</code> 이 맨 위에 있는 폴더/ZIP 이면 이 단계는 건너뛰세요)
+                                <div class="as-deploy-actions"><label class="btn-sub" style="cursor:pointer;">📁 .html 파일 고르기<input id="as-deploy-file" type="file" accept=".html,.htm" style="display:none;"></label></div></li>
+                            <li><b>Netlify Drop 열기</b>
+                                <div class="as-deploy-actions"><a class="btn-sub" href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer">🌐 app.netlify.com/drop 열기</a></div></li>
+                            <li>열린 페이지에 ZIP(또는 폴더)을 <b>끌어다 놓기</b>. 몇 초 뒤 <code>https://무작위이름.netlify.app</code> 주소가 생겨요.</li>
+                            <li>주소가 생기면 <b>Netlify 에 로그인(회원가입)해서 그 사이트를 내 계정에 저장</b>해 두세요. 저장하지 않으면 일정 시간 뒤 사라질 수 있어요.</li>
+                            <li>그 <b>https 주소를 복사</b>해서 위의 <b>외부 링크 주소</b>에 붙여넣고 게시하면 끝!</li>
+                        </ol>
+                    </div>
+                    <div id="as-deploy-render" style="display:none;">
+                        <ol class="as-deploy-steps">
+                            <li><b>GitHub 저장소 만들기</b> — 새 저장소를 만들고 앱 파일을 올려요. (맨 위에 <code>index.html</code>)</li>
+                            <li><a href="https://dashboard.render.com/select-repo?type=static" target="_blank" rel="noopener noreferrer">Render 대시보드</a>에서 <b>New + → Static Site</b> 를 고르고 그 저장소를 연결해요.</li>
+                            <li><b>Build Command</b> 는 비워 두고, <b>Publish Directory</b> 는 <code>.</code> (점 하나)로 해요.</li>
+                            <li><b>Create Static Site</b> 를 누르면 몇 분 뒤 <code>https://이름.onrender.com</code> 주소가 생겨요.</li>
+                            <li>그 <b>https 주소를 복사</b>해서 위의 <b>외부 링크 주소</b>에 붙여넣고 게시하면 끝!</li>
+                        </ol>
+                    </div>
+                    <div class="as-deploy-note">💡 파일이 5MB(HTML)/20MB(ZIP) 이하이면 외부 서비스 없이 위의 <b>“📦 파일 올리기”</b>로 바로 앱스토어에서 실행되게 할 수도 있어요. 외부 링크는 앱스토어의 격리 보호가 적용되지 않으니 본인이 만든 앱만 연결해 주세요. (화면 문구는 서비스 사정에 따라 조금 다를 수 있어요)</div>
+                </div>
+            </details>`;
+        }
         const AS_EXT_LABEL_LINK = '외부 링크 주소 *';
         const AS_EXT_LABEL_OPT = '외부 공유 링크 <span class="as-hint">(선택 · 용량이 커서 올릴 수 없거나 따로 배포한 버전이 있을 때)</span>';
         const AS_EXT_HINT_LINK = '파일이 너무 커서 올릴 수 없는 앱은 Netlify 등에 직접 배포하고 그 주소(https)만 걸어 두세요. 이 경우 앱스토어에서는 직접 실행·다운로드 없이 이 주소로 연결만 해줘요.';
@@ -14713,6 +14829,7 @@
                         <input id="as-f-ext" class="auth-input" type="url" maxlength="500" inputmode="url" placeholder="https://내앱.netlify.app" value="${asEsc(app && app.external_url ? app.external_url : '')}">
                         <div class="as-hint" id="as-f-ext-hint">${isLinkApp ? AS_EXT_HINT_LINK : AS_EXT_HINT_OPT}</div>
                     </label>
+                    ${asDeployGuideHtml()}
                     ${isEdit && !isLinkApp ? `<label class="as-label">이번 업데이트 내용 <span class="as-hint">(업데이트 기록에 남아요)</span><textarea id="as-f-log" class="auth-input as-textarea" maxlength="1000" placeholder="예: 버그 수정, 검색 기능 추가"></textarea></label>` : ''}
                     <label class="as-check"><input id="as-f-pub" type="checkbox" ${!app || app.published ? 'checked' : ''}> 앱스토어에 공개</label>
                     <div class="as-limits">ℹ️ 실행 환경: 앱은 격리된 sandbox 에서 실행돼요. 서버 코드·IndexedDB·여러 HTML 페이지 이동·Web Worker·ES 모듈 import 는 지원하지 않아요. localStorage 는 이 브라우저에 앱별로 저장돼요.</div>
@@ -14730,6 +14847,23 @@
                 document.getElementById('as-f-ext-hint').textContent = link ? AS_EXT_HINT_LINK : AS_EXT_HINT_OPT;
                 asFormError('');
             }));
+            document.querySelectorAll('[data-as-deploy]').forEach(tab => tab.addEventListener('click', () => {
+                document.querySelectorAll('[data-as-deploy]').forEach(t => t.classList.toggle('active', t === tab));
+                document.getElementById('as-deploy-netlify').style.display = tab.dataset.asDeploy === 'netlify' ? '' : 'none';
+                document.getElementById('as-deploy-render').style.display = tab.dataset.asDeploy === 'render' ? '' : 'none';
+            }));
+            const deployFile = document.getElementById('as-deploy-file');
+            if (deployFile) deployFile.addEventListener('change', async () => {
+                const f = deployFile.files[0]; deployFile.value = '';
+                if (!f) return;
+                if (!/\.html?$/i.test(f.name)) return asFormError('.html 파일을 골라주세요.');
+                if (f.size > 25 * 1024 * 1024) return asFormError('25MB 를 넘는 파일은 여기서 ZIP 으로 만들 수 없어요. 폴더째로 Netlify Drop 에 올려주세요.');
+                const blob = asMakeZip([{ name: 'index.html', data: new Uint8Array(await f.arrayBuffer()) }]);
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = (f.name.replace(/\.html?$/i, '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40) || 'app') + '-deploy.zip';
+                document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+                asFormError('');
+            });
             const iconInput = document.getElementById('as-f-icon');
             iconInput.addEventListener('change', () => {
                 const f = iconInput.files[0]; if (!f) return;
@@ -16097,6 +16231,63 @@
       if (timerState.isRunning) notifyFocusVisibilityChanged();
     }
 
+    // ================= 월별 계획 (이달의 목표 + 날짜별 계획) =================
+    // 저장: localStorage 'planner_monthly_plans' = { 'YYYY-MM': { goal: '', days: { 'YYYY-MM-DD': '메모' } } } (플래너 기록과 같은 방식 - 이 기기에만 저장)
+    let monthlyPlans = safeJSONParse('planner_monthly_plans', {});
+    if (!monthlyPlans || typeof monthlyPlans !== 'object' || Array.isArray(monthlyPlans)) monthlyPlans = {};
+    let mpYear = new Date().getFullYear(), mpMonth = new Date().getMonth(), mpSelected = null, mpSaveTimer = null;
+    const mpKey = () => `${mpYear}-${String(mpMonth + 1).padStart(2, '0')}`;
+    const mpDateStr = (d) => `${mpKey()}-${String(d).padStart(2, '0')}`;
+    const mpEsc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function mpEnsureMonth() { const k = mpKey(); if (!monthlyPlans[k] || typeof monthlyPlans[k] !== 'object') monthlyPlans[k] = { goal: '', days: {} }; if (!monthlyPlans[k].days) monthlyPlans[k].days = {}; return monthlyPlans[k]; }
+    function mpSave() { try { localStorage.setItem('planner_monthly_plans', JSON.stringify(monthlyPlans)); } catch (e) { console.warn('월별 계획 저장 실패:', e); } }
+    function mpScheduleSave() { clearTimeout(mpSaveTimer); mpSaveTimer = setTimeout(mpSave, 300); }
+    function openMonthlyModal() {
+      const t = new Date(); mpYear = t.getFullYear(); mpMonth = t.getMonth(); mpSelected = (mpYear === t.getFullYear() && mpMonth === t.getMonth()) ? todayStr : null;
+      renderMonthly(); document.getElementById('modal-monthly').classList.remove('hidden');
+    }
+    function changeMonthlyMonth(delta) {
+      mpSave();
+      if (delta === 0) { const t = new Date(); mpYear = t.getFullYear(); mpMonth = t.getMonth(); }
+      else { mpMonth += delta; if (mpMonth > 11) { mpMonth = 0; mpYear++; } else if (mpMonth < 0) { mpMonth = 11; mpYear--; } }
+      mpSelected = (mpKey() === todayStr.slice(0, 7)) ? todayStr : mpDateStr(1);
+      renderMonthly();
+    }
+    function renderMonthly() {
+      const plan = mpEnsureMonth();
+      document.getElementById('monthly-title').innerText = `${mpYear}년 ${mpMonth + 1}월 계획`;
+      document.getElementById('monthly-goal').value = plan.goal || '';
+      const grid = document.getElementById('monthly-grid'); let html = '';
+      const firstDay = new Date(mpYear, mpMonth, 1).getDay(); const daysInMonth = new Date(mpYear, mpMonth + 1, 0).getDate();
+      for (let i = 0; i < firstDay; i++) html += '<div></div>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ds = mpDateStr(d); const note = (plan.days[ds] || '').trim(); const dow = (firstDay + d - 1) % 7;
+        const border = ds === mpSelected ? 'border-sky-500 bg-sky-950/50 shadow-md' : (ds === todayStr ? 'border-amber-500/80 bg-amber-950/40' : 'border-slate-700/80 bg-slate-800/60');
+        const dayColor = dow === 0 ? 'text-red-400' : dow === 6 ? 'text-blue-400' : 'text-slate-300';
+        html += `<div onclick="PlannerApp.selectMonthlyDay('${ds}')" class="monthly-day min-h-[3.6rem] sm:min-h-[4.6rem] border rounded-xl p-1.5 cursor-pointer flex flex-col items-start overflow-hidden ${border}"><div class="text-[10px] font-bold ${dayColor}">${d}${ds === todayStr ? ' <span class="text-amber-400">·오늘</span>' : ''}</div>${note ? `<div class="monthly-note text-[9px] sm:text-[10px] leading-tight text-slate-200 mt-0.5 break-words">${mpEsc(note.split('\n')[0].slice(0, 40))}</div>` : ''}</div>`;
+      }
+      grid.innerHTML = html;
+      renderMonthlyEditor();
+    }
+    function renderMonthlyEditor() {
+      const label = document.getElementById('monthly-editor-label'), ta = document.getElementById('monthly-day-text'), btn = document.getElementById('monthly-goto-btn');
+      if (!mpSelected || mpSelected.slice(0, 7) !== mpKey()) { label.innerText = '날짜를 선택해 주세요'; ta.value = ''; ta.disabled = true; btn.style.display = 'none'; return; }
+      const dt = new Date(mpSelected + 'T00:00:00'); const names = ['일', '월', '화', '수', '목', '금', '토'];
+      label.innerText = `${dt.getMonth() + 1}월 ${dt.getDate()}일 (${names[dt.getDay()]}) 계획`;
+      ta.disabled = false; ta.value = mpEnsureMonth().days[mpSelected] || ''; btn.style.display = '';
+    }
+    function selectMonthlyDay(ds) { mpSave(); mpSelected = ds; renderMonthly(); }
+    function onMonthlyGoalInput() { mpEnsureMonth().goal = document.getElementById('monthly-goal').value; mpScheduleSave(); }
+    function onMonthlyDayInput() {
+      if (!mpSelected) return;
+      const plan = mpEnsureMonth(); const v = document.getElementById('monthly-day-text').value;
+      if (v.trim()) plan.days[mpSelected] = v; else delete plan.days[mpSelected];
+      mpScheduleSave();
+      // 날짜 칸의 미리보기만 가볍게 갱신(입력 중인 칸의 포커스를 잃지 않도록 전체를 다시 그리지 않는다)
+      const cell = [...document.querySelectorAll('#monthly-grid .monthly-day')].find(c => c.getAttribute('onclick').includes(`'${mpSelected}'`));
+      if (cell) { let n = cell.querySelector('.monthly-note'); const first = v.trim().split('\n')[0].slice(0, 40); if (first) { if (!n) { n = document.createElement('div'); n.className = 'monthly-note text-[9px] sm:text-[10px] leading-tight text-slate-200 mt-0.5 break-words'; cell.appendChild(n); } n.textContent = first; } else if (n) n.remove(); }
+    }
+    function gotoMonthlyDay() { if (!mpSelected) return; mpSave(); closeModal('modal-monthly'); selectCalendarDate(mpSelected); }
     function openCalendarModal() { renderCalendar(); document.getElementById('modal-calendar').classList.remove('hidden'); }
     function changeMonth(delta) { calMonth += delta; if(calMonth > 11) { calMonth = 0; calYear++; } else if(calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
     
@@ -16282,6 +16473,12 @@
       openConfirmStart,
       openDdayModal,
       openDiaryModal,
+      openMonthlyModal,
+      changeMonthlyMonth,
+      selectMonthlyDay,
+      onMonthlyGoalInput,
+      onMonthlyDayInput,
+      gotoMonthlyDay,
       openEditTaskModal,
       openSettingsModal,
       openStatsModal,
