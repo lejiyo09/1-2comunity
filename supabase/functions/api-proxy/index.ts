@@ -23,8 +23,10 @@
 //   대시보드로 하려면: Edge Functions → New Function → 이름 `api-proxy` → 이 파일 붙여넣기 → Verify JWT 끄기 → Deploy, Secrets 에 위 키 등록.
 //   ⚠️ 예전에 이 저장소(git 기록)에 올라간 키는 이미 노출된 것이므로, 각 서비스에서 키를 새로 발급(회전)해서 위 Secrets 에 넣어야 한다.
 
-const WEATHER_API_KEY = Deno.env.get("WEATHER_API_KEY") ?? "";
-const NEIS_API_KEY = Deno.env.get("NEIS_API_KEY") ?? "";
+// 시크릿에 붙여 넣을 때 흔히 섞이는 공백/줄바꿈/따옴표를 자동으로 걷어낸다(키에는 원래 공백이 없다).
+const cleanSecret = (v: string | undefined) => (v ?? "").replace(/\s+/g, "").replace(/^["'`]+|["'`]+$/g, "");
+const WEATHER_API_KEY = cleanSecret(Deno.env.get("WEATHER_API_KEY"));
+const NEIS_API_KEY = cleanSecret(Deno.env.get("NEIS_API_KEY"));
 const WEATHER_QUERY = Deno.env.get("WEATHER_QUERY") ?? "36.4555,127.1264"; // 한일고등학교 (공주)
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -87,7 +89,7 @@ function buildUpstream(url: URL): { key: string; target: string; ttl: number } {
         if (!spec) throw new HttpError("허용되지 않는 경로예요.");
         const qs = new URLSearchParams(); const keyParts: string[] = [];
         for (const [name, value] of url.searchParams) {
-            if (name === "service" || name === "path") continue;
+            if (name === "service" || name === "path" || name === "forceFunctionRegion") continue; // forceFunctionRegion: Supabase 가 실행 지역을 고를 때 쓰는 값
             const rule = spec.params[name];
             if (rule === undefined) throw new HttpError(`허용되지 않는 파라미터예요: ${name.slice(0, 30)}`);
             const ok = typeof rule === "string" ? value === rule : rule.test(value);
@@ -123,8 +125,13 @@ Deno.serve(async (req: Request) => {
         catch { throw new HttpError("외부 서비스에 연결하지 못했어요.", 502); }
         finally { clearTimeout(timer); }
         const text = await upstream.text();
-        // 업스트림 오류 내용에는 요청 주소(=키)가 섞일 수 있으니 그대로 돌려주지 않는다.
-        if (!upstream.ok) throw new HttpError(`외부 서비스 오류 (${upstream.status})`, 502);
+        // 업스트림 오류 내용에는 요청 주소(=키)가 섞일 수 있으니 그대로 돌려주지 않고, 키를 가린 짧은 요약만 붙인다.
+        if (!upstream.ok) {
+            const secret = key === "weather" ? WEATHER_API_KEY : NEIS_API_KEY;
+            let snippet = text.replace(/<[^>]*>/g, " ").replace(/https?:\/\/\S+/g, "(주소)").replace(/\s+/g, " ").trim();
+            for (const k of [WEATHER_API_KEY, NEIS_API_KEY]) if (k) snippet = snippet.split(k).join("***");
+            throw new HttpError(`외부 서비스 오류 (${upstream.status}) · 응답: ${snippet.slice(0, 160) || "(없음)"} · 서버에 저장된 키 길이: ${secret.length}자`, 502);
+        }
         try { JSON.parse(text); } catch { throw new HttpError("외부 서비스 응답이 올바르지 않아요.", 502); }
         cache.set(key, { exp: now + ttl, body: text });
         if (cache.size > 500) for (const [k, v] of cache) if (v.exp <= now) cache.delete(k);
