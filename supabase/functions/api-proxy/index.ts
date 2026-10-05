@@ -89,7 +89,7 @@ function buildUpstream(url: URL): { key: string; target: string; ttl: number } {
         if (!spec) throw new HttpError("허용되지 않는 경로예요.");
         const qs = new URLSearchParams(); const keyParts: string[] = [];
         for (const [name, value] of url.searchParams) {
-            if (name === "service" || name === "path") continue;
+            if (name === "service" || name === "path" || name === "forceFunctionRegion") continue; // forceFunctionRegion: Supabase 가 실행 지역을 고를 때 쓰는 값
             const rule = spec.params[name];
             if (rule === undefined) throw new HttpError(`허용되지 않는 파라미터예요: ${name.slice(0, 30)}`);
             const ok = typeof rule === "string" ? value === rule : rule.test(value);
