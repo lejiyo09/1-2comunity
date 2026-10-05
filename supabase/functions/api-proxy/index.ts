@@ -119,12 +119,19 @@ Deno.serve(async (req: Request) => {
         const hit = cache.get(key);
         if (hit && hit.exp > now) return json(hit.body, 200, origin, { "Cache-Control": "public, max-age=120", "X-Proxy-Cache": "HIT" });
 
-        const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT_MS);
-        let upstream: Response;
-        try { upstream = await fetch(target, { signal: ctrl.signal, headers: { "Accept": "application/json" } }); }
-        catch { throw new HttpError("외부 서비스에 연결하지 못했어요.", 502); }
-        finally { clearTimeout(timer); }
-        const text = await upstream.text();
+        // NEIS(WebTob) 서버는 낯선 요청(기본 Deno User-Agent, Accept: application/json 등)에 500 을 내는 일이 있어서
+        // 브라우저가 보내는 것과 비슷한 헤더로 부르고, 5xx 가 오면 잠깐 뒤 한 번 더 시도한다.
+        const UPSTREAM_HEADERS = { "Accept": "*/*", "User-Agent": "Mozilla/5.0 (compatible; ClassCommunityProxy/1.0)" };
+        let upstream: Response | undefined; let text = "";
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT_MS);
+            try { upstream = await fetch(target, { signal: ctrl.signal, headers: UPSTREAM_HEADERS }); text = await upstream.text(); }
+            catch { upstream = undefined; }
+            finally { clearTimeout(timer); }
+            if (upstream && upstream.status < 500) break;
+            if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+        }
+        if (!upstream) throw new HttpError("외부 서비스에 연결하지 못했어요.", 502);
         // 업스트림 오류 내용에는 요청 주소(=키)가 섞일 수 있으니 그대로 돌려주지 않고, 키를 가린 짧은 요약만 붙인다.
         if (!upstream.ok) {
             const secret = key === "weather" ? WEATHER_API_KEY : NEIS_API_KEY;
