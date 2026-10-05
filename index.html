@@ -230,6 +230,19 @@
         @media (max-width: 480px) {
             #home-layout-edit-toolbar { position: static; margin-bottom: 14px; }
         }
+        /* 모바일: 위젯 편집 버튼은 스크롤해도 화면 맨 위에 고정한다(알림 종이 보이면 그 왼쪽으로 비켜 선다).
+           편집 중에는 버튼이 여러 개라 줄바꿈되므로 그만큼 홈 본문을 아래로 밀어 제목/위젯을 가리지 않게 한다. */
+        @media (max-width: 768px) {
+            #home-layout-edit-toolbar { position: fixed; top: 10px; left: 12px; right: 12px; margin: 0; flex-wrap: wrap; justify-content: flex-end; z-index: 500; pointer-events: none; }
+            body:has(#gmw-notif-bell[style*="flex"]) #home-layout-edit-toolbar { right: 62px; }
+            #home-layout-edit-toolbar .btn-sub { pointer-events: auto; padding: 7px 12px; }
+            /* 알림 종(🔔)은 화면 오른쪽 위에 떠 있어서, 보일 때는 본문을 종 아래에서 시작시켜야 글쓰기/자료 등록 같은 오른쪽 위 버튼과 겹치지 않는다. */
+            body:has(#gmw-notif-bell[style*="flex"]) .main { padding-top: 62px; }
+            #tab-home { padding-top: 28px; }
+            #tab-home:has(.editing-sections) { padding-top: 74px; }
+            body:has(#gmw-notif-bell[style*="flex"]) #tab-home { padding-top: 0; }
+            body:has(#gmw-notif-bell[style*="flex"]) #tab-home:has(.editing-sections) { padding-top: 30px; }
+        }
 
         /* --- 5.0 전역 알림(🔔) 진입점 --- */
         .gmw-notif-bell { display: none; position: fixed; top: 18px; right: 24px; z-index: 500; width: 42px; height: 42px; border-radius: 50%; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 4px 10px rgba(22,48,92,0.12); align-items: center; justify-content: center; font-size: 19px; cursor: pointer; }
@@ -261,7 +274,13 @@
         .music-track-title { font-size: 14px; font-weight: 700; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .music-track-artist { font-size: 12px; color: var(--text-muted); }
         .music-track-actions { display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--text-muted); }
-        .music-track-actions span { cursor: pointer; }
+        .music-track-actions span { cursor: pointer; white-space: nowrap; }
+        .music-track-actions { flex-wrap: wrap; row-gap: 6px; }
+        /* 모바일: 공유곡 카드를 2열로 두면 너무 좁아 "▶ 재생"/"내 음악에 저장" 글자가 세로로 쪼개진다 → 1열로 */
+        @media (max-width: 768px) {
+            #music-shared-list, #music-likes-list, .music-track-grid { grid-template-columns: 1fr !important; }
+            #music-shared-list > *, #music-likes-list > * { grid-column: 1 / -1 !important; }
+        }
         .music-track-actions span.liked { color: #ef4444; }
         /* 내 음악(mymusic-card)만: 평소에는 재생/플레이리스트/수정/삭제 버튼 줄을 감춰서 한 줄로
            깔끔하게 보이다가, 카드에 마우스를 올리면(또는 키보드 포커스가 들어오면) 나타난다.
@@ -4555,6 +4574,7 @@
                         // 게스트 모드였다가 방금 실제로 로그인한 경우를 포함해서, 사이드바를 항상 진짜 회원용으로 되돌린다.
                         document.getElementById('guest-login-card').style.display = 'none';
                         document.getElementById('user-profile-card').style.display = 'block';
+                        setGuestLockedCards(false);
                         const logoutBtnEl = document.getElementById('btn-logout');
                         if (logoutBtnEl) logoutBtnEl.style.display = '';
                         // 글쓰기/좋아요 등 쓰기 동작을 하려다 로그인 위젯이 뜬 경우, 로그인이 끝난 지금
@@ -4738,6 +4758,24 @@
             };
         }
 
+        // 게스트에게는 반 친구 프로필/시험 아카이브/자리 배치처럼 계정이 있어야 의미 있는 화면이 빈 칸으로 보이므로,
+        // 잠금 카드 자리에 "로그인하면 볼 수 있어요"를 보여준다. 로그인하면 원래 잠금 문구("접근 권한이 없습니다")로 되돌린다.
+        const GUEST_LOCKED_TABS = ['exam', 'seat', 'profile'];
+        function setGuestLockedCards(on) {
+            GUEST_LOCKED_TABS.forEach(id => {
+                const lock = document.getElementById(`${id}-locked-content`), secure = document.getElementById(`${id}-secure-content`);
+                if (!lock) return;
+                if (lock.dataset.origHtml === undefined) lock.dataset.origHtml = lock.innerHTML;
+                if (on) {
+                    lock.innerHTML = `<div class="card" style="text-align:center; padding:50px 20px;"><span style="font-size:50px;">🔑</span><h2 style="margin-top:20px; color:var(--text-main);">로그인하면 볼 수 있어요</h2><p style="margin:10px 0 18px; color:var(--text-secondary); font-size:14px;">우리 반 친구들과 함께 쓰는 화면이에요.</p><button class="auth-btn" style="width:auto; padding:10px 22px;" onclick="showLoginScreen()">🔑 로그인</button></div>`;
+                    lock.style.display = 'block';
+                    if (secure) secure.style.display = 'none';
+                } else {
+                    lock.innerHTML = lock.dataset.origHtml;
+                }
+            });
+        }
+
         // ===== 게스트(비로그인) 열람 모드 =====
         // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/플래너/프로필/자리 등은 그대로 로그인 필요.
         function applyGuestUI() {
@@ -4753,6 +4791,7 @@
             const materialsLocked = document.getElementById('materials-locked-content');
             if (materialsSecure) materialsSecure.style.display = 'block';
             if (materialsLocked) materialsLocked.style.display = 'none';
+            setGuestLockedCards(true);
 
             if (!isListeningToGuestReadable) {
                 listenToPosts(); listenToNotices(); listenToPolls(); listenToArchiveStudy(); listenToArchiveEtc(); loadSupabaseMaterials();
@@ -12628,7 +12667,7 @@
 
         function renderMusicTrackRow(tracks, likedIds, downloadedIds) {
             if (!tracks || tracks.length === 0) return '<div class="widget-text">아직 음악이 없습니다.</div>';
-            return `<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px;">${tracks.map(t => renderMusicTrackCard(t, likedIds, downloadedIds)).join('')}</div>`;
+            return `<div class="music-track-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px;">${tracks.map(t => renderMusicTrackCard(t, likedIds, downloadedIds)).join('')}</div>`;
         }
 
         function renderMusicTrackCard(t, likedIds, downloadedIds) {
@@ -12759,7 +12798,7 @@
 
             let html = `<div class="dashboard-section-title">👥 공유 음악 (${sharedMatches.length})</div>`;
             html += sharedMatches.length
-                ? `<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:22px;">${sharedMatches.map(t => renderMusicTrackCard(t, sharedMusicLikedIds, sharedMusicDownloadedIds)).join('')}</div>`
+                ? `<div class="music-track-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:22px;">${sharedMatches.map(t => renderMusicTrackCard(t, sharedMusicLikedIds, sharedMusicDownloadedIds)).join('')}</div>`
                 : `<div class="widget-text" style="margin-bottom:22px;">일치하는 공유 음악이 없습니다.</div>`;
 
             html += `<div class="dashboard-section-title">🎵 내 음악 (${myMatches.length})</div>`;
