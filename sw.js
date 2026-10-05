@@ -40,6 +40,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     const url = new URL(event.request.url);
+    // 서비스가 끝난 via.placeholder.com(옛 글에 저장된 자리표시 사진 주소)은 응답 없이 오래 기다리게 되므로 바로 회색 이미지로 대신한다.
+    if (url.hostname === 'via.placeholder.com') {
+        event.respondWith(new Response('<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><rect width="150" height="150" fill="#e5e7eb"/></svg>', { headers: { 'Content-Type': 'image/svg+xml' } }));
+        return;
+    }
     // 다른 출처(Firebase/Supabase/CDN 등)는 건드리지 않는다 - 이 앱 자신의 파일(같은 출처)만 캐싱한다.
     if (url.origin !== self.location.origin) return;
 
