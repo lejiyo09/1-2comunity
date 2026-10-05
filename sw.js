@@ -6,8 +6,14 @@
 // ⚠️ 이 캐시는 "예전에 온라인 상태에서 최소 한 번은 성공적으로 열어본 적 있는 화면"만 오프라인에서
 // 대신 보여줄 수 있다 - 애초에 한 번도 성공적으로 못 연 사이트라면(예: 호스팅 서비스가 잠들어 있거나
 // 다운된 상태에서 처음 접속) 오프라인 캐시에 저장된 게 아무것도 없어서 대신 보여줄 화면 자체가 없다.
-const CACHE_NAME = 'appshell-v2';
-const APP_SHELL_URLS = ['./', './index.html', './manifest.webmanifest'];
+const CACHE_NAME = 'appshell-v3'; // 파일을 css/·js/ 로 나눈 구조(앱 셸이 바뀌어 이름을 올려 예전 캐시를 비운다)
+// 앱 화면을 이루는 파일 전부 - 처음 방문 때 같이 저장해 두면, 그 뒤 오프라인에서도 화면 전체가 열린다.
+const APP_SHELL_URLS = [
+    './', './index.html', './manifest.webmanifest',
+    '/css/main.css', '/css/planner.css', '/css/mini-widgets.css', '/css/pwa-install.css', '/css/notice-popup.css',
+    '/js/config.js', '/js/tailwind-config.js', '/js/app.js', '/js/appstore-zip.js', '/js/appstore.js', '/js/planner.js',
+    '/js/mixtape.js', '/js/home-bridge.js', '/js/pip-bubble.js', '/js/pwa-install.js', '/js/theme.js'
+];
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
