@@ -56,10 +56,11 @@ JS 로 만든 `style.backgroundImage = "url(x.png)"` 같은 문자열 안의 상
    ```bash
    supabase login
    supabase link --project-ref cryeosgmuxqyphntqqlc
-   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role 키>   # upload-material/edit-material 때 이미 등록했다면 생략
    supabase functions deploy apps-write --no-verify-jwt
    ```
-   (대시보드에서 하려면 Edge Functions → New Function → 이름 `apps-write` → `supabase/functions/apps-write/index.ts` 내용 붙여넣기 → **Verify JWT 끄기** → Deploy, Secrets 에 `SUPABASE_SERVICE_ROLE_KEY`.)
+   (대시보드에서 하려면 Edge Functions → New Function → 이름 `apps-write` → `supabase/functions/apps-write/index.ts` 내용 붙여넣기 → **Verify JWT 끄기** → Deploy.)
+
+   `SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_URL` 은 Supabase 가 Edge Function 에 **자동으로 넣어 주는 값**이라 Secrets 에 직접 등록하지 않는다(등록하려 하면 `Name must not start with the SUPABASE_ prefix` 오류가 난다).
 3. Storage 에 `webapps` 버킷이 생겼는지, **Public** 이고 크기 제한이 20MB 인지 확인.
 
 ### 2) Render (Static Site `one-2comunity-test`)
