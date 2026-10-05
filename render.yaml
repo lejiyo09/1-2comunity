@@ -1,0 +1,34 @@
+# Render Static Site 설정 예시(Blueprint). 대시보드에서 직접 만들었다면 같은 값을 Settings → Headers / Redirects-Rewrites 에 넣으면 된다.
+services:
+  - type: web
+    name: one-2comunity-test
+    runtime: static
+    staticPublishPath: .
+    buildCommand: ""
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'; object-src 'none'"
+      - path: /*
+        name: Permissions-Policy
+        value: "geolocation=(), payment=(), usb=()"
+      - path: /js/*
+        name: Cache-Control
+        value: no-cache
+      - path: /css/*
+        name: Cache-Control
+        value: no-cache
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=604800
+    routes:
+      # 앱스토어의 공개 주소(/app/<id>, /app/<id>/run)가 어떤 경로로 열려도 같은 화면(index.html)을 보여준다
+      - type: rewrite
+        source: /app/*
+        destination: /index.html

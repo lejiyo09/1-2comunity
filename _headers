@@ -1,0 +1,19 @@
+# Netlify 보안 헤더 (Render 는 대시보드 → Headers 또는 render.yaml 의 headers 로 같은 값을 넣는다 - docs/security.md 참고)
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  # 이 사이트를 다른 사이트의 iframe 안에 넣어 클릭을 가로채는 공격(clickjacking)을 막는다. (앱스토어 앱은 우리 쪽 iframe 안에서 도는 거라 영향 없음)
+  Content-Security-Policy: frame-ancestors 'none'; object-src 'none'
+  Permissions-Policy: geolocation=(), payment=(), usb=()
+
+# 코드 파일은 배포마다 바뀌므로 항상 새로 확인하게 한다(서비스워커도 네트워크 우선이라 오래된 코드가 남지 않는다)
+/js/*
+  Cache-Control: no-cache
+/css/*
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+
+# 이미지는 오래 캐시해도 된다
+/assets/*
+  Cache-Control: public, max-age=604800
