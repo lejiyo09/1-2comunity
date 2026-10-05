@@ -2701,6 +2701,10 @@
                         <div class="card-title">주요 과목 시험범위 📝</div>
                         <div id="home-exam-summary" class="widget-text">불러오는 중...</div>
                     </div>
+                    <div class="card" data-widget-id="w-classroom" id="classroom-widget">
+                        <div class="card-title">📚 클래스룸 과제 <button type="button" id="classroom-refresh" class="btn-sub" style="display:none; margin-left:auto; padding:3px 9px; font-size:11px;" onclick="ClassroomWidget.refresh()">↻ 새로고침</button></div>
+                        <div id="classroom-body" class="widget-text">불러오는 중...</div>
+                    </div>
                     <div class="card clickable" data-widget-id="w-calendar" onclick="switchTab('schedule')">
                         <div class="card-title">일정 📅</div>
                         <div id="home-calendar-summary" class="widget-text">불러오는 중...</div>
@@ -3534,6 +3538,7 @@
         <div id="menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-44 bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-700/60">
           <button onclick="PlannerApp.openCalendarModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-indigo-400 w-4">📅</span> <span>달력 (기록 열람)</span></button>
           <button onclick="PlannerApp.openMonthlyModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-sky-400 w-4">🗓️</span> <span>월별 계획</span></button>
+          <button onclick="PlannerApp.openPhotoImportModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-pink-400 w-4">📷</span> <span>플래너 사진 읽기 (베타)</span></button>
           <button onclick="PlannerApp.openDiaryModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-emerald-400 w-4">📖</span> <span>날짜별 기록장</span></button>
           <button onclick="PlannerApp.openStatsModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-amber-400 w-4">📊</span> <span>과목별 통계</span></button>
           <button onclick="PlannerApp.openSettingsModal(); PlannerApp.closeMenuDropdown()" class="w-full text-left px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center gap-2.5 transition"><span class="text-slate-400 w-4">⚙️</span> <span>플래너 설정</span></button>
@@ -3721,6 +3726,38 @@
           </div>
           <textarea id="monthly-day-text" rows="3" maxlength="300" oninput="PlannerApp.onMonthlyDayInput()" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-sm text-slate-100 outline-none focus:border-sky-500 resize-none" placeholder="그날 할 일·시험·제출 마감 등을 적어 두세요 (자동 저장)"></textarea>
           <div class="text-[10px] text-slate-500 mt-1.5">날짜 칸을 누르면 그날의 계획을 쓸 수 있어요. 입력하면 바로 이 기기에 저장돼요.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 플래너 사진 읽기(베타): 종이 플래너를 찍은 사진에서 글자를 읽어 "오늘 할 일"로 가져온다. 글자 인식은 이 브라우저 안에서만 돌고 사진은 서버로 보내지 않는다. -->
+  <div id="modal-photo-import" class="fixed inset-0 modal-backdrop hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/90">
+        <h3 class="text-base font-black text-slate-100 flex items-center gap-2"><span class="text-pink-400">📷</span><span>플래너 사진 읽기 <span class="text-[10px] font-bold text-pink-300 bg-pink-500/15 border border-pink-500/30 rounded px-1.5 py-0.5 ml-1">베타</span></span></h3>
+        <button onclick="PlannerApp.closeModal('modal-photo-import')" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto bg-slate-900/40 text-xs text-slate-300">
+        <div class="mb-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 leading-relaxed">
+          종이 플래너를 <b>밝은 곳에서 정면으로 반듯하게</b> 찍어 올려 주세요. 글자는 <b>또박또박 쓴 글씨</b>일수록 잘 읽히고, <b>손글씨는 틀리게 읽힐 수 있어요</b> — 읽은 결과를 확인·고친 뒤에 추가해요. 시간표(타임테이블) 칸은 읽지 않아요.
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <label class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold cursor-pointer transition">📁 사진 고르기 / 촬영<input id="photo-import-file" type="file" accept="image/*" class="hidden" onchange="PlannerApp.onPhotoImportFile(this)"></label>
+          <select id="photo-import-area" class="bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-slate-200 outline-none">
+            <option value="todo">읽을 곳: 할 일 목록 부분(왼쪽 위)</option>
+            <option value="all">읽을 곳: 사진 전체</option>
+          </select>
+          <button id="photo-import-run" onclick="PlannerApp.runPhotoImportOcr()" disabled class="px-3 py-2 bg-pink-600 hover:bg-pink-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition">🔍 글자 읽기</button>
+        </div>
+        <div id="photo-import-preview-wrap" class="hidden mb-3"><canvas id="photo-import-preview" class="max-h-56 w-auto max-w-full rounded-lg border border-slate-700"></canvas></div>
+        <div id="photo-import-status" class="mb-3 text-slate-400 min-h-[1.2em]"></div>
+        <div id="photo-import-result" class="hidden">
+          <div class="flex items-center justify-between mb-2 gap-2 flex-wrap"><span class="font-bold text-slate-200">읽은 내용 <span class="font-normal text-slate-400">(고치거나 체크를 풀어 빼세요)</span></span>
+            <label class="flex items-center gap-1.5 text-slate-300">추가할 날짜 <input id="photo-import-date" type="date" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-slate-100 outline-none"></label></div>
+          <div id="photo-import-lines" class="space-y-1.5 mb-3"></div>
+          <div class="flex items-center justify-between gap-2 flex-wrap"><span class="text-slate-500">과목은 첫 번째 과목으로 들어가요. 추가한 뒤 플래너에서 바꿀 수 있어요.</span>
+            <button onclick="PlannerApp.addPhotoImportTasks()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition">✅ 선택한 줄을 할 일로 추가</button></div>
         </div>
       </div>
     </div>
@@ -4870,7 +4907,7 @@
             { id: 'shortcuts', label: '🔗 바로가기', widgets: ['w-shortcuts'] },
             { id: 'priority-strip', label: '⏱ 우선순위 (날씨·미션·지금 학교는)', widgets: ['w-weather', 'w-missions', 'w-period'] },
             { id: 'today', label: '📅 오늘 하루', widgets: ['w-meal', 'w-timetable', 'w-cleaning'] },
-            { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
+            { id: 'study-exam', label: '📖 공부 & 시험', widgets: ['w-report', 'w-exam', 'w-classroom', 'w-calendar', 'w-planner-time', 'w-planner-tasks', 'w-mixtape'] },
             { id: 'poll-community', label: '🗳️ 설문 & 소통', widgets: ['w-poll', 'w-community'] }
             // 메모/사진 위젯은 기본으로 주어지지 않는다 - 사용자가 필요할 때 "+ 메모"/"+ 사진"으로 원하는 만큼
             // 추가하고 삭제하는 것이다(숨기기 개념이 아님). 그 위젯을 담을 카테고리도 사용자가 알아서 만든다.
@@ -4968,6 +5005,16 @@
                     // 카테고리(섹션)는 기본이든 사용자가 만든 것이든 자유롭게 삭제할 수 있다 - 그래서 더 이상
                     // "기본 섹션이 전부 남아있어야" 신뢰하지 않는다. 다만 기본 위젯(앱 기능 자체)은 삭제되지
                     // 않고 다른 카테고리로 옮겨지기만 하므로, 위젯만큼은 빠짐없이 어딘가에 있어야 신뢰한다.
+                    // 새로 추가된 기본 위젯(예: 클래스룸 과제)이 예전에 저장된 배치에 아직 없으면, 배치를 통째로 되돌리지 않고
+                    // 그 위젯의 기본 카테고리(없으면 첫 카테고리)에 끼워 넣는다.
+                    const have = new Set(saved.flatMap(s => s.widgets));
+                    DEFAULT_HOME_LAYOUT.forEach(def => def.widgets.forEach(wid => {
+                        if (have.has(wid)) return;
+                        const target = saved.find(s => s.id === def.id) || saved[0];
+                        const afterPrev = def.widgets[def.widgets.indexOf(wid) - 1];
+                        const at = target.widgets.indexOf(afterPrev);
+                        target.widgets.splice(at >= 0 ? at + 1 : target.widgets.length, 0, wid); have.add(wid);
+                    }));
                     const savedWidgetIds = saved.flatMap(s => s.widgets);
                     const hasAllDefaultWidgets = ALL_HOME_WIDGET_IDS.every(id => savedWidgetIds.includes(id));
                     const noDuplicateWidgets = new Set(savedWidgetIds).size === savedWidgetIds.length;
@@ -5101,7 +5148,7 @@
         const HOME_WIDGET_LABELS = {
             'w-shortcuts': '🔗 바로가기', 'w-weather': '🪟 현재 날씨', 'w-missions': '🎯 오늘의 미션',
             'w-period': '🕒 지금 우리 학교는', 'w-meal': '🍱 오늘의 급식', 'w-timetable': '🗓️ 오늘의 시간표',
-            'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위',
+            'w-cleaning': '🧹 청소', 'w-report': '📊 이번 주 학습 리포트', 'w-exam': '📝 주요 과목 시험범위', 'w-classroom': '📚 클래스룸 과제',
             'w-calendar': '📅 일정', 'w-planner-time': '📖 오늘의 공부', 'w-planner-tasks': '📋 오늘 할 일',
             'w-mixtape': '📼 현재 재생', 'w-poll': '🗳️ 반 설문', 'w-community': '🔥 입만사니 인기글'
         };
@@ -14358,6 +14405,173 @@
         }
     </script>
 
+    <script id="classroom-widget-script">
+    // ===== 구글 클래스룸 과제 위젯 =====
+    // 학생 본인의 Google 계정으로 로그인(OAuth, Google Identity Services)해서 Classroom API 로 "내 과제"를 읽어 마감 순으로 보여 준다.
+    // - 읽기 전용 권한만 요청한다: 수강 중인 수업 목록 + 내 과제/제출 상태(classroom.courses.readonly, classroom.coursework.me.readonly).
+    // - 액세스 토큰은 메모리에만 두고(새로고침하면 사라짐) 서버로 보내지 않는다. 불러온 과제 목록만 이 브라우저에 캐시한다(내 계정별).
+    // - 동작하려면 Google Cloud 의 OAuth 클라이언트 ID 가 필요하다 → 아래 상수에 넣는다. 만드는 방법은 docs/classroom.md 참고.
+    //   (학교 계정이 Google Workspace 라면 학교 관리자가 외부 앱의 Classroom 접근을 허용해야 할 수도 있다.)
+    (function () {
+        const GOOGLE_CLIENT_ID = ''; // 예: '1234567890-abcdefg.apps.googleusercontent.com'
+        const SCOPES = 'https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly';
+        const API = 'https://classroom.googleapis.com/v1';
+        const GSI_URL = 'https://accounts.google.com/gsi/client';
+        const CACHE_PREFIX = 'gmw_classroom_cache_';
+        const SHOW_LIMIT = 6;
+        let token = null, tokenExpires = 0, tokenClient = null, items = [], loadedAt = 0, busy = false, showAll = false, errorMsg = '';
+
+        const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const uid = () => { try { const u = window.__gmwAuth && window.__gmwAuth.user(); return u ? u.uid : null; } catch (e) { return null; } };
+        const body = () => document.getElementById('classroom-body');
+        const refreshBtn = () => document.getElementById('classroom-refresh');
+
+        function loadCache() {
+            const u = uid(); if (!u) return null;
+            try { const v = JSON.parse(localStorage.getItem(CACHE_PREFIX + u) || 'null'); return v && Array.isArray(v.items) ? v : null; } catch (e) { return null; }
+        }
+        function saveCache() { const u = uid(); if (!u) return; try { localStorage.setItem(CACHE_PREFIX + u, JSON.stringify({ items, loadedAt })); } catch (e) {} }
+        function clearCache() { const u = uid(); if (!u) return; try { localStorage.removeItem(CACHE_PREFIX + u); } catch (e) {} }
+
+        // 마감 시각: Classroom 은 dueDate/dueTime 을 UTC 로 준다. dueDate 가 없으면 마감 없음.
+        function dueMs(cw) {
+            const d = cw && cw.dueDate; if (!d || !d.year) return null;
+            const t = cw.dueTime || {};
+            return Date.UTC(d.year, (d.month || 1) - 1, d.day || 1, t.hours || 0, t.minutes || 0);
+        }
+        function fmtDue(ms) {
+            if (ms == null) return { label: '마감 없음', cls: '' };
+            const now = new Date(); const due = new Date(ms);
+            const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+            const diff = Math.round((startOf(due) - startOf(now)) / 86400000);
+            const pad = (n) => String(n).padStart(2, '0');
+            const when = `${due.getMonth() + 1}/${due.getDate()} ${pad(due.getHours())}:${pad(due.getMinutes())}`;
+            if (ms < now.getTime()) return { label: `마감 지남 · ${when}`, cls: 'late' };
+            return { label: `${diff === 0 ? '오늘' : 'D-' + diff} · ${when}`, cls: diff <= 1 ? 'soon' : '' };
+        }
+
+        function loadGsi() {
+            if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const sc = document.createElement('script'); sc.src = GSI_URL; sc.async = true;
+                sc.onload = () => (window.google && window.google.accounts && window.google.accounts.oauth2) ? resolve() : reject(new Error('Google 로그인 도구를 불러오지 못했어요.'));
+                sc.onerror = () => reject(new Error('Google 로그인 도구를 내려받지 못했어요. 인터넷 연결을 확인해 주세요.'));
+                document.head.appendChild(sc);
+            });
+        }
+        // 토큰 받기(팝업). prompt: '' 이면 이미 동의한 계정은 창 없이 바로 새 토큰을 받는다.
+        function requestToken(prompt) {
+            return loadGsi().then(() => new Promise((resolve, reject) => {
+                if (!tokenClient) {
+                    tokenClient = window.google.accounts.oauth2.initTokenClient({
+                        client_id: GOOGLE_CLIENT_ID, scope: SCOPES,
+                        callback: (resp) => {
+                            if (resp && resp.access_token) { token = resp.access_token; tokenExpires = Date.now() + (Number(resp.expires_in) || 3600) * 1000 - 30000; tokenClient._resolve && tokenClient._resolve(); }
+                            else tokenClient._reject && tokenClient._reject(new Error((resp && resp.error) === 'access_denied' ? '연결을 허용하지 않았어요.' : 'Google 연결에 실패했어요.'));
+                        },
+                        error_callback: (err) => { tokenClient._reject && tokenClient._reject(new Error(err && err.type === 'popup_closed' ? '창이 닫혀서 연결하지 못했어요.' : (err && err.type === 'popup_failed_to_open' ? '팝업이 막혔어요. 팝업을 허용해 주세요.' : 'Google 연결에 실패했어요.'))); }
+                    });
+                }
+                tokenClient._resolve = resolve; tokenClient._reject = reject;
+                tokenClient.requestAccessToken({ prompt: prompt == null ? '' : prompt });
+            }));
+        }
+
+        async function api(path) {
+            const resp = await fetch(API + path, { headers: { Authorization: 'Bearer ' + token } });
+            if (resp.status === 401) { token = null; throw Object.assign(new Error('연결이 만료됐어요. 다시 연결해 주세요.'), { code: 401 }); }
+            if (resp.status === 403) throw Object.assign(new Error('클래스룸 접근이 허용되지 않았어요. 학교 관리자가 외부 앱을 막았거나 권한이 없을 수 있어요.'), { code: 403 });
+            if (!resp.ok) throw new Error(`클래스룸에서 정보를 가져오지 못했어요 (${resp.status}).`);
+            return resp.json();
+        }
+        async function fetchAssignments() {
+            const courseRes = await api('/courses?courseStates=ACTIVE&studentId=me&pageSize=30');
+            const courses = courseRes.courses || [];
+            const lists = await Promise.all(courses.map(async (c) => {
+                const [cwRes, subRes] = await Promise.all([
+                    api(`/courses/${encodeURIComponent(c.id)}/courseWork?courseWorkStates=PUBLISHED&orderBy=dueDate%20desc&pageSize=30`),
+                    api(`/courses/${encodeURIComponent(c.id)}/courseWork/-/studentSubmissions?userId=me&pageSize=100`).catch(() => ({ studentSubmissions: [] }))
+                ]);
+                const state = {}; (subRes.studentSubmissions || []).forEach(s => { state[s.courseWorkId] = s.state; });
+                return (cwRes.courseWork || []).map(cw => ({
+                    id: cw.id, course: c.name || '수업', title: cw.title || '제목 없음', link: cw.alternateLink || '', due: dueMs(cw),
+                    done: ['TURNED_IN', 'RETURNED'].includes(state[cw.id])
+                }));
+            }));
+            return lists.flat();
+        }
+        // 화면에 보여줄 목록: 제출 안 한 것만, 마감 지남(최근 7일 이내) → 임박순, 마감 없는 건 맨 뒤
+        function pickVisible(all) {
+            const now = Date.now(), weekAgo = now - 7 * 86400000;
+            return all.filter(a => !a.done && (a.due == null || a.due >= weekAgo))
+                .sort((a, b) => (a.due == null ? Infinity : a.due) - (b.due == null ? Infinity : b.due));
+        }
+
+        function render() {
+            const el = body(); if (!el) return;
+            const rb = refreshBtn();
+            if (!uid()) { el.innerHTML = '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">로그인하면 내 클래스룸 과제를 볼 수 있어요.</div><button class="btn-sub" style="margin-top:8px; font-size:12px;" onclick="showLoginScreen()">🔑 로그인</button>'; if (rb) rb.style.display = 'none'; return; }
+            if (!GOOGLE_CLIENT_ID) { el.innerHTML = '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">클래스룸 연동은 아직 준비 중이에요. 🛠</div>'; if (rb) rb.style.display = 'none'; return; }
+            if (rb) rb.style.display = (token || items.length) ? '' : 'none';
+            let html = '';
+            if (errorMsg) html += `<div class="classroom-err" style="font-size:12.5px; color:#dc2626; line-height:1.5; margin-bottom:8px;">${esc(errorMsg)}</div>`;
+            if (busy) { el.innerHTML = html + '<div style="font-size:13px; color:var(--text-secondary);">불러오는 중…</div>'; return; }
+            if (!token && !items.length) {
+                el.innerHTML = html + '<div style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:8px;">구글 클래스룸의 내 과제를 마감 순으로 보여 줘요. (읽기만 하고, 비밀번호는 우리 사이트가 받지 않아요)</div><button class="auth-btn" style="width:auto; padding:9px 16px; font-size:13px; margin-top:0;" onclick="ClassroomWidget.connect()">🔗 Google 클래스룸 연결</button>';
+                return;
+            }
+            const list = pickVisible(items); const shown = showAll ? list : list.slice(0, SHOW_LIMIT);
+            if (!list.length) html += '<div style="font-size:13px; color:var(--text-secondary);">제출할 과제가 없어요 🎉</div>';
+            html += shown.map(a => {
+                const d = fmtDue(a.due); const color = d.cls === 'late' ? '#dc2626' : (d.cls === 'soon' ? '#ea580c' : 'var(--text-muted)');
+                const titleHtml = a.link && /^https:\/\/classroom\.google\.com\//.test(a.link) ? `<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" style="color:var(--text-main); font-weight:700; text-decoration:none;">${esc(a.title)}</a>` : `<span style="font-weight:700;">${esc(a.title)}</span>`;
+                return `<div class="classroom-item" data-cw="${esc(a.id)}" style="display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed var(--border-color); font-size:13px;"><div style="flex:1; min-width:0;"><div style="overflow-wrap:anywhere;">${titleHtml}</div><div style="font-size:11.5px; color:var(--text-muted);">${esc(a.course)} · <span style="color:${color}; font-weight:700;">${esc(d.label)}</span></div></div><button type="button" class="btn-sub" style="padding:3px 9px; font-size:11px; flex-shrink:0;" onclick="ClassroomWidget.addToPlanner('${esc(a.id)}')">＋ 할 일</button></div>`;
+            }).join('');
+            if (list.length > SHOW_LIMIT) html += `<button type="button" class="btn-sub" style="margin-top:8px; font-size:12px;" onclick="ClassroomWidget.toggleAll()">${showAll ? '접기' : `더 보기 (${list.length - SHOW_LIMIT}개)`}</button>`;
+            if (!token) html += '<div style="font-size:11.5px; color:var(--text-muted); margin-top:8px;">마지막으로 불러온 내용이에요. “새로고침”으로 다시 연결하면 최신으로 바뀌어요.</div>';
+            else html += '<div style="margin-top:8px;"><button type="button" class="btn-sub" style="font-size:11px; padding:3px 9px;" onclick="ClassroomWidget.disconnect()">연결 해제</button></div>';
+            el.innerHTML = html;
+        }
+
+        async function load(promptMode) {
+            if (busy) return; busy = true; errorMsg = ''; render();
+            try {
+                if (!token || Date.now() > tokenExpires) await requestToken(promptMode);
+                items = await fetchAssignments(); loadedAt = Date.now(); saveCache();
+            } catch (e) {
+                errorMsg = (e && e.message) || '불러오지 못했어요.';
+                if (e && e.code === 403) { items = items; }
+            }
+            busy = false; render();
+        }
+        window.ClassroomWidget = {
+            connect() { return load(''); },
+            refresh() { return load(''); },
+            toggleAll() { showAll = !showAll; render(); },
+            disconnect() {
+                try { if (token && window.google && window.google.accounts && window.google.accounts.oauth2) window.google.accounts.oauth2.revoke(token, () => {}); } catch (e) {}
+                token = null; tokenExpires = 0; items = []; clearCache(); errorMsg = ''; render();
+            },
+            addToPlanner(id) {
+                const a = items.find(x => String(x.id) === String(id)); if (!a) return;
+                if (!window.PlannerApp || !window.PlannerApp.addExternalTasks) return;
+                const n = window.PlannerApp.addExternalTasks([`[${a.course}] ${a.title}`.slice(0, 60)], null, 30);
+                const item = document.querySelector(`.classroom-item[data-cw="${CSS.escape(String(id))}"] button`);
+                if (item) { item.textContent = n ? '✓ 추가됨' : '추가 못 함'; item.disabled = true; }
+            },
+            _render: render, _state: () => ({ token: !!token, count: items.length })
+        };
+        // 로그인 상태가 바뀌면 캐시를 읽어 다시 그린다(게스트→회원, 계정 전환)
+        window.addEventListener('gmw:authchange', () => {
+            token = null; tokenExpires = 0; items = []; errorMsg = ''; showAll = false;
+            const c = loadCache(); if (c) { items = c.items; loadedAt = c.loadedAt || 0; }
+            render();
+        });
+        function init() { const c = loadCache(); if (c) { items = c.items; loadedAt = c.loadedAt || 0; } render(); }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+    })();
+    </script>
+
     <script type="module" id="appstore-module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -16436,6 +16650,123 @@
       if (cell) { let n = cell.querySelector('.monthly-note'); const first = v.trim().split('\n')[0].slice(0, 40); if (first) { if (!n) { n = document.createElement('div'); n.className = 'monthly-note text-[9px] sm:text-[10px] leading-tight text-slate-200 mt-0.5 break-words'; cell.appendChild(n); } n.textContent = first; } else if (n) n.remove(); }
     }
     function gotoMonthlyDay() { if (!mpSelected) return; mpSave(); closeModal('modal-monthly'); selectCalendarDate(mpSelected); }
+    // ================= 플래너 사진 읽기(베타) =================
+    // 외부로 사진을 보내지 않는다: Tesseract.js(글자 인식)를 처음 쓸 때 CDN 에서 내려받아 이 브라우저 안에서만 돌린다.
+    // 결과는 항상 사람이 확인/수정한 뒤에만 할 일로 들어간다(손글씨 인식은 틀릴 수 있기 때문).
+    const OCR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    const OCR_MAX_SIDE = 2200, OCR_MIN_SIDE = 1400, OCR_MAX_INPUT = 15 * 1024 * 1024;
+    const OCR_HEADER_WORDS = /^(to\s*do|todo|today|year|month|day|d-?day|comment|total\s*time|timetable|metamemo|memo|date)\b/i;
+    let ocrSourceCanvas = null, ocrBusy = false;
+    function loadOcrLibrary() {
+      if (window.Tesseract) return Promise.resolve(window.Tesseract);
+      return new Promise((resolve, reject) => {
+        const sc = document.createElement('script'); sc.src = OCR_SCRIPT_URL; sc.async = true;
+        sc.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error('글자 인식 도구를 불러오지 못했어요.'));
+        sc.onerror = () => reject(new Error('글자 인식 도구를 내려받지 못했어요. 인터넷 연결을 확인해 주세요.'));
+        document.head.appendChild(sc);
+      });
+    }
+    function openPhotoImportModal() {
+      ocrSourceCanvas = null;
+      document.getElementById('photo-import-file').value = '';
+      document.getElementById('photo-import-run').disabled = true;
+      document.getElementById('photo-import-preview-wrap').classList.add('hidden');
+      document.getElementById('photo-import-result').classList.add('hidden');
+      document.getElementById('photo-import-status').textContent = '';
+      const di = document.getElementById('photo-import-date'); di.value = todayStr; di.min = todayStr;
+      document.getElementById('modal-photo-import').classList.remove('hidden');
+    }
+    function setOcrStatus(text, isError) { const el = document.getElementById('photo-import-status'); el.textContent = text || ''; el.className = 'mb-3 min-h-[1.2em] ' + (isError ? 'text-red-400' : 'text-slate-400'); }
+    async function onPhotoImportFile(input) {
+      const file = input.files && input.files[0]; if (!file) return;
+      document.getElementById('photo-import-result').classList.add('hidden');
+      if (!/^image\//.test(file.type)) { setOcrStatus('이미지 파일을 골라 주세요.', true); input.value = ''; return; }
+      if (file.size > OCR_MAX_INPUT) { setOcrStatus('15MB 이하 사진만 쓸 수 있어요.', true); input.value = ''; return; }
+      try {
+        const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file));
+        const longSide = Math.max(bmp.width, bmp.height);
+        const scale = longSide > OCR_MAX_SIDE ? OCR_MAX_SIDE / longSide : (longSide < OCR_MIN_SIDE ? OCR_MIN_SIDE / longSide : 1);
+        const c = document.createElement('canvas'); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close();
+        ocrSourceCanvas = c;
+        const pv = document.getElementById('photo-import-preview'); pv.width = Math.min(c.width, 600); pv.height = Math.round(pv.width * c.height / c.width);
+        pv.getContext('2d').drawImage(c, 0, 0, pv.width, pv.height);
+        document.getElementById('photo-import-preview-wrap').classList.remove('hidden');
+        document.getElementById('photo-import-run').disabled = false;
+        setOcrStatus('사진을 불러왔어요. “글자 읽기”를 눌러 주세요.');
+      } catch (e) { ocrSourceCanvas = null; document.getElementById('photo-import-run').disabled = true; setOcrStatus('사진을 읽지 못했어요. 다른 사진으로 해 보세요.', true); }
+    }
+    // 글자 인식 전처리: 지정한 영역을 잘라 흑백으로 바꾸고 밝기 범위를 늘려(오토 레벨) 흐린 연필 글씨도 조금 더 또렷하게 한다
+    function ocrPrepareCanvas(area) {
+      const src = ocrSourceCanvas; const r = area === 'todo' ? { x: 0, y: 0.2, w: 0.66, h: 0.68 } : { x: 0, y: 0, w: 1, h: 1 };
+      const sx = Math.round(src.width * r.x), sy = Math.round(src.height * r.y), sw = Math.round(src.width * r.w), sh = Math.round(src.height * r.h);
+      const c = document.createElement('canvas'); c.width = sw; c.height = sh; const ctx = c.getContext('2d');
+      ctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
+      const img = ctx.getImageData(0, 0, sw, sh); const d = img.data; const hist = new Uint32Array(256);
+      for (let i = 0; i < d.length; i += 4) { const g = Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114); d[i] = d[i + 1] = d[i + 2] = g; hist[g]++; }
+      const total = sw * sh; let lo = 0, hi = 255, acc = 0;
+      for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= total * 0.01) { lo = v; break; } }
+      acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= total * 0.2) { hi = v; break; } }
+      if (hi - lo < 20) { lo = 0; hi = 255; }
+      for (let i = 0; i < d.length; i += 4) { const g = Math.max(0, Math.min(255, Math.round((d[i] - lo) * 255 / (hi - lo)))); d[i] = d[i + 1] = d[i + 2] = g; }
+      ctx.putImageData(img, 0, 0); return c;
+    }
+    // OCR 결과 줄 정리: 머리말 글자/기호뿐인 줄/너무 짧은 줄을 걸러내고, 줄 앞의 체크박스·번호·불릿 기호를 뗀다
+    function cleanOcrLines(rawLines) {
+      const out = [];
+      for (const raw of rawLines) {
+        let t = String(raw).replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim();
+        t = t.replace(/^[\s|\\\/\[\]()<>{}_=~*·•○●□■☐☑✓✔\-–—.:;,'"`!?]+/, '').replace(/[\s|\\\/_=~]+$/, '').trim();
+        t = t.replace(/^(?:\d{1,2}\s*[.)]|[\u2460-\u2473])\s*/, '').replace(/^[\s|\\\/\[\]()<>{}_=~*·•○●□■☐☑✓✔\-–—.:;,'"`!?]+/, '').trim(); // "1." "2)" "①" 같은 번호
+        const letters = (t.match(/[A-Za-z\uAC00-\uD7A3]/g) || []).length;
+        if (letters < 2 || OCR_HEADER_WORDS.test(t)) continue;
+        if (letters / t.length < 0.4) continue; // 숫자/기호가 대부분이면 표의 눈금일 가능성이 커서 뺀다
+        out.push(t.slice(0, 60));
+      }
+      return Array.from(new Set(out)).slice(0, 30);
+    }
+    function renderPhotoImportLines(lines) {
+      const box = document.getElementById('photo-import-lines');
+      box.innerHTML = lines.map((t, i) => `<label class="flex items-center gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5"><input type="checkbox" checked class="photo-import-check accent-emerald-500" data-i="${i}"><input type="text" maxlength="60" value="${mpEsc(t)}" class="photo-import-text flex-1 min-w-0 bg-transparent text-slate-100 outline-none text-sm" data-i="${i}"></label>`).join('');
+      document.getElementById('photo-import-result').classList.remove('hidden');
+    }
+    async function runPhotoImportOcr() {
+      if (!ocrSourceCanvas || ocrBusy) return;
+      ocrBusy = true; const btn = document.getElementById('photo-import-run'); btn.disabled = true;
+      document.getElementById('photo-import-result').classList.add('hidden');
+      let worker = null;
+      try {
+        setOcrStatus('글자 인식 도구를 준비하는 중… (처음에는 몇십 초 걸릴 수 있어요)');
+        const T = await loadOcrLibrary();
+        worker = await T.createWorker(['kor', 'eng'], 1, { logger: (m) => { if (m && m.status && typeof m.progress === 'number') setOcrStatus(`${m.status === 'recognizing text' ? '글자 읽는 중' : '준비 중'}… ${Math.round(m.progress * 100)}%`); } });
+        const canvas = ocrPrepareCanvas(document.getElementById('photo-import-area').value);
+        const { data } = await worker.recognize(canvas);
+        const raw = (data.lines && data.lines.length ? data.lines.map(l => l.text) : String(data.text || '').split('\n'));
+        const lines = cleanOcrLines(raw);
+        if (!lines.length) { setOcrStatus('읽힌 글자가 없어요. 더 밝고 반듯한 사진으로, 또는 “사진 전체”로 다시 해 보세요.', true); }
+        else { setOcrStatus(`${lines.length}줄을 읽었어요. 틀린 글자는 고치고, 필요 없는 줄은 체크를 풀어 주세요.`); renderPhotoImportLines(lines); }
+      } catch (e) { console.warn('플래너 사진 읽기 실패:', e); setOcrStatus((e && e.message) || '글자를 읽지 못했어요. 잠시 후 다시 시도해 주세요.', true); }
+      finally { if (worker) { try { await worker.terminate(); } catch (e) {} } ocrBusy = false; btn.disabled = !ocrSourceCanvas; }
+    }
+    // 외부(사진 읽기/클래스룸)에서 온 할 일을 해당 날짜(오늘 이후)의 할 일로 넣는다. 과목은 첫 번째 과목, 목표 시간은 기본 30분.
+    function addExternalTasks(titles, dateStr, targetMin) {
+      const date = dateStr || todayStr;
+      if (date < todayStr && !isTimeMachineUnlocked) return 0;
+      ensureDailyRecord(date); let n = 0;
+      titles.forEach((title, i) => { const t = String(title || '').trim().slice(0, 60); if (!t) return;
+        state.records[date].tasks.push({ id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + i, title: t, subjectId: state.subjects[0].id, targetMin: targetMin || 30, completed: false, elapsedSec: 0, isRoutine: false }); n++; });
+      if (n) { saveData(); if (date === currentDateStr) { renderTasks(); updateDashboard(); } }
+      return n;
+    }
+    function addPhotoImportTasks() {
+      const date = document.getElementById('photo-import-date').value || todayStr;
+      if (date < todayStr && !isTimeMachineUnlocked) { uiAlert('오늘 이후 날짜만 고를 수 있어요.'); return; }
+      const titles = [...document.querySelectorAll('#photo-import-lines .photo-import-check')].filter(c => c.checked).map(c => document.querySelector(`#photo-import-lines .photo-import-text[data-i="${c.dataset.i}"]`).value);
+      const n = addExternalTasks(titles, date, 30);
+      if (!n) { uiAlert('추가할 줄을 하나 이상 체크해 주세요.'); return; }
+      closeModal('modal-photo-import');
+      uiAlert(`${n}개를 ${date === todayStr ? '오늘' : date} 할 일로 추가했어요.`, { icon: '✅', title: '추가 완료' });
+    }
     function openCalendarModal() { renderCalendar(); document.getElementById('modal-calendar').classList.remove('hidden'); }
     function changeMonth(delta) { calMonth += delta; if(calMonth > 11) { calMonth = 0; calYear++; } else if(calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
     
@@ -16622,6 +16953,11 @@
       openDdayModal,
       openDiaryModal,
       openMonthlyModal,
+      openPhotoImportModal,
+      onPhotoImportFile,
+      runPhotoImportOcr,
+      addPhotoImportTasks,
+      addExternalTasks,
       changeMonthlyMonth,
       selectMonthlyDay,
       onMonthlyGoalInput,
