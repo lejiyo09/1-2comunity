@@ -23,9 +23,9 @@
 // 배포 방법 (Supabase CLI):
 //   1. supabase login
 //   2. supabase link --project-ref cryeosgmuxqyphntqqlc      (자료실 Edge Function들과 같은 프로젝트)
-//   3. supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<이 프로젝트의 service_role 키>
-//      (이미 upload-material/edit-material 때 등록했다면 같은 프로젝트라 다시 등록하지 않아도 된다)
-//   4. supabase functions deploy apps-write --no-verify-jwt
+//   (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 는 Supabase 가 Edge Function 에 자동으로 넣어 준다. SUPABASE_ 로 시작하는 이름은
+//    secrets 에 직접 등록할 수도 없다.)
+//   3. supabase functions deploy apps-write --no-verify-jwt
 //      (--no-verify-jwt: 이 함수 안에서 Firebase ID 토큰을 직접 검증한다 - 기존 함수들과 동일한 패턴)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
