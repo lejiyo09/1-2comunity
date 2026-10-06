@@ -1,0 +1,29 @@
+@charset "UTF-8";
+        .gmw-pwa-card{
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 9996;
+            width: 260px;
+            max-width: calc(100vw - 40px);
+            padding: 16px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #1f2937, #111827);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            color: #e5e7eb;
+            font-family: 'Pretendard', sans-serif;
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+            transition: opacity .25s ease, transform .25s ease;
+            pointer-events: none;
+        }
+        .gmw-pwa-card.visible{ opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        .gmw-pwa-card-title{ font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+        .gmw-pwa-card-desc{ font-size: 11px; color: #9ca3af; line-height: 1.5; margin-bottom: 12px; }
+        .gmw-pwa-card-btn{ width: 100%; padding: 10px; border: none; border-radius: 10px; background: #3b82f6; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .gmw-pwa-card-btn:hover{ background: #2563eb; }
+        .gmw-pwa-card-close{ position: absolute; top: 8px; right: 10px; background: none; border: none; color: #6b7280; font-size: 14px; cursor: pointer; }
+        .gmw-pwa-card-close:hover{ color: #d1d5db; }
+        @media (max-width: 480px){ .gmw-pwa-card{ left: 10px; bottom: 10px; width: calc(100vw - 20px); } }
+    

@@ -9,7 +9,7 @@
 | **공개 식별자** (원래 공개용) | Firebase `apiKey`, Supabase `publishable(anon)` 키 | 숨길 수 없고 숨길 필요도 없음 | **서버 규칙**이 보호: Firebase 보안 규칙, Supabase RLS, Edge Function 의 토큰 검증 (+ 아래 권장 설정) |
 | **비밀 키** (호출 한도/비용/권한이 걸림) | 날씨, NEIS, 이미지 호스팅, `service_role` | **반드시 서버에만** | Supabase Edge Function 의 **Secrets** 에 두고, 브라우저는 그 함수를 부른다 |
 
-이번 정리로 **비밀 키는 전부 브라우저/저장소 코드에서 제거**했다. 남은 것은 공개 식별자뿐이고 `js/config.js` 한 곳에 모아 두었다.
+이번 정리로 **비밀 키는 전부 브라우저/저장소 코드에서 제거**했다. 남은 것은 공개 식별자뿐이고 `src/js/config.js`(배포용은 `js/config.js`) 한 곳에 모아 두었다.
 
 ## 무엇이 어디로 옮겨졌나
 
