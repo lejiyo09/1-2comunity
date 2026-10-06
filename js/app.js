@@ -1818,19 +1818,54 @@
             return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} (${days[d.getDay()]})`;
         }
 
+        const MEAL_UNAVAILABLE_HTML = '<span>급식 정보를 불러오지 못했어요. (오프라인에는 오늘~모레 급식만 저장돼요)</span>';
+        // 오프라인 대비: 오늘 ~ 모레(+2일) 급식을 미리 받아 저장해 둔다. 이미 최근에 받은 날짜는 건너뛰고, 지난 날짜의 저장분은 정리한다.
+        const MEAL_PREFETCH_DAYS = 2, MEAL_PREFETCH_FRESH_MS = 30 * 60 * 1000;
+        const mealYmd = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+        let mealPrefetching = false;
+        async function prefetchMealsOffline() {
+            if (mealPrefetching || navigator.onLine === false) return;
+            mealPrefetching = true;
+            try {
+                const base = new Date(); base.setHours(0, 0, 0, 0);
+                // 어제보다 이전 날짜의 저장분은 지운다
+                const y = new Date(base); y.setDate(y.getDate() - 1);
+                const keepFrom = mealYmd(y), prefix = INFO_CACHE_PREFIX + 'meal_';
+                try {
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith(prefix) && k.slice(prefix.length) < keepFrom) localStorage.removeItem(k);
+                    }
+                } catch (e) {}
+                for (let i = 0; i <= MEAL_PREFETCH_DAYS; i++) {
+                    const d = new Date(base); d.setDate(d.getDate() + i);
+                    const cached = loadInfoCache('meal_' + mealYmd(d));
+                    if (cached && Date.now() - cached.updatedAt < MEAL_PREFETCH_FRESH_MS) continue;
+                    await fetchMealsForDate(d); // 성공하면 안에서 저장된다
+                }
+            } catch (e) { console.warn('급식 미리 저장 실패:', e && e.message ? e.message : e); }
+            finally { mealPrefetching = false; }
+        }
+        window.addEventListener('online', () => { prefetchMealsOffline(); });
+
         async function fetchMealsForDate(dateObj) {
             const dateStr = `${dateObj.getFullYear()}${String(dateObj.getMonth()+1).padStart(2,'0')}${String(dateObj.getDate()).padStart(2,'0')}`;
             const cacheKey = 'meal_' + dateStr;
             let mealsHtml = { '조식': '<span>이 날짜에는 등록된 급식 정보가 없습니다.</span>', '중식': '<span>이 날짜에는 등록된 급식 정보가 없습니다.</span>', '석식': '<span>이 날짜에는 등록된 급식 정보가 없습니다.</span>' };
             let fromCacheAt = null;
+            const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 8000); // 연결이 걸려 멈춰도 저장해 둔 정보로 넘어가도록
             try {
-                const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=N10&SD_SCHUL_CODE=8140107&MLSV_YMD=${dateStr}`);
+                if (navigator.onLine === false) throw new Error('offline');
+                const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=N10&SD_SCHUL_CODE=8140107&MLSV_YMD=${dateStr}`, { signal: ctrl.signal });
                 const data = await res.json();
                 if (data.mealServiceDietInfo) {
                     data.mealServiceDietInfo[1].row.forEach(m => {
                         let menuList = m.DDISH_NM.replace(/[0-9.]/g, '').replace(/\*/g, '').split('<br/>').map(i => i.trim());
                         mealsHtml[m.MMEAL_SC_NM] = menuList.map(i => `<span class="meal-menu-item">• ${i}</span>`).join('');
                     });
+                } else if (!(data && data.RESULT && data.RESULT.CODE === 'INFO-200')) {
+                    // 급식이 없는 날(INFO-200)이 아니라 오류 응답이면 "없음"으로 저장하지 않는다(저장해 둔 좋은 정보를 덮어쓰지 않도록)
+                    throw new Error('NEIS 응답 오류');
                 }
                 // 이 날짜(dateStr)의 급식 정보를 저장해둔다 - 외부 API라 브라우저 자체 오프라인 캐시가 없다.
                 saveInfoCache(cacheKey, mealsHtml);
@@ -1838,7 +1873,8 @@
                 // 요청이 실패했으면(오프라인 등) 이 날짜에 저장해둔 마지막 급식 정보로 대신한다.
                 const cached = loadInfoCache(cacheKey);
                 if (cached) { mealsHtml = cached.data; fromCacheAt = cached.updatedAt; }
-            }
+                else mealsHtml = { '조식': MEAL_UNAVAILABLE_HTML, '중식': MEAL_UNAVAILABLE_HTML, '석식': MEAL_UNAVAILABLE_HTML };
+            } finally { clearTimeout(timer); }
             Object.defineProperty(mealsHtml, '__fromCacheAt', { value: fromCacheAt, enumerable: false });
             return mealsHtml;
         }
@@ -1874,6 +1910,7 @@
             // 로그인 직후 최초 1회: 급식표 탭(오늘)과 홈 위젯(오늘)을 함께 채운다
             await fetchMealTabDisplay();
             await updateHomeMealWidget();
+            prefetchMealsOffline(); // 기다리지 않고 뒤에서 오늘~모레 급식을 저장해 둔다
         }
 
         window.changeMealDate = function(delta) {
