@@ -533,6 +533,7 @@
                         document.getElementById('guest-login-card').style.display = 'none';
                         document.getElementById('user-profile-card').style.display = 'block';
                         setGuestLockedCards(false);
+                        setGuestCommunityNav(true);
                         const logoutBtnEl = document.getElementById('btn-logout');
                         if (logoutBtnEl) logoutBtnEl.style.display = '';
                         // 글쓰기/좋아요 등 쓰기 동작을 하려다 로그인 위젯이 뜬 경우, 로그인이 끝난 지금
@@ -746,12 +747,21 @@
             });
         }
 
+        // 사이드바의 '커뮤니티' 그룹(자유게시판·친구들)과 모바일 하단바의 '커뮤니티' 버튼 표시/숨김.
+        // (모바일 '메뉴' 시트는 사이드바에서 보이는 항목만 읽어 만들어지므로 따로 처리하지 않아도 같이 빠진다)
+        function setGuestCommunityNav(show) {
+            const group = document.getElementById('nav-group-community');
+            if (group) group.style.display = show ? '' : 'none';
+            document.querySelectorAll('.mb-item[data-tab="community"]').forEach(el => { el.style.display = show ? '' : 'none'; });
+        }
+
         // ===== 게스트(비로그인) 열람 모드 =====
         // 커뮤니티/공지/자료실만 읽기 전용으로 열어준다 - 음악/플래너/프로필/자리 등은 그대로 로그인 필요.
         function applyGuestUI() {
             document.getElementById('user-profile-card').style.display = 'none';
             document.getElementById('guest-login-card').style.display = 'block';
             document.getElementById('welcome-title').innerText = '둘러보는 중이에요 🏠';
+            setGuestCommunityNav(false); // 로그아웃(게스트) 상태에서는 사이드바/하단바의 '커뮤니티' 메뉴를 보이지 않게 한다
 
             const communitySecure = document.getElementById('community-secure-content');
             const communityLocked = document.getElementById('community-locked-content');
