@@ -55,6 +55,11 @@
             --overlay-color: rgba(0,0,0,0.6);
         }
 
+        /* 개인 강조색(설정 > 강조색): JS 가 body 에 --accent-* 값을 넣고 gmw-has-accent 를 붙이면, 라이트/다크 각각 알맞은 값을 --primary 로 쓴다.
+           (위 body.gmw-site-dark 의 --primary 보다 뒤에, 더 구체적으로 선언해서 다크 모드에서도 이긴다) */
+        body.gmw-has-accent { --primary: var(--accent-light); --primary-soft: var(--accent-light-soft); }
+        body.gmw-has-accent.gmw-site-dark { --primary: var(--accent-dark); --primary-soft: var(--accent-dark-soft); }
+
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Pretendard', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
         /* 개인 배경화면(IndexedDB) - 지난 버전엔 이 규칙이 아예 없어서 사진이 원본 크기로 반복(tile)되어

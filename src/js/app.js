@@ -409,7 +409,7 @@
         // 숨긴 메뉴의 key(data-nav-key 또는 data-tab)를 계정(uid)별로 이 브라우저의 localStorage 에 저장한다(홈 위젯 배치와 같은 방식).
         // 버튼만 가린다 - 홈 카드 등 다른 경로로는 그 화면에 그대로 들어갈 수 있다. 모바일 하단바/메뉴 시트도 같은 설정을 따른다.
         const SIDEBAR_HIDDEN_PREFIX = 'hanilgo_sidebar_hidden_';
-        const SIDEBAR_FIXED_KEYS = ['home', 'sidebar']; // 홈과 '사이드바 설정'은 숨길 수 없다(되돌릴 길을 남기기 위해)
+        const SIDEBAR_FIXED_KEYS = ['home']; // 홈은 숨길 수 없다(설정 버튼은 사이드바 메뉴가 아니라 항상 보인다)
         const sidebarKeyOf = (el) => (el && (el.dataset.navKey || el.dataset.tab)) || null;
         function loadSidebarHidden() {
             if (!currentUser) return [];
@@ -2469,16 +2469,39 @@
             return `rgba(${r},${g},${b},${alpha})`;
         }
 
+        // 다크 모드 배경(#0c1220 등)에서도 글자/버튼으로 읽히도록, 어두운 강조색은 같은 색조로 밝기만 올린다(밝은 색은 그대로).
+        function accentForDark(hex) {
+            const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+            if (!m) return hex;
+            let r = parseInt(m[1], 16) / 255, g = parseInt(m[2], 16) / 255, b = parseInt(m[3], 16) / 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b); let h = 0, s = 0; const l = (max + min) / 2;
+            if (max !== min) {
+                const d = max - min; s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6;
+            }
+            const L = Math.max(l, 0.64);
+            const q = L < 0.5 ? L * (1 + s) : L + s - L * s, p = 2 * L - q;
+            const f = (t) => { t = (t + 1) % 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+            const to = (v) => Math.round(v * 255).toString(16).padStart(2, '0');
+            return s === 0 ? `#${to(L)}${to(L)}${to(L)}` : `#${to(f(h + 1 / 3))}${to(f(h))}${to(f(h - 1 / 3))}`;
+        }
         function applyUserCustomization(userData) {
-            const root = document.documentElement;
-            // 강조색: 지정돼 있으면 --primary/--primary-soft를 덮어쓰고, 없으면 기존 사이트 기본값으로 되돌린다
-            if (userData && userData.accentColor) {
-                root.style.setProperty('--primary', userData.accentColor);
-                const soft = hexToRgba(userData.accentColor, 0.14);
-                if (soft) root.style.setProperty('--primary-soft', soft);
+            // 강조색: 지정돼 있으면 쓰고, 없으면 사이트 기본값으로 되돌린다.
+            // ⚠️ 다크 모드는 CSS 가 body.gmw-site-dark 에 --primary 를 직접 정의하므로, <html> 에 값을 넣으면 다크 모드에서 무시된다.
+            //    그래서 <body> 에 라이트/다크용 값을 넣고 gmw-has-accent 클래스로 CSS 가 테마에 맞는 쪽을 고르게 한다(테마가 바뀌어도 다시 적용할 필요 없음).
+            const body = document.body, root = document.documentElement;
+            ['--primary', '--primary-soft'].forEach(k => root.style.removeProperty(k)); // 예전 방식(<html>)의 잔여값 정리
+            const accent = userData && userData.accentColor;
+            if (accent && hexToRgba(accent, 1)) {
+                const dark = accentForDark(accent);
+                body.style.setProperty('--accent-light', accent);
+                body.style.setProperty('--accent-light-soft', hexToRgba(accent, 0.14));
+                body.style.setProperty('--accent-dark', dark);
+                body.style.setProperty('--accent-dark-soft', hexToRgba(dark, 0.18));
+                body.classList.add('gmw-has-accent');
             } else {
-                root.style.removeProperty('--primary');
-                root.style.removeProperty('--primary-soft');
+                ['--accent-light', '--accent-light-soft', '--accent-dark', '--accent-dark-soft'].forEach(k => body.style.removeProperty(k));
+                body.classList.remove('gmw-has-accent');
             }
             // 배경화면은 더 이상 여기서 처리하지 않는다 (IndexedDB 기반으로 바뀌어서 로그인과 무관하게
             // applyCustomBackgroundFromIndexedDB()가 페이지 로드 시 한 번 알아서 적용한다)
