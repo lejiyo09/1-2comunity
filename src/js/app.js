@@ -405,6 +405,99 @@
             const group = document.getElementById(`nav-group-${groupName}`);
             if (group) group.classList.toggle('expanded');
         };
+        // ===== 사이드바 설정: 메뉴 버튼 숨기기 =====
+        // 숨긴 메뉴의 key(data-nav-key 또는 data-tab)를 계정(uid)별로 이 브라우저의 localStorage 에 저장한다(홈 위젯 배치와 같은 방식).
+        // 버튼만 가린다 - 홈 카드 등 다른 경로로는 그 화면에 그대로 들어갈 수 있다. 모바일 하단바/메뉴 시트도 같은 설정을 따른다.
+        const SIDEBAR_HIDDEN_PREFIX = 'hanilgo_sidebar_hidden_';
+        const SIDEBAR_FIXED_KEYS = ['home', 'sidebar']; // 홈과 '사이드바 설정'은 숨길 수 없다(되돌릴 길을 남기기 위해)
+        const sidebarKeyOf = (el) => (el && (el.dataset.navKey || el.dataset.tab)) || null;
+        function loadSidebarHidden() {
+            if (!currentUser) return [];
+            try {
+                const v = JSON.parse(localStorage.getItem(SIDEBAR_HIDDEN_PREFIX + currentUser.uid) || '[]');
+                return Array.isArray(v) ? v.filter(k => typeof k === 'string' && !SIDEBAR_FIXED_KEYS.includes(k)) : [];
+            } catch (e) { return []; }
+        }
+        function saveSidebarHidden(list) {
+            if (!currentUser) return;
+            try {
+                if (list.length) localStorage.setItem(SIDEBAR_HIDDEN_PREFIX + currentUser.uid, JSON.stringify(list));
+                else localStorage.removeItem(SIDEBAR_HIDDEN_PREFIX + currentUser.uid);
+            } catch (e) {}
+        }
+        function applySidebarCustomization() {
+            const hidden = new Set(loadSidebarHidden()); // 로그아웃/게스트면 비어 있어서 전부 보인다(다른 계정 설정이 새지 않는다)
+            document.querySelectorAll('.sidebar-nav .nav-item').forEach(el => {
+                const key = sidebarKeyOf(el);
+                el.classList.toggle('nav-user-hidden', !!key && hidden.has(key));
+            });
+            // 묶음 안의 메뉴를 전부 숨기면 묶음 제목도 같이 숨긴다
+            document.querySelectorAll('.sidebar-nav .nav-group').forEach(g => {
+                const items = [...g.querySelectorAll('.nav-group-items > .nav-item')];
+                g.classList.toggle('nav-user-hidden', items.length > 0 && items.every(i => i.classList.contains('nav-user-hidden')));
+            });
+            document.querySelectorAll('.mb-item[data-tab]').forEach(mb => { // 모바일 하단바
+                const key = mb.dataset.tab;
+                mb.classList.toggle('nav-user-hidden', key !== 'home' && hidden.has(key));
+            });
+        }
+        function renderSidebarSettings() {
+            const list = document.getElementById('sbset-list'); if (!list) return;
+            const hidden = new Set(loadSidebarHidden());
+            list.textContent = '';
+            const row = (el) => {
+                const key = sidebarKeyOf(el); if (!key) return null;
+                const locked = SIDEBAR_FIXED_KEYS.includes(key);
+                const icon = el.querySelector('.nav-icon');
+                const label = document.createElement('label'); label.className = 'sbset-row' + (locked ? ' locked' : '');
+                const name = document.createElement('span');
+                name.textContent = (icon ? icon.textContent.trim() + ' ' : '') + (el.querySelector('.nav-label') || el).textContent.trim();
+                label.appendChild(name);
+                if (locked) { const t = document.createElement('span'); t.className = 'sbset-lock'; t.textContent = '항상 표시'; label.appendChild(t); }
+                else {
+                    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'deco-switch'; cb.dataset.sbKey = key; cb.checked = !hidden.has(key);
+                    cb.addEventListener('change', () => toggleSidebarItem(key, cb.checked));
+                    label.appendChild(cb);
+                }
+                return label;
+            };
+            const canShow = (el) => el.style.display !== 'none'; // 역할/게스트 때문에 원래부터 안 보이는 메뉴는 목록에 넣지 않는다
+            let shown = 0;
+            document.querySelectorAll('.sidebar-nav > *').forEach(node => {
+                if (node.classList.contains('nav-item')) {
+                    if (!canShow(node)) return;
+                    const r = row(node); if (r) { list.appendChild(r); shown++; }
+                } else if (node.classList.contains('nav-group')) {
+                    if (!canShow(node)) return;
+                    const items = [...node.querySelectorAll('.nav-group-items > .nav-item')].filter(canShow);
+                    if (!items.length) return;
+                    const header = node.querySelector('.nav-group-header');
+                    const title = document.createElement('div'); title.className = 'sbset-group-title';
+                    title.textContent = `${header.querySelector('.nav-icon').textContent.trim()} ${header.querySelector('.nav-label').textContent.trim()}`;
+                    list.appendChild(title);
+                    items.forEach(it => { const r = row(it); if (r) { list.appendChild(r); shown++; } });
+                }
+            });
+            const count = document.getElementById('sbset-count');
+            if (count) count.textContent = hidden.size ? `숨긴 메뉴 ${hidden.size}개` : '숨긴 메뉴 없음';
+        }
+        window.toggleSidebarItem = function(key, show) {
+            if (!currentUser || SIDEBAR_FIXED_KEYS.includes(key)) return;
+            const hidden = new Set(loadSidebarHidden());
+            if (show) hidden.delete(key); else hidden.add(key);
+            saveSidebarHidden([...hidden]);
+            applySidebarCustomization();
+            renderSidebarSettings();
+        };
+        window.resetSidebarHidden = function() { saveSidebarHidden([]); applySidebarCustomization(); renderSidebarSettings(); };
+        window.openSidebarSettings = function() {
+            if (!currentUser) return showLoginScreen(() => openSidebarSettings());
+            renderSidebarSettings();
+            document.getElementById('sidebar-settings-modal').style.display = 'flex';
+        };
+        window.closeSidebarSettings = function() { document.getElementById('sidebar-settings-modal').style.display = 'none'; };
+        document.getElementById('sidebar-settings-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSidebarSettings(); });
+
         // 그룹으로 묶인 탭들 - 이 중 하나가 활성화되면 해당 그룹을 자동으로 펼친다
         const NAV_GROUP_OF_TAB = { community:'community', meal:'school', timetable:'school', schedule:'school', exam:'school', cleaning:'school', squad:'school', seat:'school', planner:'study' };
 
@@ -534,6 +627,7 @@
                         document.getElementById('user-profile-card').style.display = 'block';
                         setGuestLockedCards(false);
                         setGuestCommunityNav(true);
+                        applySidebarCustomization(); // 내가 숨겨 둔 사이드바 메뉴 적용
                         const logoutBtnEl = document.getElementById('btn-logout');
                         if (logoutBtnEl) logoutBtnEl.style.display = '';
                         // 글쓰기/좋아요 등 쓰기 동작을 하려다 로그인 위젯이 뜬 경우, 로그인이 끝난 지금
@@ -761,6 +855,7 @@
             document.getElementById('user-profile-card').style.display = 'none';
             document.getElementById('guest-login-card').style.display = 'block';
             document.getElementById('welcome-title').innerText = '둘러보는 중이에요 🏠';
+            applySidebarCustomization(); // 로그아웃 상태에서는 다른 계정의 사이드바 설정을 적용하지 않는다(전부 보임)
             setGuestCommunityNav(false); // 로그아웃(게스트) 상태에서는 사이드바/하단바의 '커뮤니티' 메뉴를 보이지 않게 한다
 
             const communitySecure = document.getElementById('community-secure-content');

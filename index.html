@@ -159,8 +159,9 @@
                             <span class="nav-icon">👤</span><span class="nav-label">내 프로필</span><span class="nav-group-caret">˅</span>
                         </div>
                         <div class="nav-group-items">
-                            <div class="nav-item nav-item-sub" onclick="if(window.openGrowthModal) openGrowthModal()"><span class="nav-label">나의 성장</span></div>
-                            <div class="nav-item nav-item-sub" onclick="if(window.openDecorateModal) openDecorateModal()"><span class="nav-label">내 프로필 설정</span></div>
+                            <div class="nav-item nav-item-sub" data-nav-key="growth" onclick="if(window.openGrowthModal) openGrowthModal()"><span class="nav-label">나의 성장</span></div>
+                            <div class="nav-item nav-item-sub" data-nav-key="decorate" onclick="if(window.openDecorateModal) openDecorateModal()"><span class="nav-label">내 프로필 설정</span></div>
+                            <div class="nav-item nav-item-sub" data-nav-key="sidebar" onclick="openSidebarSettings()"><span class="nav-label">사이드바 설정</span></div>
                         </div>
                     </div>
                 </nav>
@@ -211,6 +212,20 @@
                 <div id="growth-unlocked-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px; font-size:12.5px; color:var(--text-main);"></div>
                 <div style="font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">🔒 다음 해금</div>
                 <div id="growth-locked-list" style="display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--text-muted);"></div>
+            </div>
+        </div>
+
+        <!-- 사이드바 설정: 사이드바 메뉴 버튼을 보이기/숨기기 (이 브라우저의 내 계정에만 저장) -->
+        <div id="sidebar-settings-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-card sbset-card" role="dialog" aria-label="사이드바 설정">
+                <span class="close-btn" onclick="closeSidebarSettings()">&times;</span>
+                <h3 style="font-size:18px; font-weight:800; margin-bottom:6px; color:var(--text-main);">🧭 사이드바 설정</h3>
+                <p class="sbset-desc">스위치를 끄면 그 메뉴 버튼이 사이드바(모바일은 하단바·메뉴)에서 사라져요. 홈과 이 설정은 항상 보여요. 이 기기·이 계정에만 저장돼요.</p>
+                <div id="sbset-list" class="sbset-list"></div>
+                <div class="sbset-foot">
+                    <span id="sbset-count" class="sbset-count"></span>
+                    <button type="button" class="btn-sub" onclick="resetSidebarHidden()">모두 보이기</button>
+                </div>
             </div>
         </div>
 
