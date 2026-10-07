@@ -1,0 +1,11 @@
+{
+  "name": "gmw-build",
+  "private": true,
+  "description": "배포용 파일을 만든다: src/js → js/, src/css → css/ (공백·주석 제거, 이름은 그대로) + 플래너용 Tailwind CSS. 호스팅 쪽에서는 실행하지 않고 결과물(js/, css/)을 커밋한다.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check"
+  },
+  "devDependencies": { "esbuild": "0.21.5", "tailwindcss": "3.4.17" }
+}
