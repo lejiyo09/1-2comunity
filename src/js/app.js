@@ -15,6 +15,7 @@
         // Firebase Auth를 대체하지 않는다 - 로그인은 100% 기존 Firebase 그대로, 파일 저장소만 Supabase를 쓴다.
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         import { firebaseConfig, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_MUSIC_URL, SUPABASE_MUSIC_KEY } from "./config.js";
+        window.__gmwBooted = true; // import(Firebase/Supabase 모듈)가 모두 성공해 앱이 시작됐음 - index.html 의 "불러오지 못했어요" 안내가 이걸 확인한다
 
         // (Firebase 설정/Supabase 주소·공개 키는 js/config.js 에 모아 두었다)
         const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);

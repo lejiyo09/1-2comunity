@@ -38,6 +38,22 @@
 </head>
 <body>
     <div id="gmw-boot-splash" role="status" aria-live="polite"><div class="gmw-spin"></div><div>불러오는 중…</div></div>
+    <script>
+        // 앱 코드(app.js)가 시작되지 못하면(오프라인에서 외부 모듈을 못 받는 등) 영원히 "불러오는 중…"만 보이지 않도록 안내와 "다시 시도"를 보여준다.
+        // app.js 는 import 가 모두 끝나 실행이 시작되면 window.__gmwBooted 를 true 로 만든다(그 뒤의 지연은 앱 안의 기존 처리가 맡는다).
+        setTimeout(function () {
+            try {
+                if (window.__gmwBooted) return;
+                var s = document.getElementById('gmw-boot-splash');
+                if (!s || getComputedStyle(s).display === 'none') return;
+                var offline = navigator.onLine === false;
+                s.innerHTML = '<div style="font-size:34px;">📡</div>'
+                    + '<div style="font-weight:800; font-size:17px;">' + (offline ? '오프라인이라 앱을 열지 못했어요' : '앱을 불러오지 못했어요') + '</div>'
+                    + '<div style="font-size:13px; opacity:.75; max-width:300px; text-align:center; line-height:1.5;">' + (offline ? '인터넷에 연결한 뒤 다시 시도해 주세요. (이 기기에서 한 번이라도 온라인으로 열어 본 뒤부터는 오프라인에서도 열려요)' : '인터넷 연결이 느리거나 불안정해요. 잠시 후 다시 시도해 주세요.') + '</div>'
+                    + '<button type="button" style="margin-top:6px; padding:10px 20px; border-radius:12px; border:0; background:#2f6fed; color:#fff; font-weight:700; cursor:pointer;" onclick="location.reload()">다시 시도</button>';
+            } catch (e) {}
+        }, 10000);
+    </script>
     <div id="auth-container">
         <span id="auth-container-close" onclick="hideLoginScreen()" style="display:none; position:absolute; top:20px; right:24px; font-size:26px; color:var(--text-muted); cursor:pointer; z-index:2;">&times;</span>
         <div class="auth-card" id="login-form">
