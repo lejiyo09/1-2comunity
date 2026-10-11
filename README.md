@@ -17,3 +17,9 @@
 * 변환은 공백/주석 제거와 문법 줄이기뿐이고, 변수·함수 이름은 바꾸지 않는다(HTML 의 `onclick="…"` 이름 참조가 그대로 동작).
 * `npm run check` 로 배포용 파일이 원본과 맞는지 확인할 수 있다(다르면 오류).
 * 플래너 화면의 Tailwind 클래스는 CDN 대신 미리 빌드한 `css/tailwind.css` 를 쓴다. 플래너(`index.html`, `src/js/*.js`)에 새 Tailwind 클래스를 추가했다면 위 빌드가 이 파일도 다시 만든다.
+
+## 오프라인에서 첫 화면이 열리는지 시험하기
+
+`sw.js` 는 앱 파일뿐 아니라 앱이 불러오는 Firebase·Supabase 모듈(외부 서버)도 저장해 두어서, 한 번이라도 온라인으로 열어 본 기기는 오프라인에서도 앱이 시작된다.
+고쳤다면 `cd tools/tests && npm install && npm test` (Chromium 필요, 경로는 `CHROMIUM_PATH`)로 확인한다.
+`node offline_sw_test.mjs old <커밋>` 은 그 커밋의 `sw.js` 로 같은 시험을 해서 **실패해야 정상**이다(시험이 문제를 재현하는지 확인).
