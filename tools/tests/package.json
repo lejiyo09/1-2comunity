@@ -4,10 +4,9 @@
   "type": "module",
   "description": "오프라인 첫 화면, 공지 댓글, 비로그인 바로가기 등을 가짜 Firebase(harness.mjs)로 확인하는 브라우저 시험. 호스팅과 무관(결과물에 포함되지 않음).",
   "scripts": {
-    "test": "PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1 node offline_sw_test.mjs && node boot_fallback_test.mjs && for w in member guest admin; do node notice_comments_test.mjs $w || exit 1; done && for w in denied empty shared noauth member; do node guest_shortcuts_test.mjs $w || exit 1; done && node mail_notify_function_test.mjs && for w in settings triggers notice-new; do node mail_settings_test.mjs $w || exit 1; done"
+    "test": "PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1 node offline_sw_test.mjs && node boot_fallback_test.mjs && for w in member guest admin; do node notice_comments_test.mjs $w || exit 1; done && for w in denied empty shared noauth member; do node guest_shortcuts_test.mjs $w || exit 1; done"
   },
   "devDependencies": {
-    "playwright-core": "1.49.1",
-    "esbuild": "0.21.5"
+    "playwright-core": "1.49.1"
   }
 }

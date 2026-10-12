@@ -95,7 +95,6 @@
             applyPipToggleUI(); // 모달 열 때마다 최신 상태로 동기화
             if (window.renderAccentColorSwatches) window.renderAccentColorSwatches(); // 강조색 선택 UI도 최신 상태로
             if (window.updateBgSettingsUI) window.updateBgSettingsUI(); // 배경화면 선택 UI도 최신 상태로
-            if (window.renderMailSettings) window.renderMailSettings(); // 이메일 알림 상태도 최신으로
             modal.style.display = 'flex';
         });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
