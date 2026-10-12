@@ -406,6 +406,87 @@
             const group = document.getElementById(`nav-group-${groupName}`);
             if (group) group.classList.toggle('expanded');
         };
+        // ===== 이메일 알림(Gmail SMTP): Supabase Edge Function mail-notify =====
+        // 주소/구독은 서버(RLS 로 잠긴 테이블)에만 저장된다. 여기서는 Firebase ID 토큰을 붙여 함수를 부르기만 한다.
+        const MAIL_NOTIFY_URL = `${SUPABASE_URL}/functions/v1/mail-notify`;
+        async function mailApi(action, body) {
+            if (!currentUser || !currentUser.getIdToken) throw new Error('로그인이 필요해요.');
+            const token = await currentUser.getIdToken();
+            const res = await fetch(MAIL_NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, ...(body || {}) }) });
+            let data = null; try { data = await res.json(); } catch (e) {}
+            if (res.status === 404) throw new Error('이메일 알림 기능이 아직 서버에 설치되지 않았어요.(관리자: docs/email-notify.md)');
+            if (!res.ok) throw new Error((data && data.error) || '요청을 처리하지 못했어요.');
+            return data;
+        }
+        // 댓글/공지를 올린 직후 서버에 "알려 달라"고 요청한다. 알림은 부가 기능이라 실패해도 조용히 넘어간다(글/댓글 저장에는 영향 없음).
+        function mailNotify(body) {
+            if (!currentUser) return;
+            mailApi('notify_' + body.type, body).catch((e) => console.warn('이메일 알림 요청 실패(무시):', e && e.message));
+        }
+        let mailState = null, mailBusy = false;
+        function setMailMsg(text, isError) {
+            const el = document.getElementById('mail-settings-msg'); if (!el) return;
+            el.textContent = text || ''; el.style.color = isError ? '#dc2626' : 'var(--primary)';
+        }
+        window.renderMailSettings = async function() {
+            const body = document.getElementById('mail-settings-body'); if (!body) return;
+            setMailMsg('');
+            if (!currentUser) { body.innerHTML = `<div style="font-size:12.5px; color:var(--text-muted);">로그인하면 설정할 수 있어요.</div>`; return; }
+            if (!mailState) body.innerHTML = `<div style="font-size:12.5px; color:var(--text-muted);">불러오는 중…</div>`;
+            try { mailState = await mailApi('get'); } catch (e) { mailState = null; body.innerHTML = ''; setMailMsg(e.message, true); return; }
+            drawMailSettings();
+        };
+        function drawMailSettings() {
+            const body = document.getElementById('mail-settings-body'); if (!body || !mailState) return;
+            const st = mailState; const esc = escapeNoticeText;
+            const row = (id, label, checked) => `<label class="sbset-row" style="margin-top:6px;"><span>${label}</span><input type="checkbox" class="deco-switch" id="${id}" ${checked ? 'checked' : ''}></label>`;
+            if (st.verified) {
+                body.innerHTML = `<div style="font-size:13px; margin-bottom:4px;">✅ <b>${esc(st.email)}</b> 로 알려드려요</div>
+                    ${row('mail-pref-comments', '내 글·공지에 댓글이 달리면', st.notifyComments)}
+                    ${row('mail-pref-notices', '새 공지가 올라오면', st.notifyNotices)}
+                    <button type="button" class="btn-sub" style="margin-top:10px;" id="mail-remove-btn">알림 끄고 주소 삭제</button>`;
+                document.getElementById('mail-pref-comments').addEventListener('change', (e) => saveMailPrefs({ notifyComments: e.target.checked }));
+                document.getElementById('mail-pref-notices').addEventListener('change', (e) => saveMailPrefs({ notifyNotices: e.target.checked }));
+                document.getElementById('mail-remove-btn').addEventListener('click', removeMailSub);
+            } else if (st.email) { // 코드를 보낸 상태
+                body.innerHTML = `<div style="font-size:12.5px; color:var(--text-muted); margin-bottom:8px;"><b>${esc(st.email)}</b> 로 보낸 6자리 코드를 입력해 주세요. (10분 안에, 메일이 안 보이면 스팸함도 확인해 주세요)</div>
+                    <div class="deco-nick-row"><input id="mail-code-input" class="auth-input" inputmode="numeric" maxlength="6" placeholder="6자리 코드" autocomplete="one-time-code">
+                    <button type="button" class="btn-sub" id="mail-verify-btn">확인</button></div>
+                    <button type="button" class="btn-sub" style="margin-top:8px;" id="mail-change-btn">다른 주소로 바꾸기</button>`;
+                const input = document.getElementById('mail-code-input');
+                document.getElementById('mail-verify-btn').addEventListener('click', verifyMailCode);
+                input.addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyMailCode(); });
+                document.getElementById('mail-change-btn').addEventListener('click', () => { mailState = { ...mailState, email: null }; drawMailSettings(); });
+            } else {
+                body.innerHTML = `<div class="deco-nick-row"><input id="mail-email-input" class="auth-input" type="email" maxlength="100" placeholder="내 Gmail 주소 (예: name@gmail.com)" autocomplete="email">
+                    <button type="button" class="btn-sub" id="mail-request-btn">인증 코드 받기</button></div>`;
+                const input = document.getElementById('mail-email-input');
+                document.getElementById('mail-request-btn').addEventListener('click', requestMailCode);
+                input.addEventListener('keydown', (e) => { if (e.key === 'Enter') requestMailCode(); });
+            }
+        }
+        async function mailAction(fn) { if (mailBusy) return; mailBusy = true; try { await fn(); } catch (e) { setMailMsg(e.message, true); } finally { mailBusy = false; } }
+        function requestMailCode() { return mailAction(async () => {
+            const email = (document.getElementById('mail-email-input').value || '').trim();
+            if (!/^[^\s@]+@(gmail|googlemail)\.com$/i.test(email)) return setMailMsg('Gmail 주소(@gmail.com)를 입력해 주세요.', true);
+            setMailMsg('인증 코드를 보내는 중…');
+            const r = await mailApi('request_code', { email });
+            if (r && r.alreadyVerified) { mailState = r; drawMailSettings(); return setMailMsg('이미 인증된 주소예요.'); }
+            mailState = { email: email.toLowerCase(), verified: false, notifyComments: true, notifyNotices: true };
+            drawMailSettings(); setMailMsg('인증 코드를 보냈어요. 메일을 확인해 주세요.');
+        }); }
+        function verifyMailCode() { return mailAction(async () => {
+            const code = (document.getElementById('mail-code-input').value || '').trim();
+            if (!/^\d{6}$/.test(code)) return setMailMsg('6자리 숫자를 입력해 주세요.', true);
+            mailState = await mailApi('verify_code', { code });
+            drawMailSettings(); setMailMsg('이메일 알림이 켜졌어요! 🎉');
+        }); }
+        function saveMailPrefs(patch) { return mailAction(async () => { mailState = await mailApi('update_prefs', patch); drawMailSettings(); setMailMsg('저장했어요.'); }); }
+        function removeMailSub() { return mailAction(async () => {
+            if (!confirm('이메일 알림을 끄고 저장된 주소를 삭제할까요?')) return;
+            mailState = await mailApi('remove'); drawMailSettings(); setMailMsg('알림을 껐고 주소를 삭제했어요.');
+        }); }
+
         // ===== 사이드바 설정: 메뉴 버튼 숨기기 =====
         // 숨긴 메뉴의 key(data-nav-key 또는 data-tab)를 계정(uid)별로 이 브라우저의 localStorage 에 저장한다(홈 위젯 배치와 같은 방식).
         // 버튼만 가린다 - 홈 카드 등 다른 경로로는 그 화면에 그대로 들어갈 수 있다. 모바일 하단바/메뉴 시트도 같은 설정을 따른다.
@@ -2207,13 +2288,14 @@
                         title, content, contentHTML, category, important, showInPopup, updatedAt: Date.now()
                     });
                 } else {
-                    await addDoc(collection(fdb, 'notices'), {
+                    const noticeRef = await addDoc(collection(fdb, 'notices'), {
                         title, content, contentHTML, category, important, showInPopup,
                         authorName: getAuthorName(),
                         authorUid: currentUser.uid,
                         authorOriginal: currentUser.email || '',
                         createdAt: Date.now()
                     });
+                    mailNotify({ type: 'notice', noticeId: noticeRef.id }); // 알림을 켠 사람들에게 이메일 요청(서버가 확인)
                 }
                 closeNoticeComposer();
             } catch (e) { alert('공지 등록에 실패했습니다. (권한 또는 네트워크 오류)'); }
@@ -2495,13 +2577,15 @@
             if (!input || !input.value.trim() || (btn && btn.disabled)) return;
             if (btn) btn.disabled = true;
             try {
-                await addDoc(collection(fdb, 'notices', noticeId, 'comments'), {
+                const commentRef = await addDoc(collection(fdb, 'notices', noticeId, 'comments'), {
                     authorId: currentUser.uid,
                     authorName: getAuthorName(),
                     authorOriginal: currentUser.email || getAuthorOriginal(),
                     content: input.value.trim().slice(0, 500), createdAt: Date.now()
                 });
                 input.value = '';
+                const n = noticesCache[noticeId];
+                if (n && n.authorUid && n.authorUid !== currentUser.uid) mailNotify({ type: 'comment', kind: 'notice', parentId: noticeId, commentId: commentRef.id });
             } catch (e) {
                 alert('댓글을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.\n(계속되면 Firestore 보안 규칙에 notices/{공지}/comments 허용이 필요해요 - docs/notice-comments.md)');
             } finally { if (btn) btn.disabled = false; }
@@ -6376,13 +6460,15 @@
             if (!currentUser) return showLoginScreen(() => addComment(postId));
             const commentInput = document.getElementById(`reply-${postId}`);
             if (!commentInput || !commentInput.value.trim()) return;
-            await addDoc(collection(fdb, 'posts', postId, 'comments'), {
+            const commentRef = await addDoc(collection(fdb, 'posts', postId, 'comments'), {
                 authorId: currentUser.uid, 
                 authorName: getAuthorName(), 
                 authorOriginal: currentUser.email || getAuthorOriginal(), 
                 content: commentInput.value, createdAt: Date.now()
             });
             commentInput.value = "";
+            // 내 글이 아니면 글쓴이에게 이메일 알림을 요청한다(서버가 구독 여부를 확인)
+            if (latestPostsData[postId] && latestPostsData[postId].authorId !== currentUser.uid) mailNotify({ type: 'comment', kind: 'post', parentId: postId, commentId: commentRef.id });
             // 미션: 댓글이 정상 저장됐고, 본인 글이 아닐 때만 인정
             const postData = latestPostsData[postId];
             if (postData && postData.authorId !== currentUser.uid && window.completeDailyMission) {
