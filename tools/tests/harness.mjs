@@ -106,11 +106,12 @@ const MODULES = {
   'firebase-firestore.js': moduleOf('fsApi', ['getFirestore', 'initializeFirestore', 'persistentLocalCache', 'persistentMultipleTabManager', 'collection', 'doc', 'getDoc', 'getDocs', 'setDoc', 'addDoc', 'updateDoc', 'deleteDoc', 'query', 'where', 'orderBy', 'onSnapshot', 'runTransaction']),
 };
 const SUPABASE_STUB = `
-const chain = () => new Proxy(function () {}, {
-  get: (t, k) => k === 'then' ? (res) => res({ data: [], error: null, count: 0 }) : chain(),
-  apply: () => chain(),
+// from('테이블') 뒤에 어떤 메서드를 이어 붙이든 await 하면 window.__sbRows[테이블] (시험이 넣어 준 행들)을 돌려준다.
+const chain = (table) => new Proxy(function () {}, {
+  get: (t, k) => k === 'then' ? (res) => res({ data: ((window.__sbRows || {})[table] || []).map(r => ({ ...r })), error: null, count: 0 }) : k === 'from' ? (x) => chain(x) : chain(table),
+  apply: () => chain(table),
 });
-export const createClient = () => chain();
+export const createClient = () => chain('');
 `;
 
 export async function bootApp(opts = {}) {
@@ -126,8 +127,8 @@ export async function bootApp(opts = {}) {
   const browser = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport, serviceWorkers: 'block' });
   const cfg = { uid: opts.uid || 'userA', userEmail: opts.userEmail, guest: !!opts.guest, noAuth: !!opts.noAuth, anonFail: !!opts.anonFail, authDelay: opts.authDelay || 0, rtdbDeny: opts.rtdbDeny || null, fsDeny: opts.fsDeny || null,
-    rtdb: Object.assign(opts.userData ? { [`users/${opts.uid || 'userA'}`]: opts.userData } : {}, opts.rtdb || {}), fsData: opts.fsData || {} };
-  await ctx.addInitScript(`window.__FB_CFG = ${JSON.stringify(cfg)};\n${FB_CORE}`);
+    sbRows: opts.sbRows || {}, rtdb: Object.assign(opts.userData ? { [`users/${opts.uid || 'userA'}`]: opts.userData } : {}, opts.rtdb || {}), fsData: opts.fsData || {} };
+  await ctx.addInitScript(`window.__FB_CFG = ${JSON.stringify(cfg)}; window.__sbRows = ${JSON.stringify(cfg.sbRows)};\n${FB_CORE}`);
   const js = (body) => ({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body });
   await ctx.route(/^https:\/\/www\.gstatic\.com\/firebasejs\//, (route) => route.fulfill(js(MODULES[new URL(route.request().url()).pathname.split('/').pop()] || 'export {};')));
   await ctx.route(/^https:\/\/esm\.sh\//, (route) => route.fulfill(js(SUPABASE_STUB)));

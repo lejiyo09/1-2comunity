@@ -78,10 +78,10 @@ JS 로 만든 `style.backgroundImage = "url(x.png)"` 같은 문자열 안의 상
 환경 변수는 따로 필요 없다(이 사이트는 빌드 없는 정적 사이트).
 Netlify 는 저장소의 `_redirects` 가 이미 같은 규칙이다.
 
-### 3) 추천 앱 지정 / 운영(SQL)
+### 3) (참고) 추천 앱 지정 — 지금은 화면에 쓰이지 않음
 
 ```sql
-update public.apps set featured = true  where id = '<앱ID>';   -- 앱스토어 "추천 앱"에 노출
+update public.apps set featured = true  where id = '<앱ID>';   -- (전체 화면에서 "추천 앱" 구역을 없애서 현재는 표시되지 않음. 열은 그대로 남겨 둠)
 update public.apps set published = false where id = '<앱ID>';  -- 문제 있는 앱을 목록/주소에서 숨김
 delete from public.apps where id = '<앱ID>';                   -- 완전 삭제(버전 이력도 함께; Storage 파일은 apps-write delete 또는 대시보드에서)
 ```
@@ -103,3 +103,8 @@ delete from public.apps where id = '<앱ID>';                   -- 완전 삭제
 8. 같은 `/app/<고유ID>` 주소를 새로고침 → **새 버전이 실행**되고 주소는 그대로인지, 상세의 "업데이트 기록"에 두 버전이 보이는지 확인.
 9. 상세의 **⬇ HTML 다운로드**(ZIP 앱이면 ZIP 다운로드) → 파일이 내려받아지는지 확인.
 10. (ZIP) `index.html` + `style.css` + `script.js` + `assets/` 를 압축해 같은 방식으로 등록 → 실행 확인. 일부러 `../x.html` 이 든 ZIP 이나 `index.html` 이 없는 ZIP 을 올리면 거부 메시지가 나와야 한다.
+
+## 앱스토어 "전체" 목록 순서
+* 맨 위 **한 줄**은 **🔥 인기 앱**(조회수 높은 순, 같으면 최근 등록순). 그 줄에 들어가는 개수는 화면 폭에 맞춰 자동으로 정해진다(PC 는 한 줄에 보이는 카드 수만큼, 창 크기를 바꾸면 다시 맞춘다). 모바일(1열)에서는 옆으로 넘겨 보는 한 줄에 6개를 보여준다.
+* 그 아래는 **🆕 최신 앱**: 나머지 앱을 **최근 등록한 것부터** 모두 보여준다(인기 줄에 나온 앱은 다시 나오지 않는다).
+* 카테고리를 고르거나 검색하면 이전처럼 하나의 목록으로 보인다. (예전의 "추천 앱" 구역은 없앴다.)
