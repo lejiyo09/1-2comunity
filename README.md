@@ -23,3 +23,8 @@
 `sw.js` 는 앱 파일뿐 아니라 앱이 불러오는 Firebase·Supabase 모듈(외부 서버)도 저장해 두어서, 한 번이라도 온라인으로 열어 본 기기는 오프라인에서도 앱이 시작된다.
 고쳤다면 `cd tools/tests && npm install && npm test` (Chromium 필요, 경로는 `CHROMIUM_PATH`)로 확인한다.
 `node offline_sw_test.mjs old <커밋>` 은 그 커밋의 `sw.js` 로 같은 시험을 해서 **실패해야 정상**이다(시험이 문제를 재현하는지 확인).
+
+## 기능 시험 (가짜 Firebase)
+
+`tools/tests/harness.mjs` 는 실제 `index.html` 과 `js/`·`css/` 를 열고 Firebase(Auth/RTDB/Firestore)·Supabase 를 메모리 안의 가짜로 바꿔서, 인터넷 없이 로그인/게스트 화면을 시험하게 해 준다.
+새 시험은 `bootApp({ userData, uid, userEmail, guest, noAuth, rtdb, fsData, rtdbDeny, fsDeny })` 로 시작한다(`tools/tests/notice_comments_test.mjs` 참고).
