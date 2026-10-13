@@ -538,6 +538,9 @@
         .as-section { margin-top:18px; }
         .as-section-title { font-size:16px; font-weight:800; color:var(--text-main); margin-bottom:10px; }
         .as-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+        /* 모바일(1열)에서 인기 앱 줄: 옆으로 넘겨 보는 한 줄 */
+        .as-grid.as-strip { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(240px, 82%); overflow-x:auto; scroll-snap-type:x proximity; padding-bottom:6px; -webkit-overflow-scrolling:touch; }
+        .as-grid.as-strip > .as-card { scroll-snap-align:start; }
         .as-card { position:relative; display:flex; gap:14px; align-items:flex-start; padding:14px; border:1px solid var(--border-color); border-radius:16px; background:var(--card-bg); cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; min-width:0; }
         .as-card:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,0.08); }
         .as-card-body { flex:1; min-width:0; }

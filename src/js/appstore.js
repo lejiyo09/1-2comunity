@@ -54,6 +54,17 @@
         // ---------------------------------------------------------------- 상태
         const AS = { apps: [], loadedAt: 0, loading: false, loadError: '', cat: '전체', q: '', mine: null, view: 'list', appId: null, app: null, form: null, runFrame: null, runAppId: null };
 
+        // 창 크기가 바뀌어 한 줄에 들어가는 카드 수가 달라지면 "전체"의 인기 앱 줄을 다시 맞춘다
+        let asResizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(asResizeTimer);
+            asResizeTimer = setTimeout(() => {
+                const root = document.getElementById('as-root');
+                if (!root || AS.view !== 'list' || AS.cat !== '전체' || AS.q.trim() || !root.offsetParent) return;
+                if (asGridColumns(root) !== AS.homeCols) asRenderList(root);
+            }, 150);
+        });
+
         // ---------------------------------------------------------------- 서버 호출
         async function asCallFn(body) {
             const token = await AUTH().token();
@@ -122,7 +133,32 @@
                 ${mine ? `<button class="as-card-edit" data-as="edit" data-id="${asEsc(app.id)}" title="수정">✏️</button>` : ''}
             </div>`;
         }
-        const asSection = (title, apps, opts) => apps.length ? `<section class="as-section"><h3 class="as-section-title">${title}</h3><div class="as-grid">${apps.map(a => asCardHtml(a, opts)).join('')}</div></section>` : '';
+        const asSection = (title, apps, opts) => apps.length ? `<section class="as-section"><h3 class="as-section-title">${title}</h3><div class="as-grid${opts && opts.strip ? ' as-strip' : ''}">${apps.map(a => asCardHtml(a, opts)).join('')}</div></section>` : '';
+
+        // 지금 화면 폭에서 카드 목록(.as-grid)이 한 줄에 몇 개 들어가는지(CSS grid 의 실제 열 수)를 잰다. 모바일처럼 1열이면 1을 돌려준다.
+        function asGridColumns(root) {
+            const probe = document.createElement('div');
+            probe.className = 'as-grid';
+            probe.style.cssText = 'visibility:hidden; height:0; overflow:hidden; margin:0; padding:0;'; // 흐름 안에 둬서 실제 카드 목록과 같은 너비로 잰다
+            probe.innerHTML = '<div></div>'.repeat(12);
+            root.appendChild(probe);
+            const cols = getComputedStyle(probe).gridTemplateColumns.split(' ').filter(Boolean).length;
+            probe.remove();
+            return cols || 1;
+        }
+        const AS_STRIP_COUNT = 6; // 1열(모바일)일 때 인기 앱 줄은 옆으로 넘겨 보는 한 줄로 이만큼 보여준다
+        // 앱스토어 "전체": 맨 위 한 줄은 인기 앱(조회수 순), 그 아래는 나머지 앱을 최신 등록순으로.
+        function asHomeSections(root, visibleApps) {
+            const cols = asGridColumns(root);
+            const strip = cols <= 1;
+            const n = strip ? AS_STRIP_COUNT : cols;
+            AS.homeCols = cols;
+            const byNewest = (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''));
+            const popular = [...visibleApps].sort((a, b) => ((b.views || 0) - (a.views || 0)) || byNewest(a, b)).slice(0, n);
+            const shown = new Set(popular.map(a => a.id));
+            const latest = visibleApps.filter(a => !shown.has(a.id)).sort(byNewest); // 인기 줄에 이미 나온 앱은 다시 나오지 않는다
+            return asSection('🔥 인기 앱', popular, { strip }) + asSection('🆕 최신 앱', latest);
+        }
 
         // ---------------------------------------------------------------- 렌더링: 목록
         function asRenderList(root) {
@@ -147,14 +183,7 @@
                 } else if (!visibleApps.length) {
                     body = '<div class="as-empty">아직 등록된 앱이 없어요. 첫 번째 앱을 올려보세요! 🚀</div>';
                 } else {
-                    const popular = [...visibleApps].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
-                    const latest = visibleApps.slice(0, 6);
-                    let featured = visibleApps.filter(a => a.featured).slice(0, 6);
-                    if (!featured.length) { // 추천 앱을 따로 지정하지 않았다면 날짜마다 바뀌는 추천을 보여준다
-                        const day = Math.floor(Date.now() / 86400000);
-                        featured = [...visibleApps].sort((a, b) => ((a.id.charCodeAt(0) * 31 + day) % 97) - ((b.id.charCodeAt(0) * 31 + day) % 97)).slice(0, Math.min(3, visibleApps.length));
-                    }
-                    body = asSection('🔥 인기 앱', popular) + asSection('🆕 최신 앱', latest) + asSection('✨ 추천 앱', featured);
+                    body = asHomeSections(root, visibleApps);
                 }
             }
             root.innerHTML = `

@@ -856,6 +856,7 @@
             document.getElementById('user-profile-card').style.display = 'none';
             document.getElementById('guest-login-card').style.display = 'block';
             document.getElementById('welcome-title').innerText = '둘러보는 중이에요 🏠';
+            listenToShortcuts(); renderShortcuts(); // 비로그인에서도 기본 바로가기 표시
             applySidebarCustomization(); // 로그아웃 상태에서는 다른 계정의 사이드바 설정을 적용하지 않는다(전부 보임)
             setGuestCommunityNav(false); // 로그아웃(게스트) 상태에서는 사이드바/하단바의 '커뮤니티' 메뉴를 보이지 않게 한다
 
@@ -2221,7 +2222,9 @@
         window.deleteNoticeConfirm = async function(noticeId) {
             if (!currentUser || !canPostNotice) return alert('삭제 권한이 없습니다.');
             if (!confirm('이 공지를 삭제하시겠습니까?')) return;
-            try { await deleteDoc(doc(fdb, 'notices', noticeId)); } catch (e) {}
+            try { await deleteDoc(doc(fdb, 'notices', noticeId)); } catch (e) { return; }
+            // 하위 컬렉션(댓글)은 문서를 지워도 남으므로 함께 지운다(실패해도 공지 삭제에는 영향 없음)
+            try { const cs = await getDocs(collection(fdb, 'notices', noticeId, 'comments')); await Promise.all(cs.docs.map(d => deleteDoc(d.ref))); } catch (e) {}
         }
 
         window.toggleNoticePopupShow = async function(noticeId, current) {
@@ -2429,12 +2432,103 @@
                     <h2 class="detail-title">${escapeNoticeText(n.title)}</h2>
                     <div class="detail-body">${renderRichOrPlain(n, 'contentHTML', 'content')}</div>
                     ${canPostNotice ? `<div class="detail-actions" style="border-bottom:none;">✅ 확인 ${readCount}명</div>` : ''}
+                    <div class="detail-comments" id="notice-comments-wrap">
+                        <div id="notice-comments-list"></div>
+                        <div class="detail-comment-composer">
+                            <input type="text" id="notice-reply" maxlength="500" placeholder="${currentUser ? '댓글을 남겨주세요...' : '로그인하면 댓글을 남길 수 있어요'}" onkeydown="if(event.key==='Enter'){ event.preventDefault(); addNoticeComment('${id}'); }">
+                            <button class="primary" id="notice-reply-btn" onclick="addNoticeComment('${id}')">등록</button>
+                        </div>
+                    </div>
                 </div>
             `;
+            subscribeNoticeComments(id);
         }
         window.showNoticeDetail = showNoticeDetail; // 인라인 onclick(HTML)은 window 스코프에서 찾으므로 명시적으로 노출
 
+        // ----- 공지 댓글: Firestore notices/{noticeId}/comments/{commentId} (게시글 댓글과 같은 모양) -----
+        // 지금 열려 있는 공지의 댓글만 구독한다(목록에서 공지 수만큼 구독을 걸지 않는다).
+        let noticeCommentsUnsub = null, noticeCommentsFor = null, noticeCommentsCache = {}, noticeCommentsError = null;
+        function stopNoticeComments() {
+            if (noticeCommentsUnsub) { try { noticeCommentsUnsub(); } catch (e) {} }
+            noticeCommentsUnsub = null; noticeCommentsFor = null; noticeCommentsCache = {}; noticeCommentsError = null;
+        }
+        function subscribeNoticeComments(noticeId) {
+            stopNoticeComments();
+            noticeCommentsFor = noticeId;
+            renderNoticeComments();
+            noticeCommentsUnsub = onSnapshot(collection(fdb, 'notices', noticeId, 'comments'), (snap) => {
+                noticeCommentsError = null; noticeCommentsCache = fsSnapshotToMap(snap); renderNoticeComments();
+            }, (err) => { noticeCommentsError = err; renderNoticeComments(); });
+        }
+        function renderNoticeComments() {
+            const box = document.getElementById('notice-comments-list');
+            const id = noticeCommentsFor;
+            if (!box || !id) return;
+            if (noticeCommentsError) {
+                box.innerHTML = `<div class="detail-comments-title">댓글</div><div style="color:var(--text-muted); font-size:13px; padding:6px 0 14px;">댓글을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>`;
+                return;
+            }
+            const entries = Object.entries(noticeCommentsCache).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+            let html = `<div class="detail-comments-title">댓글 ${entries.length}개</div>`;
+            if (entries.length === 0) {
+                html += `<div style="color:var(--text-muted); font-size:13px; padding:6px 0 14px;">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</div>`;
+            } else {
+                entries.forEach(([commentId, c]) => {
+                    const isMine = !!currentUser && currentUser.uid === c.authorId;
+                    const canDel = isMine || isAdmin || isSubAdmin || isOperator || canPostNotice;
+                    html += `
+                        <div class="detail-comment-item">
+                            <span class="detail-comment-name">${communityAuthorHTML(c.authorName, c.authorOriginal)}</span><span class="detail-comment-time">${formatCommentTime(c.createdAt)}${c.editedAt ? ' · 수정됨' : ''}</span>
+                            <span class="detail-comment-actions">
+                                ${isMine ? `<span onclick="editNoticeComment('${id}', '${commentId}')" style="color:var(--primary);">수정</span>` : ''}
+                                ${canDel ? `<span onclick="deleteNoticeComment('${id}', '${commentId}', '${escapeJsAttr(c.authorId || '')}')" style="color:#ef4444;">삭제</span>` : ''}
+                            </span>
+                            <div class="detail-comment-body">${renderContentWithEmojis(c.content)}</div>
+                        </div>`;
+                });
+            }
+            box.innerHTML = html;
+        }
+        window.addNoticeComment = async function(noticeId) {
+            if (!currentUser) return showLoginScreen(() => addNoticeComment(noticeId));
+            const input = document.getElementById('notice-reply'), btn = document.getElementById('notice-reply-btn');
+            if (!input || !input.value.trim() || (btn && btn.disabled)) return;
+            if (btn) btn.disabled = true;
+            try {
+                await addDoc(collection(fdb, 'notices', noticeId, 'comments'), {
+                    authorId: currentUser.uid,
+                    authorName: getAuthorName(),
+                    authorOriginal: currentUser.email || getAuthorOriginal(),
+                    content: input.value.trim().slice(0, 500), createdAt: Date.now()
+                });
+                input.value = '';
+            } catch (e) {
+                alert('댓글을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.\n(계속되면 Firestore 보안 규칙에 notices/{공지}/comments 허용이 필요해요 - docs/notice-comments.md)');
+            } finally { if (btn) btn.disabled = false; }
+        };
+        window.deleteNoticeComment = async function(noticeId, commentId, commentAuthorId) {
+            if (!currentUser) return;
+            if (!(currentUser.uid === commentAuthorId || isAdmin || isSubAdmin || isOperator || canPostNotice)) return alert('권한이 없습니다.');
+            if (!confirm('댓글을 삭제하시겠습니까?')) return;
+            try { await deleteDoc(doc(fdb, 'notices', noticeId, 'comments', commentId)); }
+            catch (e) { alert('삭제하지 못했어요: ' + (e && e.message ? e.message : e)); }
+        };
+        window.editNoticeComment = async function(noticeId, commentId) {
+            if (!currentUser) return;
+            const cRef = doc(fdb, 'notices', noticeId, 'comments', commentId);
+            const snap = await getDoc(cRef);
+            const c = snap.exists() ? snap.data() : null;
+            if (!c) return;
+            if (currentUser.uid !== c.authorId) return alert('본인 댓글만 수정할 수 있습니다.');
+            const next = prompt('댓글 수정:', c.content);
+            if (next === null) return;
+            if (!next.trim()) return alert('내용을 입력해주세요.');
+            try { await updateDoc(cRef, { content: next.trim().slice(0, 500), editedAt: Date.now() }); }
+            catch (e) { alert('수정하지 못했어요: ' + (e && e.message ? e.message : e)); }
+        };
+
         window.closeNoticeDetailView = function() {
+            stopNoticeComments();
             const detailEl = document.getElementById('notice-hub-detail-view');
             if (detailEl) { detailEl.style.display = 'none'; detailEl.innerHTML = ''; }
             document.getElementById('notice-hub-feed-view').style.display = 'block';
@@ -10173,8 +10267,15 @@
             try { localStorage.setItem(PERSONAL_SHORTCUTS_KEY, JSON.stringify(map)); } catch (e) {}
         }
 
+        // 로그아웃(게스트) 상태에서도 기본 바로가기는 보인다: 반 공용 바로가기를 읽을 수 있으면 그것을, 못 읽거나(권한) 비어 있으면
+        // 위의 기본값(DEFAULT_SHORTCUTS_SEED)을 보여준다. 개인 바로가기(내 계정/이 브라우저)는 로그인했을 때만 보인다.
+        let shortcutsUnsub = null, shortcutsListenedAs = null;
         function listenToShortcuts() {
-            onValue(ref(db, 'dashboard/shortcuts'), (snap) => {
+            const as = currentUser ? 'user' : 'guest';
+            if (shortcutsUnsub && shortcutsListenedAs === as) return; // 같은 상태에서 여러 번 불려도 한 번만 구독한다
+            if (shortcutsUnsub) { try { shortcutsUnsub(); } catch (e) {} }
+            shortcutsListenedAs = as;
+            shortcutsUnsub = onValue(ref(db, 'dashboard/shortcuts'), (snap) => {
                 shortcutsCache = snap.val() || {};
                 if (Object.keys(shortcutsCache).length === 0 && canManageShortcuts && !shortcutsSeedAttempted) {
                     // 최초 1회, 편집 권한이 있는 뷰어만 시도한다 (일반 뷰어가 시도하면 규칙상 permission_denied가 날 수 있음).
@@ -10182,15 +10283,17 @@
                     set(ref(db, 'dashboard/shortcuts'), DEFAULT_SHORTCUTS_SEED).catch(() => {});
                 }
                 renderShortcuts();
-            });
+            }, () => { shortcutsCache = {}; renderShortcuts(); }); // 읽기 권한이 없으면(게스트 등) 기본값으로 보여준다
         }
 
         function renderShortcuts() {
             const grid = document.getElementById('shortcuts-grid');
             if (!grid) return;
-            const personalShortcuts = loadPersonalShortcuts();
+            const personalShortcuts = currentUser ? loadPersonalShortcuts() : {};
+            // 로그인 전에는 반 공용 목록을 못 읽거나 비어 있을 수 있어서, 그때는 기본 바로가기를 보여준다.
+            const shared = (!currentUser && Object.keys(shortcutsCache).length === 0) ? DEFAULT_SHORTCUTS_SEED : shortcutsCache;
             const entries = [
-                ...Object.entries(shortcutsCache).map(([id, sc]) => ({ id, sc, personal: false })),
+                ...Object.entries(shared).map(([id, sc]) => ({ id, sc, personal: false })),
                 ...Object.entries(personalShortcuts).map(([id, sc]) => ({ id, sc, personal: true }))
             ].sort((a, b) => (a.sc.order || 0) - (b.sc.order || 0));
             grid.innerHTML = entries.map(({ id, sc, personal }) => {
@@ -10212,7 +10315,7 @@
             const btn = document.getElementById('btn-add-shortcut');
             if (btn) btn.style.display = (homeSectionEditMode && canManageShortcuts) ? 'inline-flex' : 'none';
             const personalBtn = document.getElementById('btn-add-shortcut-personal');
-            if (personalBtn) personalBtn.style.display = homeSectionEditMode ? 'inline-flex' : 'none';
+            if (personalBtn) personalBtn.style.display = (homeSectionEditMode && currentUser) ? 'inline-flex' : 'none';
             renderShortcuts();
         }
 
