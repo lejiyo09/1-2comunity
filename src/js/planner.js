@@ -1022,6 +1022,7 @@
     }
 
     function updateWorkspaceView() {
+       renderPlanLinks(); // 보고 있는 날짜가 바뀌면 "오늘의 계획"/"이번 주 계획"도 그 날짜 기준으로
        const iframeCont = document.getElementById('workspace-iframe-container');
        const statsCont = document.getElementById('workspace-past-stats');
        const title = document.getElementById('workspace-title');
@@ -1162,7 +1163,42 @@
     const mpDateStr = (d) => `${mpKey()}-${String(d).padStart(2, '0')}`;
     const mpEsc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     function mpEnsureMonth() { const k = mpKey(); if (!monthlyPlans[k] || typeof monthlyPlans[k] !== 'object') monthlyPlans[k] = { goal: '', days: {} }; if (!monthlyPlans[k].days) monthlyPlans[k].days = {}; return monthlyPlans[k]; }
-    function mpSave() { try { localStorage.setItem('planner_monthly_plans', JSON.stringify(monthlyPlans)); } catch (e) { console.warn('월별 계획 저장 실패:', e); } }
+    function mpSave() { try { localStorage.setItem('planner_monthly_plans', JSON.stringify(monthlyPlans)); } catch (e) { console.warn('월별 계획 저장 실패:', e); } renderPlanLinks(); }
+    // ----- 월별 계획 → 플래너 화면: 오늘 메모장 위 "오늘의 계획" + 상단 "이번 주 계획" -----
+    function p2(n) { return String(n).padStart(2, '0'); }
+    function ymdOf(d) { return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; }
+    function mpPlanFor(ds) { const m = monthlyPlans[String(ds).slice(0, 7)]; return (m && m.days && typeof m.days[ds] === 'string') ? m.days[ds] : ''; }
+    function renderWorkspaceDayPlan() {
+      const box = document.getElementById('workspace-day-plan'), txt = document.getElementById('workspace-day-plan-text'); if (!box || !txt) return;
+      const text = mpPlanFor(currentDateStr).trim();
+      box.classList.toggle('hidden', !text);
+      txt.textContent = text; // 글자 그대로(HTML 로 해석하지 않음)
+    }
+    function renderWeekPlan() {
+      const wrap = document.getElementById('week-plan-days'), range = document.getElementById('week-plan-range'); if (!wrap) return;
+      const base = new Date(currentDateStr + 'T00:00:00');
+      const mon = new Date(base); mon.setDate(base.getDate() - ((base.getDay() + 6) % 7)); // 그 주의 월요일
+      const names = ['일', '월', '화', '수', '목', '금', '토']; let html = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(mon); d.setDate(mon.getDate() + i); const ds = ymdOf(d); const text = mpPlanFor(ds).trim();
+        const isToday = ds === todayStr, isCur = ds === currentDateStr;
+        const dayColor = d.getDay() === 0 ? 'text-red-400' : d.getDay() === 6 ? 'text-blue-400' : 'text-slate-300';
+        const border = isToday ? 'border-amber-500/80 bg-amber-950/40' : isCur ? 'border-sky-500 bg-sky-950/40' : 'border-slate-700/80 bg-slate-900/50';
+        html += `<button type="button" onclick="PlannerApp.openMonthlyAt('${ds}')" class="week-plan-day text-left border rounded-lg px-2 py-1.5 min-h-[3.2rem] hover:border-sky-400 transition ${border}" title="${mpEsc(text || '계획 없음 - 눌러서 적기')}">
+          <div class="text-[10px] font-bold ${dayColor}">${names[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}${isToday ? ' <span class="text-amber-300">· 오늘</span>' : ''}</div>
+          <div class="week-plan-text text-[10px] leading-snug mt-0.5 line-clamp-2 whitespace-pre-line break-words ${text ? 'text-slate-200' : 'text-slate-600'}">${text ? mpEsc(text) : '—'}</div></button>`;
+      }
+      wrap.innerHTML = html;
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      if (range) range.textContent = `${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}`;
+    }
+    function renderPlanLinks() { try { renderWorkspaceDayPlan(); renderWeekPlan(); } catch (e) {} }
+    function openMonthlyAt(ds) {
+      mpSave();
+      const d = new Date(String(ds) + 'T00:00:00'); if (isNaN(d)) return openMonthlyModal();
+      mpYear = d.getFullYear(); mpMonth = d.getMonth(); mpSelected = ds;
+      renderMonthly(); document.getElementById('modal-monthly').classList.remove('hidden');
+    }
     function mpScheduleSave() { clearTimeout(mpSaveTimer); mpSaveTimer = setTimeout(mpSave, 300); }
     function openMonthlyModal() {
       const t = new Date(); mpYear = t.getFullYear(); mpMonth = t.getMonth(); mpSelected = (mpYear === t.getFullYear() && mpMonth === t.getMonth()) ? todayStr : null;
@@ -1204,7 +1240,7 @@
       if (!mpSelected) return;
       const plan = mpEnsureMonth(); const v = document.getElementById('monthly-day-text').value;
       if (v.trim()) plan.days[mpSelected] = v; else delete plan.days[mpSelected];
-      mpScheduleSave();
+      mpScheduleSave(); renderPlanLinks();
       // 날짜 칸의 미리보기만 가볍게 갱신(입력 중인 칸의 포커스를 잃지 않도록 전체를 다시 그리지 않는다)
       const cell = [...document.querySelectorAll('#monthly-grid .monthly-day')].find(c => c.getAttribute('onclick').includes(`'${mpSelected}'`));
       if (cell) { let n = cell.querySelector('.monthly-note'); const first = v.trim().split('\n')[0].slice(0, 40); if (first) { if (!n) { n = document.createElement('div'); n.className = 'monthly-note text-[9px] sm:text-[10px] leading-tight text-slate-200 mt-0.5 break-words'; cell.appendChild(n); } n.textContent = first; } else if (n) n.remove(); }
@@ -1523,6 +1559,8 @@
       onMonthlyGoalInput,
       onMonthlyDayInput,
       gotoMonthlyDay,
+      openMonthlyAt,
+      getCurrentDateStr: () => currentDateStr,
       openEditTaskModal,
       openSettingsModal,
       openStatsModal,
