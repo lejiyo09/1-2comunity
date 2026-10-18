@@ -1389,6 +1389,15 @@
       </div>
     </header>
 
+    <!-- 이번 주 계획: 월별 계획에 적은 날짜별 계획을 이 주(월~일)만 모아 보여준다. 날짜를 누르면 월별 계획에서 그날을 바로 고칠 수 있다. -->
+    <section id="week-plan-bar" class="flex-none bg-slate-800/95 rounded-xl border border-slate-700/80 px-3 py-2 shadow-lg">
+      <div class="flex items-center justify-between mb-1.5">
+        <h2 class="text-xs font-bold text-slate-200"><span class="mr-1.5">📅</span>이번 주 계획 <span id="week-plan-range" class="text-[10px] font-semibold text-slate-500 ml-1"></span></h2>
+        <button type="button" onclick="PlannerApp.openMonthlyModal()" class="text-[10px] font-bold text-sky-300 hover:text-sky-200 transition">월별 계획 열기 ›</button>
+      </div>
+      <div id="week-plan-days" class="grid grid-flow-col auto-cols-[minmax(92px,1fr)] gap-1.5 overflow-x-auto pb-0.5"></div>
+    </section>
+
     <main class="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
       
       <!-- [좌측 75%] -->
@@ -1414,6 +1423,13 @@
               <div class="flex items-center justify-between mb-2 flex-none">
                 <span class="text-[10px] font-semibold text-slate-400"><span class="mr-1">✏️</span>공부하다 떠오른 풀이, 궁금한 점, 다음에 확인할 것을 자유롭게 적어보세요</span>
                 <span id="workspace-note-count" class="text-[9px] text-slate-500 font-mono flex-none ml-2">0자</span>
+              </div>
+              <div id="workspace-day-plan" class="hidden flex-none mb-2 bg-sky-500/10 border border-sky-500/30 rounded-lg px-3 py-2">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] font-bold text-sky-300"><span class="mr-1">📅</span>오늘의 계획 <span class="font-semibold text-sky-400/70">(월별 계획에서)</span></span>
+                  <button type="button" onclick="PlannerApp.openMonthlyAt(PlannerApp.getCurrentDateStr())" class="text-[9px] font-bold text-sky-300 hover:text-sky-200 transition">수정</button>
+                </div>
+                <div id="workspace-day-plan-text" class="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap break-words max-h-24 overflow-y-auto"></div>
               </div>
               <textarea id="workspace-note" oninput="PlannerApp.handleWorkspaceNoteInput()" class="flex-1 w-full bg-slate-950/60 border border-slate-700 rounded-lg p-3 text-xs text-slate-200 outline-none focus:border-indigo-500 resize-none leading-relaxed" placeholder="예) 이 문제 오답 이유, 헷갈리는 개념, 선생님께 질문할 것..."></textarea>
             </div>
