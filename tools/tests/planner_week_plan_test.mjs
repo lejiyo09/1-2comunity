@@ -46,13 +46,14 @@ try {
   await p.waitForTimeout(500);
   const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('planner_monthly_plans')));
   assert(!(saved[dates.today.slice(0, 7)].days[dates.today]), '지운 내용이 저장됨');
-  // --- 요일 칸을 누르면 메모장 위 계획 상자가 그 요일 계획으로 ---
+  // --- 요일 칸을 누르면 플래너가 그날로 이동(계획 상자도 그날 계획) ---
   const info = await p.evaluate(() => { const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; const t = new Date(); const mon = new Date(t); mon.setDate(t.getDate() - ((t.getDay() + 6) % 7)); const idx = [...Array(7).keys()].find(i => { const d = new Date(mon); d.setDate(mon.getDate() + i); return ymd(d) !== ymd(t) && !(JSON.parse(localStorage.getItem('planner_monthly_plans'))[ymd(d).slice(0, 7)] || { days: {} }).days[ymd(d)]; }); return { emptyIdx: idx }; });
   const otherIdx = await p.evaluate(() => [...document.querySelectorAll('#week-plan-days .week-plan-day')].findIndex(e => e.innerText.includes('다른 날')));
   {
     await p.evaluate((i) => document.querySelectorAll('#week-plan-days .week-plan-day')[i].click(), otherIdx); await p.waitForTimeout(300);
     assert(await p.evaluate(() => document.getElementById('modal-monthly').classList.contains('hidden')), '요일 칸을 눌러도 월별 계획 창은 열리지 않음(바로 보기)');
-    assert((await p.innerText('#workspace-day-plan-text')).includes('다른 날') && /^\d+\/\d+ \(.\) 계획$/.test(await p.innerText('#workspace-day-plan-title')), '다른 요일 칸을 누르면 메모장 위 상자가 "M/D (요일) 계획"으로 바뀌고 그날 내용이 보임 ' + await p.innerText('#workspace-day-plan-title'));
+    assert(await p.evaluate(() => PlannerApp.getCurrentDateStr()) !== dates.today, '요일 칸을 누르면 플래너가 그날로 이동');
+    assert(await p.isVisible('#workspace-day-plan') && (await p.innerText('#workspace-day-plan-text')).includes('다른 날') && /^\d+\/\d+ \(.\) 계획$/.test(await p.innerText('#workspace-day-plan-title')), '이동한 날의 메모장 위 상자에 "M/D (요일) 계획"과 그날 내용이 보임 ' + await p.innerText('#workspace-day-plan-title'));
     assert(await p.evaluate((i) => document.querySelectorAll('#week-plan-days .week-plan-day')[i].getAttribute('aria-pressed') === 'true', otherIdx), '누른 요일 칸이 선택 표시됨');
     assert(await p.evaluate(() => !window.__xss), '요일 계획을 보여줄 때도 HTML 은 실행되지 않음');
     assert(await p.isVisible('#workspace-day-plan-today'), '"오늘로" 버튼이 보임');
@@ -60,11 +61,11 @@ try {
     assert((await p.inputValue('#monthly-day-text')).includes('다른 날'), '"수정"은 지금 보고 있는 요일을 월별 계획에서 연다');
     await p.evaluate(() => PlannerApp.closeModal('modal-monthly'));
     await p.click('#workspace-day-plan-today'); await p.waitForTimeout(300);
-    assert((await p.innerText('#workspace-day-plan-title')) === '오늘의 계획' && !(await p.isVisible('#workspace-day-plan-today')), '"오늘로"를 누르면 다시 오늘의 계획');
+    assert(await p.evaluate(() => PlannerApp.getCurrentDateStr()) === dates.today && (await p.innerText('#workspace-day-plan-title')) === '오늘의 계획' && !(await p.isVisible('#workspace-day-plan-today')), '"오늘로"를 누르면 오늘로 돌아옴');
   }
   if (info.emptyIdx !== undefined) {
     await p.evaluate((i) => document.querySelectorAll('#week-plan-days .week-plan-day')[i].click(), info.emptyIdx); await p.waitForTimeout(300);
-    assert(await p.isVisible('#workspace-day-plan') && (await p.innerText('#workspace-day-plan-text')).includes('적어 둔 계획이 없어요'), '계획이 없는 요일을 누르면 "적어 둔 계획이 없어요" 안내');
+    assert(await p.isVisible('#workspace-day-plan') && (await p.innerText('#workspace-day-plan-text')).includes('적어 둔 계획이 없어요'), '계획이 없는 요일로 가면 "적어 둔 계획이 없어요" 안내');
     await p.click('#workspace-day-plan-today'); await p.waitForTimeout(200);
   }
   // --- 이번 주 계획 접기/펼치기 ---
