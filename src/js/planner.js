@@ -1168,11 +1168,43 @@
     function p2(n) { return String(n).padStart(2, '0'); }
     function ymdOf(d) { return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; }
     function mpPlanFor(ds) { const m = monthlyPlans[String(ds).slice(0, 7)]; return (m && m.days && typeof m.days[ds] === 'string') ? m.days[ds] : ''; }
+    // 메모장 위 계획 상자에 보여줄 날짜: 기본은 보고 있는 날짜, "이번 주 계획"에서 요일을 누르면 그 요일로 바뀐다.
+    let planViewDate = null, planViewBase = null;
+    function getPlanViewDate() { if (planViewBase !== currentDateStr) { planViewBase = currentDateStr; planViewDate = currentDateStr; } return planViewDate || currentDateStr; }
+    function dayLabel(ds) { const d = new Date(ds + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()} (${['일', '월', '화', '수', '목', '금', '토'][d.getDay()]})`; }
     function renderWorkspaceDayPlan() {
       const box = document.getElementById('workspace-day-plan'), txt = document.getElementById('workspace-day-plan-text'); if (!box || !txt) return;
-      const text = mpPlanFor(currentDateStr).trim();
-      box.classList.toggle('hidden', !text);
-      txt.textContent = text; // 글자 그대로(HTML 로 해석하지 않음)
+      const ds = getPlanViewDate(); const isBase = ds === currentDateStr;
+      const text = mpPlanFor(ds).trim();
+      box.classList.toggle('hidden', isBase && !text); // 기본 날짜에 계획이 없으면 숨기고, 다른 요일을 골랐으면 비어 있어도 보여준다
+      txt.textContent = text || '적어 둔 계획이 없어요. "수정"을 눌러 적어 보세요.'; // 글자 그대로(HTML 로 해석하지 않음)
+      txt.classList.toggle('text-slate-500', !text);
+      const title = document.getElementById('workspace-day-plan-title'); if (title) title.textContent = ds === todayStr ? '오늘의 계획' : `${dayLabel(ds)} 계획`;
+      const back = document.getElementById('workspace-day-plan-today'); if (back) back.classList.toggle('hidden', isBase);
+      if (back) back.textContent = currentDateStr === todayStr ? '오늘로' : '보던 날로';
+    }
+    // "이번 주 계획"에서 요일을 누르면: 메모장이 보이는 화면(오늘)이면 위 계획 상자를 그 요일로 바꾸고, 메모장이 없는 화면(지난 날 통계)이면 월별 계획에서 그날을 연다.
+    function showDayPlan(ds) {
+      getPlanViewDate();
+      planViewDate = ds || currentDateStr;
+      const memoVisible = (() => { const c = document.getElementById('workspace-iframe-container'); return c && !c.classList.contains('hidden'); })();
+      if (ds && !memoVisible) { openMonthlyAt(ds); return; }
+      renderPlanLinks();
+      const box = document.getElementById('workspace-day-plan'); if (ds && box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    // 이번 주 계획 접기/펼치기(이 기기에 기억)
+    const WEEK_PLAN_COLLAPSED_KEY = 'planner_week_plan_collapsed';
+    function isWeekPlanCollapsed() { try { return localStorage.getItem(WEEK_PLAN_COLLAPSED_KEY) === '1'; } catch (e) { return false; } }
+    function applyWeekPlanCollapsed() {
+      const collapsed = isWeekPlanCollapsed();
+      const days = document.getElementById('week-plan-days'), caret = document.getElementById('week-plan-caret'), btn = document.getElementById('week-plan-toggle');
+      if (days) days.classList.toggle('hidden', collapsed);
+      if (caret) caret.style.transform = collapsed ? 'rotate(-90deg)' : '';
+      if (btn) btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+    function toggleWeekPlan() {
+      try { localStorage.setItem(WEEK_PLAN_COLLAPSED_KEY, isWeekPlanCollapsed() ? '0' : '1'); } catch (e) {}
+      applyWeekPlanCollapsed();
     }
     function renderWeekPlan() {
       const wrap = document.getElementById('week-plan-days'), range = document.getElementById('week-plan-range'); if (!wrap) return;
@@ -1181,16 +1213,17 @@
       const names = ['일', '월', '화', '수', '목', '금', '토']; let html = '';
       for (let i = 0; i < 7; i++) {
         const d = new Date(mon); d.setDate(mon.getDate() + i); const ds = ymdOf(d); const text = mpPlanFor(ds).trim();
-        const isToday = ds === todayStr, isCur = ds === currentDateStr;
+        const isToday = ds === todayStr, isSel = ds === getPlanViewDate();
         const dayColor = d.getDay() === 0 ? 'text-red-400' : d.getDay() === 6 ? 'text-blue-400' : 'text-slate-300';
-        const border = isToday ? 'border-amber-500/80 bg-amber-950/40' : isCur ? 'border-sky-500 bg-sky-950/40' : 'border-slate-700/80 bg-slate-900/50';
-        html += `<button type="button" onclick="PlannerApp.openMonthlyAt('${ds}')" class="week-plan-day text-left border rounded-lg px-2 py-1.5 min-h-[3.2rem] hover:border-sky-400 transition ${border}" title="${mpEsc(text || '계획 없음 - 눌러서 적기')}">
+        const border = isSel ? 'border-sky-400 bg-sky-950/50 ring-1 ring-sky-400/60' : isToday ? 'border-amber-500/80 bg-amber-950/40' : 'border-slate-700/80 bg-slate-900/50';
+        html += `<button type="button" onclick="PlannerApp.showDayPlan('${ds}')" aria-pressed="${isSel ? 'true' : 'false'}" class="week-plan-day text-left border rounded-lg px-2 py-1.5 min-h-[3.2rem] hover:border-sky-400 transition ${border}" title="${mpEsc(text || '계획 없음')}">
           <div class="text-[10px] font-bold ${dayColor}">${names[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}${isToday ? ' <span class="text-amber-300">· 오늘</span>' : ''}</div>
           <div class="week-plan-text text-[10px] leading-snug mt-0.5 line-clamp-2 whitespace-pre-line break-words ${text ? 'text-slate-200' : 'text-slate-600'}">${text ? mpEsc(text) : '—'}</div></button>`;
       }
       wrap.innerHTML = html;
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
       if (range) range.textContent = `${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}`;
+      applyWeekPlanCollapsed();
     }
     function renderPlanLinks() { try { renderWorkspaceDayPlan(); renderWeekPlan(); } catch (e) {} }
     function openMonthlyAt(ds) {
@@ -1561,6 +1594,9 @@
       gotoMonthlyDay,
       openMonthlyAt,
       getCurrentDateStr: () => currentDateStr,
+      getPlanViewDate,
+      showDayPlan,
+      toggleWeekPlan,
       openEditTaskModal,
       openSettingsModal,
       openStatsModal,
