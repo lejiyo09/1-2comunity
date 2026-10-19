@@ -1391,11 +1391,13 @@
 
     <!-- 이번 주 계획: 월별 계획에 적은 날짜별 계획을 이 주(월~일)만 모아 보여준다. 날짜를 누르면 월별 계획에서 그날을 바로 고칠 수 있다. -->
     <section id="week-plan-bar" class="flex-none bg-slate-800/95 rounded-xl border border-slate-700/80 px-3 py-2 shadow-lg">
-      <div class="flex items-center justify-between mb-1.5">
-        <h2 class="text-xs font-bold text-slate-200"><span class="mr-1.5">📅</span>이번 주 계획 <span id="week-plan-range" class="text-[10px] font-semibold text-slate-500 ml-1"></span></h2>
-        <button type="button" onclick="PlannerApp.openMonthlyModal()" class="text-[10px] font-bold text-sky-300 hover:text-sky-200 transition">월별 계획 열기 ›</button>
+      <div class="flex items-center justify-between gap-2">
+        <button type="button" id="week-plan-toggle" onclick="PlannerApp.toggleWeekPlan()" aria-expanded="true" aria-controls="week-plan-days" class="flex items-center gap-1 text-xs font-bold text-slate-200 hover:text-white transition min-w-0" title="접기/펼치기">
+          <span id="week-plan-caret" class="inline-block text-[10px] text-slate-400 transition-transform">▾</span><span class="mr-0.5">📅</span>이번 주 계획 <span id="week-plan-range" class="text-[10px] font-semibold text-slate-500 ml-1"></span>
+        </button>
+        <button type="button" onclick="PlannerApp.openMonthlyModal()" class="flex-none text-[10px] font-bold text-sky-300 hover:text-sky-200 transition">월별 계획 열기 ›</button>
       </div>
-      <div id="week-plan-days" class="grid grid-flow-col auto-cols-[minmax(92px,1fr)] gap-1.5 overflow-x-auto pb-0.5"></div>
+      <div id="week-plan-days" class="mt-1.5 grid grid-flow-col auto-cols-[minmax(92px,1fr)] gap-1.5 overflow-x-auto pb-0.5"></div>
     </section>
 
     <main class="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
@@ -1426,8 +1428,11 @@
               </div>
               <div id="workspace-day-plan" class="hidden flex-none mb-2 bg-sky-500/10 border border-sky-500/30 rounded-lg px-3 py-2">
                 <div class="flex items-center justify-between mb-1">
-                  <span class="text-[10px] font-bold text-sky-300"><span class="mr-1">📅</span>오늘의 계획 <span class="font-semibold text-sky-400/70">(월별 계획에서)</span></span>
-                  <button type="button" onclick="PlannerApp.openMonthlyAt(PlannerApp.getCurrentDateStr())" class="text-[9px] font-bold text-sky-300 hover:text-sky-200 transition">수정</button>
+                  <span class="text-[10px] font-bold text-sky-300"><span class="mr-1">📅</span><span id="workspace-day-plan-title">오늘의 계획</span> <span class="font-semibold text-sky-400/70">(월별 계획에서)</span></span>
+                  <span class="flex items-center gap-2 flex-none">
+                    <button type="button" id="workspace-day-plan-today" onclick="PlannerApp.showDayPlan(null)" class="hidden text-[9px] font-bold text-amber-300 hover:text-amber-200 transition">오늘로</button>
+                    <button type="button" id="workspace-day-plan-edit" onclick="PlannerApp.openMonthlyAt(PlannerApp.getPlanViewDate())" class="text-[9px] font-bold text-sky-300 hover:text-sky-200 transition">수정</button>
+                  </span>
                 </div>
                 <div id="workspace-day-plan-text" class="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap break-words max-h-24 overflow-y-auto"></div>
               </div>
