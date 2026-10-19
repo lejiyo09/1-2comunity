@@ -1344,12 +1344,12 @@
   <!-- ================= [VIEW 3] MAIN PLANNER SCREEN ================= -->
   <div id="view-main" class="hidden h-full w-full max-w-[1800px] mx-auto p-2 md:p-3 flex flex-col gap-3 view-fade-in">
     
-    <header class="flex-none bg-slate-800/95 p-3 md:px-5 rounded-xl shadow-lg border border-slate-700/80 flex items-center justify-between gap-4 transition-all duration-300">
-      <div class="flex flex-col min-w-0">
+    <header id="planner-header" class="flex-none bg-slate-800/95 p-3 md:px-5 rounded-xl shadow-lg border border-slate-700/80 flex items-center justify-between gap-4 transition-all duration-300">
+      <div id="planner-header-left" class="flex flex-col min-w-0">
         <div onclick="PlannerApp.openDdayModal()" class="cursor-pointer font-black text-indigo-400 hover:text-indigo-300 transition text-lg sm:text-xl tracking-tight" id="dday-display">D-Day 설정</div>
-        <div class="flex items-center gap-1.5 mt-0.5">
+        <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
           <button onclick="PlannerApp.changeCurrentDate(-1)" class="text-slate-400 hover:text-white transition text-xs px-1 font-bold" title="전날 기록 보기">‹</button>
-          <div id="current-date" class="text-[10px] sm:text-xs font-bold text-slate-400">2026.08.11 (화)</div>
+          <div id="current-date" class="text-[10px] sm:text-xs font-bold text-slate-400 whitespace-nowrap">2026.08.11 (화)</div>
           <button onclick="PlannerApp.changeCurrentDate(1)" id="btn-next-date" class="text-slate-400 hover:text-white transition text-xs px-1 font-bold disabled:opacity-30 disabled:pointer-events-none" title="다음날 기록 보기">›</button>
           <div id="real-time-clock" class="text-[10px] sm:text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shadow-sm">00:00:00</div>
           <div id="viewing-status" ondblclick="PlannerApp.toggleTimeMachine()" class="hidden cursor-pointer transition-all duration-300 select-none" title="더블클릭 시 과거 권한 켜기/끄기">과거 기록 열람중</div>
@@ -1357,7 +1357,7 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3 flex-none">
+      <div id="planner-header-stats" class="flex items-center gap-3 flex-none">
         <div class="flex flex-col items-center sm:items-start">
           <div class="flex items-baseline gap-1.5">
             <span id="total-time-display" class="text-2xl sm:text-3xl font-mono font-black text-slate-100 tracking-tighter leading-none">00:00:00</span>
@@ -1389,7 +1389,7 @@
       </div>
     </header>
 
-    <!-- 이번 주 계획: 월별 계획에 적은 날짜별 계획을 이 주(월~일)만 모아 보여준다. 날짜를 누르면 월별 계획에서 그날을 바로 고칠 수 있다. -->
+    <!-- 이번 주 계획: 월별 계획에 적은 날짜별 계획을 이 주(월~일)만 모아 보여준다. 요일을 누르면 플래너가 그날로 이동해 할 일·타임테이블을 보고 고칠 수 있다. -->
     <section id="week-plan-bar" class="flex-none bg-slate-800/95 rounded-xl border border-slate-700/80 px-3 py-2 shadow-lg">
       <div class="flex items-center justify-between gap-2">
         <button type="button" id="week-plan-toggle" onclick="PlannerApp.toggleWeekPlan()" aria-expanded="true" aria-controls="week-plan-days" class="flex items-center gap-1 text-xs font-bold text-slate-200 hover:text-white transition min-w-0" title="접기/펼치기">
@@ -1403,7 +1403,7 @@
     <main class="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
       
       <!-- [좌측 75%] -->
-      <div class="lg:col-span-3 flex flex-col min-h-0 relative bg-slate-800/90 rounded-xl border border-slate-700/80 overflow-hidden">
+      <div id="planner-main-left" class="lg:col-span-3 flex flex-col min-h-0 relative bg-slate-800/90 rounded-xl border border-slate-700/80 overflow-hidden">
         
         <div id="normal-view-container" class="grid grid-cols-1 lg:grid-cols-3 h-full min-h-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-700/80 transition-all duration-300">
           
@@ -1430,7 +1430,7 @@
                 <div class="flex items-center justify-between mb-1">
                   <span class="text-[10px] font-bold text-sky-300"><span class="mr-1">📅</span><span id="workspace-day-plan-title">오늘의 계획</span> <span class="font-semibold text-sky-400/70">(월별 계획에서)</span></span>
                   <span class="flex items-center gap-2 flex-none">
-                    <button type="button" id="workspace-day-plan-today" onclick="PlannerApp.showDayPlan(null)" class="hidden text-[9px] font-bold text-amber-300 hover:text-amber-200 transition">오늘로</button>
+                    <button type="button" id="workspace-day-plan-today" onclick="PlannerApp.goToDate(null)" class="hidden text-[9px] font-bold text-amber-300 hover:text-amber-200 transition">오늘로</button>
                     <button type="button" id="workspace-day-plan-edit" onclick="PlannerApp.openMonthlyAt(PlannerApp.getPlanViewDate())" class="text-[9px] font-bold text-sky-300 hover:text-sky-200 transition">수정</button>
                   </span>
                 </div>

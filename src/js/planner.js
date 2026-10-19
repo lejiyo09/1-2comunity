@@ -107,6 +107,11 @@
       if (!UI.viewStatus) return;
       if (currentDateStr === todayStr) { UI.viewStatus.classList.add('hidden'); return; }
       UI.viewStatus.classList.remove('hidden');
+      if (currentDateStr > todayStr || (isThisWeekDate(currentDateStr) && !isTimeMachineUnlocked)) {
+        UI.viewStatus.innerHTML = currentDateStr > todayStr ? "미리 계획 중 ✏️" : "이번 주 · 수정 가능 ✏️";
+        UI.viewStatus.className = "text-[9px] text-sky-300 font-semibold bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/30 cursor-default transition-all duration-300 select-none";
+        return;
+      }
       if (isTimeMachineUnlocked) {
         UI.viewStatus.innerHTML = "과거 기록 수정 중 🔓"; UI.viewStatus.className = "text-[9px] text-red-400 font-semibold bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/30 cursor-pointer transition-all duration-300 select-none";
       } else {
@@ -114,8 +119,14 @@
       }
     }
 
+    // 이번 주(월~일) 날짜인지 - 이번 주는 요일을 오가며 할 일/타임테이블을 자유롭게 고칠 수 있다(비밀번호 불필요).
+    function getWeekBounds(ds) { const d = new Date(ds + 'T00:00:00'); const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7)); const sun = new Date(mon); sun.setDate(mon.getDate() + 6); return [getLocalDateStr(mon), getLocalDateStr(sun)]; }
+    function isThisWeekDate(ds) { const [mon, sun] = getWeekBounds(todayStr); return ds >= mon && ds <= sun; }
+    // 할 일/타임테이블을 고칠 수 있는 날짜: 오늘, 이번 주, 앞으로의 날(미리 계획), 그 밖의 지난 날은 타임머신 모드에서만
+    function canEditDate(ds) { ds = ds || currentDateStr; return ds >= todayStr || isThisWeekDate(ds) || isTimeMachineUnlocked; }
     function toggleTimeMachine() {
       if (currentDateStr === todayStr) return; 
+      if (!isTimeMachineUnlocked && canEditDate(currentDateStr)) return; // 이번 주/미래는 타임머신 없이도 수정 가능
       if (isTimeMachineUnlocked) { 
         isTimeMachineUnlocked = false; 
         uiAlert("타임머신 모드가 종료되었습니다.", {icon:'🔒', title:'타임머신 종료'});
@@ -142,14 +153,26 @@
       }
     }
 
+    // 전날까지 끝내지 못한 할 일/루틴을 이어받을 목록
+    function getCarriedTasks(dateStr) {
+      const carriedTasks = []; const pastDates = Object.keys(state.records).sort().filter(d => d < dateStr);
+      if (pastDates.length > 0) { const lastDate = pastDates[pastDates.length - 1]; const lastTasks = state.records[lastDate].tasks || [];
+        lastTasks.forEach(t => { if (t.isRoutine || !t.completed) carriedTasks.push({ ...t, id: 't_'+Date.now()+'_'+Math.random().toString(36).substr(2,4), completed: false, elapsedSec: 0 }); });
+      }
+      return carriedTasks;
+    }
     function ensureDailyRecord(dateStr) {
       if (!state.records) state.records = {};
       if (!state.records[dateStr] || !state.records[dateStr].tasks || !state.records[dateStr].grid) {
-        let carriedTasks = []; const pastDates = Object.keys(state.records).sort().filter(d => d < dateStr);
-        if (pastDates.length > 0) { const lastDate = pastDates[pastDates.length - 1]; const lastTasks = state.records[lastDate].tasks || [];
-          lastTasks.forEach(t => { if (t.isRoutine || !t.completed) carriedTasks.push({ ...t, id: 't_'+Date.now()+'_'+Math.random().toString(36).substr(2,4), completed: false, elapsedSec: 0 }); });
-        }
-        state.records[dateStr] = { tasks: carriedTasks, grid: {}, diary: '', mood: '' }; saveData();
+        // 앞으로의 날을 미리 계획할 때는 아직 이어받지 않고(그 사이 할 일이 끝날 수 있으므로), 그날이 되면 이어받는다
+        const ahead = dateStr > todayStr;
+        state.records[dateStr] = { tasks: ahead ? [] : getCarriedTasks(dateStr), grid: {}, diary: '', mood: '' };
+        if (ahead) state.records[dateStr].plannedAhead = true;
+        saveData();
+      } else if (state.records[dateStr].plannedAhead && dateStr <= todayStr) {
+        const rec = state.records[dateStr]; delete rec.plannedAhead;
+        getCarriedTasks(dateStr).forEach(t => { if (!rec.tasks.some(ct => ct.title === t.title)) rec.tasks.push(t); });
+        saveData();
       }
     }
 
@@ -640,7 +663,7 @@
     function toggleTimer() { if (timerState.isRunning) pauseTimer(); else if (timerState.taskId) resumeTimer(); }
 
     function toggleGridEditMode() {
-      if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 타임테이블은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정 가능합니다.'); return; }
+      if (!canEditDate()) { uiAlert('지난주 이전 타임테이블은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정 가능합니다.'); return; }
       if (isMarkMode) { uiAlert('표시 기능을 먼저 끈 뒤에 편집 모드를 사용해주세요.'); return; }
       if (!isGridEditMode) {
         uiConfirm("타임테이블을 수동으로 편집하시겠습니까?", () => { isGridEditMode = true; document.getElementById('manual-subject-select').classList.remove('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>✓</span> 완료'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.add('hidden'); renderTimetable(); }, {icon:'✏️', title:'편집 모드'});
@@ -689,7 +712,7 @@
     document.addEventListener('touchend', endMarkDrag);
 
     function handleManualOverride(timeKey) {
-      if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록은 타임머신 모드에서만 수정할 수 있습니다.'); return; }
+      if (!canEditDate()) { uiAlert('지난주 이전 기록은 타임머신 모드에서만 수정할 수 있습니다.'); return; }
       if (!isGridEditMode) { uiAlert('칸을 수정하려면 상단의 [🔒 편집] 버튼을 먼저 눌러주세요.'); return; }
       
       let gridData = state.records[currentDateStr].grid;
@@ -714,7 +737,7 @@
     }
 
     function openAddTaskModal() { 
-      if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록에는 과제를 추가할 수 없습니다.'); return; }
+      if (!canEditDate()) { uiAlert('지난주 이전 기록에는 과제를 추가할 수 없습니다.'); return; }
       editTaskId = null;
       document.getElementById('form-main-add-task').reset(); 
       document.getElementById('modal-add-task-title').innerText = "새로운 할일 추가";
@@ -723,7 +746,7 @@
     }
     
     function openEditTaskModal(id) {
-      if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정할 수 있습니다.'); return; }
+      if (!canEditDate()) { uiAlert('지난주 이전 기록은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정할 수 있습니다.'); return; }
       const task = state.records[currentDateStr].tasks.find(t => t.id === id);
       if (!task) return;
       
@@ -740,7 +763,7 @@
     }
 
     function addTask(source) {
-      if(currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록에는 과제를 추가하거나 수정할 수 없습니다.'); return; }
+      if (!canEditDate()) { uiAlert('지난주 이전 기록에는 과제를 추가하거나 수정할 수 없습니다.'); return; }
       const prefix = source === 'setup' ? 'setup' : 'main';
       const title = document.getElementById(`${prefix}-task-title`).value || '새 과제';
       const subjectId = document.getElementById(`${prefix}-task-subject`).value || state.subjects[0].id;
@@ -764,7 +787,7 @@
     }
     
     function importYesterdayTasks() {
-      if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록에서는 할 일을 가져올 수 없습니다.'); return; }
+      if (!canEditDate()) { uiAlert('지난주 이전 기록에서는 할 일을 가져올 수 없습니다.'); return; }
       const pastDates = Object.keys(state.records).sort().filter(d => d < currentDateStr);
       if (pastDates.length === 0) { uiAlert('가져올 이전 기록이 없습니다.'); return; }
       const lastTasks = state.records[pastDates[pastDates.length - 1]].tasks || [];
@@ -798,7 +821,8 @@
       }
     }
     function openConfirmStart(id) {
-      if(currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('과거 기록에서는 타이머 실행이 불가능합니다.'); return; }
+      if (currentDateStr > todayStr) { uiAlert('앞으로의 날은 계획만 세울 수 있어요. 타이머는 그날 당일에 시작해 주세요.'); return; }
+      if (currentDateStr !== todayStr && !isTimeMachineUnlocked) { uiAlert('타이머는 오늘 날짜에서만 시작할 수 있어요. "오늘로"를 눌러 돌아가 주세요.'); return; }
       const task = state.records[currentDateStr].tasks.find(t => t.id === id); if(!task || task.completed) return;
       tempStartTaskId = id; document.getElementById('confirm-task-name').innerText = task.title; document.getElementById('modal-confirm').classList.remove('hidden');
     }
@@ -1014,9 +1038,10 @@
     function handleWorkspaceNoteInput() {
       updateWorkspaceNoteCount();
       clearTimeout(workspaceNoteSaveTimer);
+      const ds = currentDateStr, val = document.getElementById('workspace-note').value; // 저장 전에 다른 날로 넘어가도 쓰던 날에 저장
       workspaceNoteSaveTimer = setTimeout(() => {
-        ensureDailyRecord(currentDateStr);
-        state.records[currentDateStr].workspaceNote = document.getElementById('workspace-note').value;
+        ensureDailyRecord(ds);
+        state.records[ds].workspaceNote = val;
         saveData();
       }, 400);
     }
@@ -1029,12 +1054,13 @@
        const badge = document.getElementById('workspace-badge');
        const btns = document.getElementById('workspace-quick-btns');
 
-       if (currentDateStr === todayStr) {
+       // 오늘·이번 주·앞으로의 날은 메모장(+그날 계획), 그보다 지난 날은 학습 통계
+       if (currentDateStr >= todayStr || isThisWeekDate(currentDateStr)) {
            if(iframeCont) iframeCont.classList.remove('hidden');
            if(statsCont) statsCont.classList.add('hidden');
            if(btns) btns.classList.remove('hidden');
            if(title) title.innerHTML = '<span class="mr-1.5 text-indigo-400">📝</span>WORKSPACE';
-           if(badge) { badge.innerText = '오늘의 학습 메모장'; badge.className = 'text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30'; }
+           if(badge) { badge.innerText = currentDateStr === todayStr ? '오늘의 학습 메모장' : `${dayLabel(currentDateStr)} 메모`; badge.className = 'text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30'; }
            loadWorkspaceNote();
        } else {
            if(iframeCont) iframeCont.classList.add('hidden');
@@ -1129,7 +1155,7 @@
     function saveDiary(showAlertFlag = true) { ensureDailyRecord(currentDateStr); state.records[currentDateStr].diary = document.getElementById('diary-textarea').value; saveData(); if (showAlertFlag) { closeModal('modal-diary'); uiAlert('기록장이 안전하게 저장되었습니다!', {icon:'📖', title:'저장 완료'}); } if (!document.getElementById('modal-calendar').classList.contains('hidden')) renderCalendar(); }
     
     function lockTimeMachineIfActive() { if(isTimeMachineUnlocked) { isTimeMachineUnlocked = false; updateViewingStatusUI(); } }
-    function updateHeaderDate() { const days = ['일', '월', '화', '수', '목', '금', '토']; if(UI.currentDate) UI.currentDate.innerText = `${currentDateStr.replace(/-/g, '.')} (${days[new Date(currentDateStr).getDay()]})`; if(UI.btnToday) UI.btnToday.classList.toggle('hidden', currentDateStr === todayStr); if(UI.btnNextDate) UI.btnNextDate.disabled = (currentDateStr === todayStr); updateViewingStatusUI(); updateWorkspaceView(); }
+    function updateHeaderDate() { const days = ['일', '월', '화', '수', '목', '금', '토']; if(UI.currentDate) UI.currentDate.innerText = `${currentDateStr.replace(/-/g, '.')} (${days[new Date(currentDateStr).getDay()]})`; if(UI.btnToday) UI.btnToday.classList.toggle('hidden', currentDateStr === todayStr); if(UI.btnNextDate) UI.btnNextDate.disabled = (currentDateStr >= getWeekBounds(todayStr)[1]); updateViewingStatusUI(); updateWorkspaceView(); }
     function returnToToday() { lockTimeMachineIfActive(); currentDateStr = todayStr; switchView('view-main'); }
     // 지금 보고 있는 날짜가 타이머가 실제로 도는 날짜와 같은지 - GlobalMiniController가 이 값을 보고
     // "인라인 미니 위젯을 굳이 또 띄울 필요가 있는지"(=지금 화면에 이미 타이머가 보이고 있는지)를
@@ -1141,13 +1167,13 @@
     function notifyFocusVisibilityChanged() {
       if (window.GlobalMiniController) window.GlobalMiniController.handleGesture();
     }
-    // 달력 모달을 열지 않고도 하루씩 앞뒤로 넘겨보는 빠른 기록 열람 (오늘보다 미래로는 못 감)
+    // 달력 모달을 열지 않고도 하루씩 앞뒤로 넘겨보는 빠른 기록 열람 (미래는 이번 주 일요일까지)
     function changeCurrentDate(delta) {
       lockTimeMachineIfActive();
       const curr = new Date(currentDateStr);
       curr.setDate(curr.getDate() + delta);
       const newDateStr = getLocalDateStr(curr);
-      if (newDateStr > todayStr) return;
+      if (newDateStr > todayStr && newDateStr > getWeekBounds(todayStr)[1]) return; // 앞으로는 이번 주 일요일까지만(더 먼 날은 달력에서)
       currentDateStr = newDateStr;
       ensureDailyRecord(currentDateStr);
       switchView('view-main');
@@ -1168,30 +1194,28 @@
     function p2(n) { return String(n).padStart(2, '0'); }
     function ymdOf(d) { return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; }
     function mpPlanFor(ds) { const m = monthlyPlans[String(ds).slice(0, 7)]; return (m && m.days && typeof m.days[ds] === 'string') ? m.days[ds] : ''; }
-    // 메모장 위 계획 상자에 보여줄 날짜: 기본은 보고 있는 날짜, "이번 주 계획"에서 요일을 누르면 그 요일로 바뀐다.
-    let planViewDate = null, planViewBase = null;
-    function getPlanViewDate() { if (planViewBase !== currentDateStr) { planViewBase = currentDateStr; planViewDate = currentDateStr; } return planViewDate || currentDateStr; }
+    // 메모장 위 계획 상자는 지금 보고 있는 날짜의 계획을 보여준다("이번 주 계획"에서 요일을 누르면 플래너 전체가 그날로 이동).
+    function getPlanViewDate() { return currentDateStr; }
     function dayLabel(ds) { const d = new Date(ds + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()} (${['일', '월', '화', '수', '목', '금', '토'][d.getDay()]})`; }
     function renderWorkspaceDayPlan() {
       const box = document.getElementById('workspace-day-plan'), txt = document.getElementById('workspace-day-plan-text'); if (!box || !txt) return;
-      const ds = getPlanViewDate(); const isBase = ds === currentDateStr;
+      const ds = currentDateStr, isToday = ds === todayStr;
       const text = mpPlanFor(ds).trim();
-      box.classList.toggle('hidden', isBase && !text); // 기본 날짜에 계획이 없으면 숨기고, 다른 요일을 골랐으면 비어 있어도 보여준다
+      box.classList.toggle('hidden', isToday && !text); // 오늘 계획이 없으면 숨기고, 다른 날은 비어 있어도 보여준다
       txt.textContent = text || '적어 둔 계획이 없어요. "수정"을 눌러 적어 보세요.'; // 글자 그대로(HTML 로 해석하지 않음)
       txt.classList.toggle('text-slate-500', !text);
-      const title = document.getElementById('workspace-day-plan-title'); if (title) title.textContent = ds === todayStr ? '오늘의 계획' : `${dayLabel(ds)} 계획`;
-      const back = document.getElementById('workspace-day-plan-today'); if (back) back.classList.toggle('hidden', isBase);
-      if (back) back.textContent = currentDateStr === todayStr ? '오늘로' : '보던 날로';
+      const title = document.getElementById('workspace-day-plan-title'); if (title) title.textContent = isToday ? '오늘의 계획' : `${dayLabel(ds)} 계획`;
+      const back = document.getElementById('workspace-day-plan-today'); if (back) back.classList.toggle('hidden', isToday);
     }
-    // "이번 주 계획"에서 요일을 누르면: 메모장이 보이는 화면(오늘)이면 위 계획 상자를 그 요일로 바꾸고, 메모장이 없는 화면(지난 날 통계)이면 월별 계획에서 그날을 연다.
-    function showDayPlan(ds) {
-      getPlanViewDate();
-      planViewDate = ds || currentDateStr;
-      const memoVisible = (() => { const c = document.getElementById('workspace-iframe-container'); return c && !c.classList.contains('hidden'); })();
-      if (ds && !memoVisible) { openMonthlyAt(ds); return; }
-      renderPlanLinks();
-      const box = document.getElementById('workspace-day-plan'); if (ds && box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // 날짜로 이동: 그날의 할 일·타임테이블·계획을 보여준다(달력에서 날짜를 고른 것과 같음). null 이면 오늘로.
+    function goToDate(ds) {
+      if (!ds || !/^\d{4}-\d{2}-\d{2}$/.test(ds)) ds = todayStr;
+      if (ds === currentDateStr) { renderPlanLinks(); return; }
+      lockTimeMachineIfActive();
+      currentDateStr = ds; ensureDailyRecord(ds); switchView('view-main');
+      if (timerState.isRunning) notifyFocusVisibilityChanged();
     }
+    function showDayPlan(ds) { goToDate(ds); }
     // 이번 주 계획 접기/펼치기(이 기기에 기억)
     const WEEK_PLAN_COLLAPSED_KEY = 'planner_week_plan_collapsed';
     function isWeekPlanCollapsed() { try { return localStorage.getItem(WEEK_PLAN_COLLAPSED_KEY) === '1'; } catch (e) { return false; } }
@@ -1213,10 +1237,10 @@
       const names = ['일', '월', '화', '수', '목', '금', '토']; let html = '';
       for (let i = 0; i < 7; i++) {
         const d = new Date(mon); d.setDate(mon.getDate() + i); const ds = ymdOf(d); const text = mpPlanFor(ds).trim();
-        const isToday = ds === todayStr, isSel = ds === getPlanViewDate();
+        const isToday = ds === todayStr, isSel = ds === currentDateStr && !isToday;
         const dayColor = d.getDay() === 0 ? 'text-red-400' : d.getDay() === 6 ? 'text-blue-400' : 'text-slate-300';
         const border = isSel ? 'border-sky-400 bg-sky-950/50 ring-1 ring-sky-400/60' : isToday ? 'border-amber-500/80 bg-amber-950/40' : 'border-slate-700/80 bg-slate-900/50';
-        html += `<button type="button" onclick="PlannerApp.showDayPlan('${ds}')" aria-pressed="${isSel ? 'true' : 'false'}" class="week-plan-day text-left border rounded-lg px-2 py-1.5 min-h-[3.2rem] hover:border-sky-400 transition ${border}" title="${mpEsc(text || '계획 없음')}">
+        html += `<button type="button" onclick="PlannerApp.goToDate('${ds}')" aria-pressed="${ds === currentDateStr ? 'true' : 'false'}" class="week-plan-day text-left border rounded-lg px-2 py-1.5 min-h-[3.2rem] hover:border-sky-400 transition ${border}" title="${mpEsc(text || '계획 없음')}">
           <div class="text-[10px] font-bold ${dayColor}">${names[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}${isToday ? ' <span class="text-amber-300">· 오늘</span>' : ''}</div>
           <div class="week-plan-text text-[10px] leading-snug mt-0.5 line-clamp-2 whitespace-pre-line break-words ${text ? 'text-slate-200' : 'text-slate-600'}">${text ? mpEsc(text) : '—'}</div></button>`;
       }
@@ -1596,6 +1620,7 @@
       getCurrentDateStr: () => currentDateStr,
       getPlanViewDate,
       showDayPlan,
+      goToDate,
       toggleWeekPlan,
       openEditTaskModal,
       openSettingsModal,
