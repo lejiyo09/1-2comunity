@@ -9702,6 +9702,7 @@
                 snap.forEach(d => { squadPlayersMap[d.id] = d.data().value; });
                 rebuildSquadDataCache();
             });
+            listenToSquadStats();
         }
 
         function renderSquadPitch() {
@@ -9745,6 +9746,223 @@
             }
             document.getElementById('squad-modal').style.display = 'none';
         }
+
+        // --- 스쿼드 메이커: 선수 기록 + 오각형 레이더 비교 ---
+        // 저장: Firestore squad_stats/{학생번호} = { xg, xa, ppda, progPass, progCarry, chances, updatedAt, updatedBy } (빈 칸은 null)
+        // 선수 = 반 친구 프로필(번호). 이름은 스쿼드 보드와 같은 resolveStudentDisplayName 으로 보여준다.
+        const SQUAD_STAT_FIELDS = [
+            { key: 'xg', label: 'xG', sub: '기대 득점', step: '0.01' },
+            { key: 'xa', label: 'xA', sub: '기대 도움', step: '0.01' },
+            { key: 'ppda', label: 'PPDA', sub: '낮을수록 강한 압박', step: '0.1' },
+            { key: 'chances', label: '기회 창출', sub: '빅 찬스 포함', step: '1' },
+            { key: 'progPass', label: '프로그레시브 패스', sub: '10야드+ 전진', step: '1' },
+            { key: 'progCarry', label: '프로그레시브 캐리', sub: '10야드+ 드리블', step: '1' },
+        ];
+        const squadNum = (v) => (typeof v === 'number' && isFinite(v)) ? v : null;
+        // 레이더 5개 축(위에서부터 시계 방향). 프로그레시브 패스와 캐리는 합쳐서 한 축으로 본다.
+        const SQUAD_RADAR_AXES = [
+            { label: 'xG', get: (s) => squadNum(s.xg), dec: 2 },
+            { label: 'xA', get: (s) => squadNum(s.xa), dec: 2 },
+            { label: '기회 창출', get: (s) => squadNum(s.chances), dec: 0 },
+            { label: '전진 패스·캐리', get: (s) => (squadNum(s.progPass) === null && squadNum(s.progCarry) === null) ? null : (squadNum(s.progPass) || 0) + (squadNum(s.progCarry) || 0), dec: 0 },
+            { label: '압박 (PPDA)', get: (s) => squadNum(s.ppda), dec: 1, lowerIsBetter: true },
+        ];
+        const SQUAD_COMPARE_MAX = 4;
+        const SQUAD_COMPARE_KEY = 'squad_compare_sel';
+        let squadStatsCache = {};       // { '7': {xg, ...}, ... }
+        let squadStatsLoaded = false;
+        let squadStatsReadError = '';   // 읽기 실패 안내(다시 그려도 지워지지 않게 보관)
+        let squadCompare = null;        // { '7': 0, '12': 1 } 학생번호 → 색 자리(0~3). 한 번 정한 색은 다른 선수를 빼도 그대로
+        try { const v = JSON.parse(localStorage.getItem(SQUAD_COMPARE_KEY)); if (v && typeof v === 'object' && !Array.isArray(v)) squadCompare = v; } catch (e) {}
+
+        function canEditSquadStats() { return !!(currentUser && !currentUser.isAnonymous && !isRestrictedViewer); }
+        function squadFmt(v, dec) { return v === null || v === undefined ? '—' : (dec ? Number(v).toFixed(dec) : String(Math.round(v * 100) / 100)); }
+        function squadPlayerName(num) { return resolveStudentDisplayName(num) || `${num}번`; }
+
+        function listenToSquadStats() {
+            onSnapshot(collection(fdb, 'squad_stats'), (snap) => {
+                squadStatsCache = {};
+                snap.forEach(d => { if (/^\d+$/.test(d.id)) squadStatsCache[d.id] = d.data() || {}; });
+                squadStatsLoaded = true; squadStatsReadError = '';
+                renderSquadStats();
+            }, (err) => {
+                console.warn('선수 기록 읽기 실패:', err && err.code);
+                squadStatsLoaded = true;
+                squadStatsReadError = err && err.code === 'permission-denied' ? '선수 기록을 불러올 권한이 없어요. (관리자: Firestore 규칙에 squad_stats 를 추가해 주세요)' : '선수 기록을 불러오지 못했어요.';
+                renderSquadStats();
+            });
+        }
+
+        function setSquadStatsStatus(msg, isError) {
+            const el = document.getElementById('squad-stats-status'); if (!el) return;
+            el.textContent = msg || ''; el.classList.toggle('error', !!isError);
+        }
+
+        function renderSquadStatsEditor() {
+            const sel = document.getElementById('squad-stats-player'), box = document.getElementById('squad-stats-inputs');
+            if (!sel || !box) return;
+            const prev = sel.value || String(parseInt(currentUserInfo && currentUserInfo.number) || 1);
+            let opts = '';
+            for (let i = 1; i <= CLASS_ROSTER_SIZE; i++) opts += `<option value="${i}">${i}. ${escapeHtml(squadPlayerName(i))}${squadStatsCache[i] ? ' ✓' : ''}</option>`;
+            sel.innerHTML = opts;
+            sel.value = (+prev >= 1 && +prev <= CLASS_ROSTER_SIZE) ? String(+prev) : '1';
+            if (!box.childElementCount) {
+                box.innerHTML = SQUAD_STAT_FIELDS.map(f => `<label class="squad-stats-field"><span>${f.label} <small>${f.sub}</small></span><input type="number" inputmode="decimal" min="0" step="${f.step}" class="auth-input" id="squad-stat-${f.key}" placeholder="—"></label>`).join('');
+            }
+            const editable = canEditSquadStats();
+            box.querySelectorAll('input').forEach(i => { i.disabled = !editable; });
+            ['squad-stats-save', 'squad-stats-delete'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = !editable; });
+            if (!editable && !squadStatsReadError) setSquadStatsStatus('기록 입력은 우리 반 계정으로 로그인하면 할 수 있어요.');
+        }
+        window.loadSquadStatsEditor = function() {
+            const sel = document.getElementById('squad-stats-player'); if (!sel) return;
+            const s = squadStatsCache[sel.value] || {};
+            SQUAD_STAT_FIELDS.forEach(f => { const i = document.getElementById(`squad-stat-${f.key}`); if (i) i.value = squadNum(s[f.key]) === null ? '' : s[f.key]; });
+            const del = document.getElementById('squad-stats-delete'); if (del) del.style.display = squadStatsCache[sel.value] ? '' : 'none';
+            if (squadStatsReadError) setSquadStatsStatus(squadStatsReadError, true);
+            else if (canEditSquadStats()) setSquadStatsStatus('');
+        };
+
+        window.saveSquadStats = async function() {
+            if (!canEditSquadStats()) return;
+            const num = document.getElementById('squad-stats-player').value;
+            const data = {}; let any = false;
+            for (const f of SQUAD_STAT_FIELDS) {
+                const raw = document.getElementById(`squad-stat-${f.key}`).value.trim();
+                if (raw === '') { data[f.key] = null; continue; }
+                const v = Number(raw);
+                if (!isFinite(v) || v < 0 || v > 10000) { setSquadStatsStatus(`${f.label} 값을 확인해 주세요 (0 이상의 숫자).`, true); return; }
+                data[f.key] = v; any = true;
+            }
+            if (!any) { setSquadStatsStatus('적어도 한 칸은 입력해 주세요.', true); return; }
+            data.updatedAt = Date.now(); data.updatedBy = currentUser.uid;
+            setSquadStatsStatus('저장 중…');
+            try {
+                await setDoc(doc(fdb, 'squad_stats', String(num)), data);
+                // 방금 기록한 선수는 비교에 넣어 바로 보이게
+                const cmp = getSquadCompare();
+                if (!(num in cmp) && Object.keys(cmp).length < SQUAD_COMPARE_MAX) { cmp[num] = squadFreeSlot(cmp); saveSquadCompare(cmp); }
+                setSquadStatsStatus(`${squadPlayerName(num)} 기록을 저장했어요.`);
+                renderSquadStats();
+            } catch (e) {
+                console.warn('선수 기록 저장 실패:', e);
+                setSquadStatsStatus(e && e.code === 'permission-denied' ? '저장 권한이 없어요. (관리자: Firestore 규칙에 squad_stats 를 추가해 주세요)' : '저장하지 못했어요. 인터넷 연결을 확인해 주세요.', true);
+            }
+        };
+        window.deleteSquadStats = async function() {
+            if (!canEditSquadStats()) return;
+            const num = document.getElementById('squad-stats-player').value;
+            if (!squadStatsCache[num] || !confirm(`${squadPlayerName(num)} 선수의 기록을 지울까요?`)) return;
+            try {
+                await deleteDoc(doc(fdb, 'squad_stats', String(num)));
+                setSquadStatsStatus(`${squadPlayerName(num)} 기록을 지웠어요.`);
+            } catch (e) { setSquadStatsStatus('지우지 못했어요.', true); }
+        };
+
+        function squadFreeSlot(cmp) { const used = new Set(Object.values(cmp)); for (let i = 0; i < SQUAD_COMPARE_MAX; i++) if (!used.has(i)) return i; return 0; }
+        function saveSquadCompare(cmp) { squadCompare = cmp; try { localStorage.setItem(SQUAD_COMPARE_KEY, JSON.stringify(cmp)); } catch (e) {} }
+        // 비교 대상: 기록이 있는 선수만. 처음엔(저장된 선택이 없으면) 기록 있는 앞쪽 두 명
+        function getSquadCompare() {
+            const withData = Object.keys(squadStatsCache).sort((a, b) => a - b);
+            let cmp = {};
+            if (squadCompare) { Object.keys(squadCompare).forEach(n => { if (squadStatsCache[n]) cmp[n] = squadCompare[n]; }); }
+            else withData.slice(0, 2).forEach((n, i) => { cmp[n] = i; });
+            return cmp;
+        }
+        window.toggleSquadCompare = function(num) {
+            const cmp = getSquadCompare(); num = String(num);
+            if (num in cmp) delete cmp[num];
+            else { if (Object.keys(cmp).length >= SQUAD_COMPARE_MAX) { setSquadStatsStatus(`비교는 최대 ${SQUAD_COMPARE_MAX}명까지 할 수 있어요.`, true); return; } cmp[num] = squadFreeSlot(cmp); }
+            saveSquadCompare(cmp); renderSquadStats();
+        };
+
+        // 축마다 0~100 점수: 기록 있는 선수 중 최고값 = 100 (PPDA 는 최저값 = 100). 비교 선택과 상관없이 반 전체 기준이라 선수를 넣고 빼도 모양이 그대로다.
+        function squadAxisScales() {
+            return SQUAD_RADAR_AXES.map(ax => {
+                const vals = Object.values(squadStatsCache).map(ax.get).filter(v => v !== null && (ax.lowerIsBetter ? v > 0 : v >= 0));
+                return ax.lowerIsBetter ? { best: vals.length ? Math.min(...vals) : null } : { best: vals.length ? Math.max(...vals) : null };
+            });
+        }
+        function squadScore(ax, scale, v) {
+            if (v === null || scale.best === null) return 0;
+            if (ax.lowerIsBetter) return v > 0 ? Math.min(100, scale.best / v * 100) : 0;
+            return scale.best > 0 ? Math.min(100, v / scale.best * 100) : 0;
+        }
+
+        function renderSquadStats() {
+            const chipsEl = document.getElementById('squad-stats-chips'), radarEl = document.getElementById('squad-radar'), legendEl = document.getElementById('squad-radar-legend'), tableEl = document.getElementById('squad-stats-table');
+            if (!chipsEl || !radarEl) return;
+            renderSquadStatsEditor(); loadSquadStatsEditor();
+            const withData = Object.keys(squadStatsCache).sort((a, b) => a - b);
+            const cmp = getSquadCompare();
+            const color = (n) => `var(--squad-c${(cmp[n] || 0) + 1})`;
+            if (!withData.length) {
+                chipsEl.innerHTML = `<div class="squad-stats-empty">${squadStatsLoaded ? '아직 기록된 선수가 없어요. 왼쪽에서 선수를 고르고 기록을 입력해 보세요.' : '불러오는 중…'}</div>`;
+            } else {
+                chipsEl.innerHTML = withData.map(n => {
+                    const on = n in cmp;
+                    return `<button type="button" class="squad-chip" aria-pressed="${on}" onclick="toggleSquadCompare(${n})">${on ? `<span class="dot" style="background:${color(n)}"></span>` : ''}${n}. ${escapeHtml(squadPlayerName(n))}</button>`;
+                }).join('');
+            }
+            const scales = squadAxisScales();
+            const selected = Object.keys(cmp).sort((a, b) => cmp[a] - cmp[b]);
+            radarEl.innerHTML = buildSquadRadarSvg(selected, scales, color);
+            legendEl.innerHTML = selected.map(n => `<span><span class="dot" style="background:${color(n)}"></span>${escapeHtml(squadPlayerName(n))}</span>`).join('');
+            // 표: 실제 입력값(레이더 색만으로 구분하지 않도록 같은 정보를 숫자로도 보여준다)
+            if (tableEl) {
+                if (!withData.length) { tableEl.innerHTML = ''; }
+                else {
+                    const head = `<tr><th>선수</th><th>xG</th><th>xA</th><th>PPDA</th><th>프로그레시브 패스</th><th>프로그레시브 캐리</th><th>기회 창출</th></tr>`;
+                    const rows = withData.map(n => {
+                        const s = squadStatsCache[n];
+                        return `<tr class="${n in cmp ? 'sel' : ''}"><td>${n in cmp ? `<span class="dot" style="background:${color(n)}"></span>` : ''}${n}. ${escapeHtml(squadPlayerName(n))}</td><td>${squadFmt(squadNum(s.xg), 2)}</td><td>${squadFmt(squadNum(s.xa), 2)}</td><td>${squadFmt(squadNum(s.ppda), 1)}</td><td>${squadFmt(squadNum(s.progPass))}</td><td>${squadFmt(squadNum(s.progCarry))}</td><td>${squadFmt(squadNum(s.chances))}</td></tr>`;
+                    }).join('');
+                    tableEl.innerHTML = `<table class="squad-stats-table">${head}${rows}</table>`;
+                }
+            }
+        }
+
+        function buildSquadRadarSvg(selected, scales, color) {
+            const R = 110, N = SQUAD_RADAR_AXES.length;
+            const pt = (i, r) => { const a = (-90 + i * 360 / N) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; };
+            const poly = (r) => SQUAD_RADAR_AXES.map((_, i) => pt(i, r).map(v => v.toFixed(1)).join(',')).join(' ');
+            let g = '';
+            [25, 50, 75, 100].forEach(p => { g += `<polygon class="squad-radar-grid" points="${poly(R * p / 100)}"/>`; });
+            SQUAD_RADAR_AXES.forEach((ax, i) => {
+                const [x, y] = pt(i, R); g += `<line class="squad-radar-axis" x1="0" y1="0" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+                const [lx, ly] = pt(i, R + 18);
+                const anchor = Math.abs(lx) < 4 ? 'middle' : (lx > 0 ? 'start' : 'end');
+                g += `<text class="squad-radar-label" x="${lx.toFixed(1)}" y="${(ly + (ly < -R ? -2 : ly > 0 ? 10 : 4)).toFixed(1)}" text-anchor="${anchor}">${ax.label}</text>`;
+            });
+            g += `<text class="squad-radar-tick" x="4" y="${(-R / 2 + 3).toFixed(1)}">50</text><text class="squad-radar-tick" x="4" y="${(-R + 3).toFixed(1)}">100</text>`;
+            selected.forEach(n => {
+                const s = squadStatsCache[n];
+                const pts = SQUAD_RADAR_AXES.map((ax, i) => pt(i, R * squadScore(ax, scales[i], ax.get(s)) / 100));
+                g += `<polygon class="squad-radar-area" points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" style="fill:${color(n)}; stroke:${color(n)}"/>`;
+            });
+            // 꼭짓점(점) + 넓은 투명 영역으로 마우스를 올리면 실제 값 툴팁
+            selected.forEach(n => {
+                const s = squadStatsCache[n];
+                SQUAD_RADAR_AXES.forEach((ax, i) => {
+                    const v = ax.get(s), sc = squadScore(ax, scales[i], v);
+                    const [x, y] = pt(i, R * sc / 100);
+                    g += `<circle class="squad-radar-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" style="fill:${color(n)}"/>`;
+                    g += `<circle class="squad-radar-hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="11" data-n="${n}" data-i="${i}" onmouseenter="showSquadRadarTip(this)" onmouseleave="hideSquadRadarTip()" ontouchstart="showSquadRadarTip(this)"/>`;
+                });
+            });
+            const empty = selected.length ? '' : `<text class="squad-radar-tick" x="0" y="4" text-anchor="middle">비교할 선수를 골라 주세요</text>`;
+            return `<svg viewBox="-190 -150 380 300" role="img" aria-label="선수 비교 오각형 레이더 차트 (xG, xA, 기회 창출, 전진 패스·캐리, 압박)">${g}${empty}</svg>`;
+        }
+        window.showSquadRadarTip = function(el) {
+            const tip = document.getElementById('squad-radar-tip'), wrap = document.getElementById('squad-radar-wrap'); if (!tip || !wrap) return;
+            const n = el.dataset.n, ax = SQUAD_RADAR_AXES[+el.dataset.i], s = squadStatsCache[n] || {};
+            const v = ax.get(s), sc = squadScore(ax, squadAxisScales()[+el.dataset.i], v);
+            tip.innerHTML = `<b>${escapeHtml(squadPlayerName(n))}</b><br>${ax.label}: ${squadFmt(v, ax.dec)}${v === null ? '' : ` · ${Math.round(sc)}점`}`;
+            const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+            tip.style.left = (r.left + r.width / 2 - w.left) + 'px'; tip.style.top = (r.top + r.height / 2 - w.top) + 'px';
+            tip.hidden = false;
+        };
+        window.hideSquadRadarTip = function() { const tip = document.getElementById('squad-radar-tip'); if (tip) tip.hidden = true; };
 
         // --- 시험 범위 & 실제 월간 수행평가 캘린더 ---
         const subjects = ["국어", "수학", "영어", "한국사", "통합과학", "통합사회"]; // exam_meta/subjects 문서가 아직 없을 때 쓰는 최초 시드 값
@@ -10415,6 +10633,7 @@
                 }
                 // 학생 프로필 이름이 바뀔 수 있으므로, 번호 기반으로 이름을 보여주는 스쿼드/자리배치 화면도 함께 다시 그린다
                 renderSquadPitch();
+                renderSquadStats();
                 renderSeatingGrid();
                 refreshAuthorViews();
             });

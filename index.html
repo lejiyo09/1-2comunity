@@ -22,7 +22,7 @@
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#2f6fed">
-    <meta name="app-version" content="c121f528de80">
+    <meta name="app-version" content="faedfbd187e3">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -428,7 +428,7 @@
                     <button class="btn-sub" onclick="openSidebarSettings()">🧭 사이드바 설정</button>
                 </div>
 
-                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.1.0</div>
+                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.2.0</div>
             </div>
         </div>
 
@@ -1173,6 +1173,47 @@
                         </select>
                     </div>
                     <div class="pitch" id="squad-pitch"></div>
+                </div>
+
+                <!-- 선수 기록(xG·xA·PPDA·프로그레시브 패스/캐리·기회 창출) 입력 + 오각형 레이더로 여러 선수 비교. 선수 = 반 친구 프로필(번호) -->
+                <div class="card squad-stats-card" id="squad-stats-card">
+                    <div class="card-title">📊 선수 기록 · 레이더 비교</div>
+                    <div class="squad-stats-grid">
+                        <form class="squad-stats-editor" id="squad-stats-form" onsubmit="event.preventDefault(); saveSquadStats();">
+                            <label class="squad-stats-field squad-stats-player">
+                                <span>선수 (친구 프로필)</span>
+                                <select id="squad-stats-player" class="auth-select" onchange="loadSquadStatsEditor()"></select>
+                            </label>
+                            <div class="squad-stats-inputs" id="squad-stats-inputs"></div>
+                            <div class="squad-stats-hint">경기당 평균이든 시즌 합계든 모두 같은 기준으로 적어 주세요. 비워 둔 칸은 기록 없음으로 저장돼요.</div>
+                            <div class="squad-stats-actions">
+                                <button type="submit" class="auth-btn" id="squad-stats-save">저장</button>
+                                <button type="button" class="btn-sub" id="squad-stats-delete" onclick="deleteSquadStats()">기록 지우기</button>
+                            </div>
+                            <div class="squad-stats-status" id="squad-stats-status" role="status"></div>
+                        </form>
+                        <div class="squad-stats-compare">
+                            <div class="squad-stats-subtitle">비교할 선수 <span>(최대 4명)</span></div>
+                            <div class="squad-stats-chips" id="squad-stats-chips"></div>
+                            <div class="squad-radar-wrap" id="squad-radar-wrap">
+                                <div id="squad-radar"></div>
+                                <div class="squad-radar-tip" id="squad-radar-tip" hidden></div>
+                            </div>
+                            <div class="squad-radar-legend" id="squad-radar-legend"></div>
+                            <div class="squad-stats-note">각 축은 기록이 있는 친구 중 가장 높은 값을 100으로 맞춘 점수예요. PPDA는 낮을수록 압박이 강하므로 가장 낮은 값이 100이에요.</div>
+                        </div>
+                    </div>
+                    <div class="squad-stats-table-wrap" id="squad-stats-table"></div>
+                    <details class="squad-stats-help">
+                        <summary>지표 설명</summary>
+                        <dl>
+                            <dt>xG (Expected Goals, 기대 득점)</dt><dd>슈팅 위치, 수비수 위치, 패스 형태 등을 고려해 '실제 골로 연결될 확률'을 계산한 수치. xG가 낮은 슈팅을 골로 만들었다면 어려운 골을 성공시켰다는 뜻이에요.</dd>
+                            <dt>xA (Expected Assists, 기대 도움)</dt><dd>패스를 받은 선수가 골을 넣을 확률(xG)을 기반으로, 패스를 찔러준 선수의 창의성과 기여도를 평가해요.</dd>
+                            <dt>PPDA (Passes per Defensive Action)</dt><dd>수비 행동(태클, 가로채기 등)을 하기 전까지 상대에게 허용한 패스 횟수. 낮을수록 전방 압박이 강해요.</dd>
+                            <dt>프로그레시브 패스/캐리 (Progressive Passes/Carries)</dt><dd>공을 상대 골문 쪽으로 최소 10야드 이상 전진시킨 패스나 드리블 횟수. 레이더에서는 두 값을 합쳐 '전진 패스·캐리' 한 축으로 보여줘요.</dd>
+                            <dt>기회 창출 (Chances Created) / 빅 찬스 메이킹</dt><dd>동료에게 결정적인 슈팅 기회를 열어준 횟수.</dd>
+                        </dl>
+                    </details>
                 </div>
             </div>
 
