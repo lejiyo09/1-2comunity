@@ -16,6 +16,7 @@
   ```
 * 변환은 공백/주석 제거와 문법 줄이기뿐이고, 변수·함수 이름은 바꾸지 않는다(HTML 의 `onclick="…"` 이름 참조가 그대로 동작).
 * `npm run check` 로 배포용 파일이 원본과 맞는지 확인할 수 있다(다르면 오류).
+* 빌드는 앱 파일 내용으로 **앱 버전**을 계산해 `sw.js` 의 `APP_VERSION` 과 `index.html` 의 `<meta name="app-version">` 에 넣는다. 배포 뒤 이 값이 바뀌면, 사이트를 열어 둔 사람에게 "새 버전이 준비되었습니다 [업데이트]" 알림이 뜬다(`src/js/app-update.js`). 그래서 `index.html` 만 고쳤더라도 빌드를 돌려서 커밋해야 알림이 뜬다.
 * 플래너 화면의 Tailwind 클래스는 CDN 대신 미리 빌드한 `css/tailwind.css` 를 쓴다. 플래너(`index.html`, `src/js/*.js`)에 새 Tailwind 클래스를 추가했다면 위 빌드가 이 파일도 다시 만든다.
 
 ## 오프라인에서 첫 화면이 열리는지 시험하기

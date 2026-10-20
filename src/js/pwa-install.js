@@ -47,13 +47,6 @@
         });
 
         if (isStandalone()) hideCard();
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch((err) => {
-                    console.warn('[한일고 PWA] service worker 등록 실패:', err);
-                });
-            });
-        }
+        // 서비스워커 등록과 새 버전 알림은 app-update.js 에서 한다
     })();
     

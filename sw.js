@@ -6,7 +6,10 @@
 // ⚠️ 이 캐시는 "예전에 온라인 상태에서 최소 한 번은 성공적으로 열어본 적 있는 화면"만 오프라인에서
 // 대신 보여줄 수 있다 - 애초에 한 번도 성공적으로 못 연 사이트라면(예: 호스팅 서비스가 잠들어 있거나
 // 다운된 상태에서 처음 접속) 오프라인 캐시에 저장된 게 아무것도 없어서 대신 보여줄 화면 자체가 없다.
-const CACHE_NAME = 'appshell-v6'; // 오프라인 첫 화면 수정(외부 코드 캐시·네트워크 타임아웃) - 앱 셸이 바뀌어 이름을 올려 예전 캐시를 비운다
+// 앱 파일 내용으로 만든 버전 - tools/build 가 빌드할 때 자동으로 넣는다(index.html 의 <meta name="app-version"> 과 같은 값). 직접 고치지 말 것.
+// 배포로 이 값이 바뀌면 브라우저가 새 서비스워커를 설치해 대기시키고, 화면에 "새 버전이 준비되었습니다 [업데이트]" 알림이 뜬다(js/app-update.js).
+const APP_VERSION = '479b2bd99168';
+const CACHE_NAME = 'appshell-' + APP_VERSION; // 버전마다 앱 셸을 새로 저장하고, 교체되면 예전 캐시는 지운다
 // 앱 코드가 불러오는 "외부" 모듈(Firebase·Supabase)과 글꼴은 따로 저장해 둔다. 이게 없으면 오프라인에서 app.js 가 import 단계에서 실패해
 // 앱 전체가 시작되지 못하고 "불러오는 중…"에서 멈춘다. 버전이 고정된 파일이라 앱 셸 이름이 바뀌어도 지우지 않는다.
 const CDN_CACHE = 'appcdn-v1';
@@ -51,11 +54,16 @@ const APP_SHELL_URLS = [
     './', './index.html', './manifest.webmanifest',
     '/css/main.css', '/css/tailwind.css', '/css/planner.css', '/css/mini-widgets.css', '/css/pwa-install.css', '/css/notice-popup.css',
     '/js/config.js', '/js/app.js', '/js/appstore-zip.js', '/js/appstore.js', '/js/planner.js',
-    '/js/mixtape.js', '/js/home-bridge.js', '/js/pip-bubble.js', '/js/pwa-install.js', '/js/theme.js'
+    '/js/mixtape.js', '/js/home-bridge.js', '/js/pip-bubble.js', '/js/pwa-install.js', '/js/app-update.js', '/js/theme.js'
 ];
 
+// 새 버전은 설치만 해 두고 기다린다(사용자가 "업데이트"를 누르면 SKIP_WAITING 으로 교체). 처음 설치는 기다리지 않고 바로 시작된다.
+self.addEventListener('message', (event) => {
+    if (event.data === 'SKIP_WAITING') self.skipWaiting();
+    else if (event.data === 'GET_VERSION' && event.ports && event.ports[0]) event.ports[0].postMessage(APP_VERSION);
+});
+
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) =>
             // cache.addAll은 원자적이라 URL 하나만 실패해도 나머지까지 전부 캐싱되지 않는다(이전 버전의 버그 -
