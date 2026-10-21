@@ -20,9 +20,9 @@ Firestore `squad_stats/{학생번호}` (예: `squad_stats/7`)
 각 축은 기록이 있는 반 친구 중 최고값을 100으로 맞춘 점수다. PPDA 는 낮을수록 압박이 강하므로 최저값이 100(점수 = 최저값 ÷ 내 값 × 100).
 실제 입력값은 차트 아래 표와 꼭짓점 툴팁에 그대로 보인다.
 
-## Firestore 보안 규칙 (콘솔에서 추가 필요)
+## Firestore 보안 규칙
 
-규칙에 이 컬렉션이 없으면 화면에 "선수 기록을 불러올 권한이 없어요" 안내가 뜬다. Firebase 콘솔 → Firestore → 규칙에 추가:
+게시된 전체 규칙은 [`docs/firestore.rules`](firestore.rules) 에 있다(아래는 그중 이 컬렉션 부분의 요약). 규칙에 이 컬렉션이 없으면 화면에 "선수 기록을 불러올 권한이 없어요" 안내가 뜬다.
 
 ```
 match /squad_stats/{num} {

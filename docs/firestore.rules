@@ -1,0 +1,289 @@
+rules_version = '2';
+// Firestore 보안 규칙 - 현재 Firebase 콘솔에 게시된 최종본(원본).
+// 규칙을 바꿀 때는 이 파일을 고치고, 파일 전체를 Firebase 콘솔 → Firestore → 규칙에 붙여 넣어 게시한다.
+// (앱 코드가 새 컬렉션을 쓰기 시작하면 여기에도 match 블록을 추가해야 한다 - 없으면 permission-denied)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 공용 헬퍼 함수
+    // -------------------------------------------------------------------------
+    // Firestore 보안 규칙은 Realtime Database를 읽을 수 없다. 이 프로젝트는
+    // users/{uid}(email/grade/ban/number/role)를 RTDB에 그대로 남겨두기로 했으므로,
+    // 규칙 판단에 필요한 최소 식별 정보(grade/ban/number/role)만 Firestore의
+    // users/{uid}에도 거울로 복사해 둔다(프론트엔드 코드에서 가입 시 + 로그인 시 1회 자동 기록).
+    // RTDB의 users/{uid}가 여전히 유일한 원본이고, 이 Firestore users 컬렉션은 오직
+    // "이 사람이 무엇을 할 수 있는지" 판단하는 용도로만 쓴다.
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    // 게스트(익명 로그인) 세션이 아닌 실제 계정
+    function isRealUser() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+    function myUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    // 주의: myUser().number는 정수로 저장되어 있다(가입 시 "06" 같은 원본 문자열을 parseInt해서 기록함).
+    // RTDB sub_admins 등의 문서ID가 student_6처럼 0-padding 없는 정수 기반이라 이렇게 맞춰야 서로 일치한다.
+    function isClass2Member() {
+      return isSignedIn() && myUser().role == 'class2_member';
+    }
+    // 30번(관리자) 또는 20번(창시자) - 기존 RTDB 규칙의 "최고 관리자" 판정과 동일
+    function isTopAdmin() {
+      return isSignedIn() && myUser().grade == '1' && myUser().ban == '2'
+        && (myUser().number == 30 || myUser().number == 20);
+    }
+    function isSubAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/sub_admins/$('student_' + string(myUser().number)));
+    }
+    // 1230 운영자(20261230@hanilgo.cnehs.kr) - isTopAdmin/isSubAdmin과는 별개의 콘텐츠 운영자 등급.
+    // 클라이언트(OPERATOR_EMAIL)와 동일한 이메일을 기준으로 판별한다. 이 계정에 부관리자 임명(sub_admins
+    // write) 권한은 절대 주지 않는다 - isOwnerOrAdmin()/isNoticePoster()에만 추가한다.
+    function isOperator() {
+      return isSignedIn() && request.auth.token.email.lower() == '20261230@hanilgo.cnehs.kr';
+    }
+    // 공지/설문 작성 권한이 있는 번호(관리자30/창시자20/부반장3/담임98/부담임40) + 1230 운영자 - 기존 RTDB notices/polls 규칙과 동일 + 운영자 확장
+    function isNoticePoster() {
+      return isTopAdmin() || isSubAdmin() || isOperator() || (
+        isSignedIn() && myUser().grade == '1' && myUser().ban == '2' && (
+          myUser().number == 30 || myUser().number == 20 || myUser().number == 3 ||
+          myUser().number == 98 || myUser().number == 40
+        )
+      );
+    }
+    // 새 문서를 만들 때 authorId가 본인 uid와 일치하는지 (글쓴이 사칭 방지)
+    function isOwnedCreate() {
+      return request.resource.data.authorId == request.auth.uid;
+    }
+    // 기존 글쓴이 본인이거나 관리자/부관리자/1230 운영자인 경우 (수정/삭제 공용 조건)
+    function isOwnerOrAdmin() {
+      return resource.data.authorId == request.auth.uid || isTopAdmin() || isSubAdmin() || isOperator();
+    }
+    // 설문이 아직 투표 가능한 상태인지 (기존 RTDB poll_votes 규칙의 active/expiresAt 체크와 동일)
+    function pollIsOpenForVote(pollId) {
+      let poll = get(/databases/$(database)/documents/polls/$(pollId)).data;
+      return poll.active != false
+        && (!('expiresAt' in poll) || poll.expiresAt == null || request.time.toMillis() < poll.expiresAt);
+    }
+    // 좋아요 토글: 다른 사람 글이라도 likes/likeCount 두 필드만 바뀌는 경우에는 허용한다
+    // (toggleLike()가 게시글 문서 전체를 트랜잭션으로 갱신하지만 실제로 바뀌는 값은 이 두 개뿐이다)
+    function isLikeOnlyChange() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likeCount']);
+    }
+    // 선수 기록 칸: 없거나, null(빈 칸)이거나, 0~10000 숫자
+    function isStatValue(d, k) {
+      return !(k in d) || d[k] == null || (d[k] is number && d[k] >= 0 && d[k] <= 10000);
+    }
+
+    // =========================================================================
+    // users - Rules 판단용 거울 문서(grade/ban/number/role)만 저장한다.
+    // 본인 것만 쓸 수 있고, 한 번 만들어진 뒤에는 프론트엔드에서 변경하지 않는다(가입 시 고정값).
+    // =========================================================================
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // posts - 커뮤니티 게시글
+    // =========================================================================
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isClass2Member() && isOwnedCreate();
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isLikeOnlyChange());
+      allow delete: if isSignedIn() && isOwnerOrAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isClass2Member() && isOwnedCreate();
+        allow update: if isSignedIn() && resource.data.authorId == request.auth.uid; // editComment(): 본인 댓글만 수정
+        allow delete: if isSignedIn() && isOwnerOrAdmin();
+      }
+    }
+
+    // =========================================================================
+    // pokemon_posts - 게임 커뮤니티 게시글 (posts와 동일한 권한 구조)
+    // =========================================================================
+    match /pokemon_posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isClass2Member() && isOwnedCreate();
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isLikeOnlyChange());
+      allow delete: if isSignedIn() && isOwnerOrAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isClass2Member() && isOwnedCreate();
+        allow update: if isSignedIn() && resource.data.authorId == request.auth.uid;
+        allow delete: if isSignedIn() && isOwnerOrAdmin();
+      }
+    }
+
+    // =========================================================================
+    // archive - 2반 아카이브 (likes/likeCount 필드가 애초에 없다 - 수정 기능 없음, 작성/삭제만)
+    // =========================================================================
+    match /archive/{archiveId} {
+      allow read: if isSignedIn();
+      allow create: if isClass2Member() && isOwnedCreate();
+      allow delete: if isSignedIn() && isOwnerOrAdmin();
+      allow update: if false;
+    }
+
+    // =========================================================================
+    // archiveStudy / archiveEtc - 자료실의 예전(Firestore) 자료. 새 업로드는 Supabase 로 가므로 생성은 막고,
+    // 등록한 본인/관리자만 제목·카테고리·설명 수정과 삭제를 할 수 있다(클라이언트 openMaterialEditModal/deleteArchiveFile 과 동일).
+    // =========================================================================
+    match /archiveStudy/{docId} {
+      allow read: if isSignedIn();
+      allow create: if false;
+      allow update: if isSignedIn() && isOwnerOrAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'category', 'desc']);
+      allow delete: if isSignedIn() && isOwnerOrAdmin();
+    }
+    match /archiveEtc/{docId} {
+      allow read: if isSignedIn();
+      allow create: if false;
+      allow update: if isSignedIn() && isOwnerOrAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'category', 'desc']);
+      allow delete: if isSignedIn() && isOwnerOrAdmin();
+    }
+
+    // =========================================================================
+    // notices - 공지사항 (작성/수정/삭제는 공지 작성 권한자만)
+    // =========================================================================
+    match /notices/{noticeId} {
+      allow read: if isSignedIn();
+      allow create: if isNoticePoster() && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isNoticePoster();
+
+      // 공지 댓글 - 실제 계정이면 누구나 작성, 본인 댓글만 수정, 삭제는 본인/관리자/공지 작성 권한자(공지 삭제 시 댓글도 함께 지움)
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isRealUser() && isOwnedCreate()
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 500;
+        allow update: if isRealUser() && resource.data.authorId == request.auth.uid
+          && request.resource.data.authorId == resource.data.authorId
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 500;
+        allow delete: if isSignedIn() && (isOwnerOrAdmin() || isNoticePoster());
+      }
+    }
+
+    // notice_reads - 문서ID "{noticeId}_{uid}". 본인 읽음 기록만 쓸 수 있다.
+    match /notice_reads/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // polls - 설문 (작성/마감/삭제는 공지 작성 권한자만)
+    // =========================================================================
+    match /polls/{pollId} {
+      allow read: if isSignedIn();
+      allow create: if isNoticePoster() && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isNoticePoster();
+    }
+
+    // poll_votes - 문서ID "{pollId}_{uid}". 본인 투표만 새로 만들 수 있고(재투표 방지: 이미 있으면 막음), 수정/삭제는 불가.
+    match /poll_votes/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid
+        && resource == null
+        && pollIsOpenForVote(request.resource.data.pollId);
+      allow update: if false;
+      allow delete: if isNoticePoster(); // 설문 삭제 시(deletePollConfirm) 관련 투표를 함께 지우기 위함
+    }
+
+    // =========================================================================
+    // profiles - 학생 프로필(student_{num}). 기존 RTDB 시절부터 "다른 학생의 프로필도 수정 가능"한 것이
+    // 정상 동작이므로 uid 소유권을 강제하지 않는다. class2_member면 누구나 쓸 수 있다.
+    // =========================================================================
+    match /profiles/{studentKey} {
+      allow read: if isSignedIn();
+      allow write: if isClass2Member();
+    }
+
+    // profile_comments - 문서ID "{studentKey}__{commentId}". 아무 학생 프로필에나 방명록처럼 작성 가능,
+    // 삭제는 본인 댓글이거나 관리자만.
+    match /profile_comments/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isClass2Member() && isOwnedCreate();
+      allow update: if false;
+      allow delete: if isSignedIn() && isOwnerOrAdmin();
+    }
+
+    // =========================================================================
+    // sub_admins - 부관리자 지정. 최고 관리자만 지정/해제 가능.
+    // =========================================================================
+    match /sub_admins/{studentKey} {
+      allow read: if isSignedIn();
+      allow write: if isTopAdmin();
+    }
+
+    // =========================================================================
+    // exam_notes / exam_meta / timetable / games / game_categories / calendar
+    // =========================================================================
+    match /exam_notes/{subject} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isClass2Member(); // 기존 RTDB: 담임/부담임 등 로그인한 정회원이면 작성 가능했던 시험범위 게시판
+    }
+
+    // exam_meta/subjects - 시험 범위 과목 목록(이름 수정/최초 시드). exam_notes 와 같은 권한.
+    match /exam_meta/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isClass2Member();
+    }
+
+    match /timetable/{cellId} {
+      allow read: if isSignedIn();
+      allow write: if isTopAdmin(); // 공용 시간표 수정 모드는 최고 관리자 전용
+    }
+
+    match /games/{gameId} {
+      allow read: if isSignedIn();
+      allow write: if isTopAdmin();
+    }
+
+    match /game_categories/{catId} {
+      allow read: if isSignedIn();
+      allow write: if isTopAdmin();
+    }
+
+    match /calendar/{eventId} {
+      allow read: if isSignedIn();
+      allow write: if isClass2Member(); // 기존 RTDB: 정회원이면 수행평가 기록 작성 가능했던 경로
+    }
+
+    // =========================================================================
+    // squad_players / squad_config - 스쿼드 메이커. 정회원이면 누구나 편성 가능(기존 RTDB squad 규칙과 동일).
+    // =========================================================================
+    match /squad_players/{posId} {
+      allow read: if isSignedIn();
+      allow write: if isClass2Member();
+    }
+    match /squad_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isClass2Member();
+    }
+
+    // squad_stats/{학생번호} - 선수 기록(xG/xA/PPDA/프로그레시브 패스·캐리/기회 창출). 정회원이면 기록 가능.
+    match /squad_stats/{num} {
+      allow read: if isSignedIn();
+      allow create, update: if isClass2Member()
+        && num.matches('^[0-9]+$')
+        && request.resource.data.keys().hasOnly(['xg', 'xa', 'ppda', 'progPass', 'progCarry', 'chances', 'updatedAt', 'updatedBy'])
+        && request.resource.data.updatedBy == request.auth.uid
+        && isStatValue(request.resource.data, 'xg') && isStatValue(request.resource.data, 'xa')
+        && isStatValue(request.resource.data, 'ppda') && isStatValue(request.resource.data, 'progPass')
+        && isStatValue(request.resource.data, 'progCarry') && isStatValue(request.resource.data, 'chances');
+      allow delete: if isClass2Member();
+    }
+  }
+}

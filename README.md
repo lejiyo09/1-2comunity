@@ -19,6 +19,12 @@
 * 빌드는 앱 파일 내용으로 **앱 버전**을 계산해 `sw.js` 의 `APP_VERSION` 과 `index.html` 의 `<meta name="app-version">` 에 넣는다. 배포 뒤 이 값이 바뀌면, 사이트를 열어 둔 사람에게 "새 버전이 준비되었습니다 [업데이트]" 알림이 뜬다(`src/js/app-update.js`). 그래서 `index.html` 만 고쳤더라도 빌드를 돌려서 커밋해야 알림이 뜬다.
 * 플래너 화면의 Tailwind 클래스는 CDN 대신 미리 빌드한 `css/tailwind.css` 를 쓴다. 플래너(`index.html`, `src/js/*.js`)에 새 Tailwind 클래스를 추가했다면 위 빌드가 이 파일도 다시 만든다.
 
+## Firestore 보안 규칙
+
+현재 Firebase 콘솔에 게시된 Firestore 규칙의 원본은 **[`docs/firestore.rules`](docs/firestore.rules)** 다.
+규칙을 바꿀 때는 이 파일을 고친 뒤, 파일 전체를 Firebase 콘솔 → Firestore → 규칙에 붙여 넣어 게시한다.
+앱이 새 Firestore 컬렉션을 쓰기 시작하면 여기에도 `match` 블록을 추가해야 한다(없으면 `permission-denied`).
+
 ## 오프라인에서 첫 화면이 열리는지 시험하기
 
 `sw.js` 는 앱 파일뿐 아니라 앱이 불러오는 Firebase·Supabase 모듈(외부 서버)도 저장해 두어서, 한 번이라도 온라인으로 열어 본 기기는 오프라인에서도 앱이 시작된다.
