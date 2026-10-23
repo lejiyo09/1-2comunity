@@ -123,6 +123,36 @@
         let isTeacherAccount = false;
         let isRestrictedViewer = false; // 1-2 담임선생님 + 타반 학생: 커뮤니티 접근 불가, 프로필은 열람만 가능(사진 기본, 설명/댓글 비공개)
         const TEACHER_ACCOUNT_EMAILS = ["nassir@hanilgo.cnehs.kr", "20261240@hanilgo.cnehs.kr"];
+        // 방문자 계정: 학번 메일이 아니지만 1-2반 정회원과 같은 권한으로 가입된다. 소속 표시는 "방문자".
+        // 반 명단(1~26)·관리자(30)·부담임(40)·담임(98)과 겹치지 않는 번호 99 를 쓴다.
+        const VISITOR_ACCOUNT_EMAILS = ["hanilianadmin@hanilgo.cnehs.kr"];
+        const VISITOR_NUMBER = "99";
+        function isVisitorEmail(email) { return VISITOR_ACCOUNT_EMAILS.includes(String(email || '').trim().toLowerCase()); }
+        // 가입 가능한 메일인지 확인하고 학년/반/번호를 정한다. 안 되면 { error: '안내 문구' }
+        function identityFromEmail(email) {
+            const normalizedEmail = String(email || '').trim().toLowerCase();
+            if (normalizedEmail === "nassir@hanilgo.cnehs.kr") return { grade: "1", ban: "2", number: "98" }; // 1-2 담임선생님 전용 계정(학번 형식 아님)
+            if (isVisitorEmail(normalizedEmail)) return { grade: "1", ban: "2", number: VISITOR_NUMBER };
+            const match = normalizedEmail.match(/^(\d{4})(\d{1})(\d{1})(\d{2})@hanilgo\.cnehs\.kr$/);
+            if (!match) return { error: "⚠️ 가입 불가: 한일고 학생 메일(학번포함)만 가능합니다." };
+            const grade = match[2], ban = match[3], number = match[4];
+            // 1학년 2반은 실제 존재하는 번호(1~26번), 관리자(30번), 부담임 계정(40번)만 가입 허용
+            if (grade === "1" && ban === "2") {
+                const numInt = parseInt(number, 10);
+                if (!((numInt >= 1 && numInt <= 26) || numInt === 30 || numInt === 40)) return { error: "⚠️ 가입 불가: 1학년 2반에 존재하지 않는 번호입니다." };
+            }
+            return { grade, ban, number };
+        }
+        // 새 계정의 사용자 정보(RTDB users/{uid}, 원본) + Firestore 규칙용 거울(users/{uid})을 만든다
+        async function createUserRecords(user, email, id) {
+            const roleVal = id.ban === "2" ? "class2_member" : "other_class_member";
+            await set(ref(db, `users/${user.uid}`), { email: email, grade: id.grade, ban: id.ban, number: id.number, role: roleVal });
+            // Firestore 보안 규칙은 RTDB를 읽을 수 없으므로, 규칙 판단에 필요한 최소 식별 정보(등급/반/번호/역할)만
+            // Firestore에도 거울로 남긴다. RTDB의 users/{uid}가 여전히 원본이고, 이건 Rules 전용 사본이다.
+            // number는 원본이 "06" 같은 0-padding 문자열이지만, sub_admins 등 다른 컬렉션의 문서ID는
+            // student_6 처럼 정수로 만들어지므로, Rules에서 그 둘을 정확히 비교할 수 있도록 정수로 저장한다.
+            await setDoc(doc(fdb, 'users', user.uid), { grade: id.grade, ban: id.ban, number: parseInt(id.number, 10), role: roleVal }).catch(() => {});
+        }
 
         // --- "1230 운영자" 권한: 최고관리자(isAdmin)/부관리자(isSubAdmin)와는 별개의 "콘텐츠 운영자" 등급 ---
         // 여러 곳에서 이메일 문자열을 따로 비교하지 않도록, 판별을 이 함수 하나로 통일한다.
@@ -176,35 +206,31 @@
 
         document.getElementById('btn-signup').addEventListener('click', async () => {
             const email = document.getElementById('signup-email').value; const pw = document.getElementById('signup-password').value;
-            const normalizedEmail = email.trim().toLowerCase();
-            let grade, ban, number;
-            if (TEACHER_ACCOUNT_EMAILS.includes(normalizedEmail) && normalizedEmail === "nassir@hanilgo.cnehs.kr") {
-                // 1-2 담임선생님 전용 계정: 학번 형식이 아니므로 별도로 1학년 2반 소속(정회원 권한)으로 등록
-                grade = "1"; ban = "2"; number = "98";
-            } else {
-                const match = normalizedEmail.match(/^(\d{4})(\d{1})(\d{1})(\d{2})@hanilgo\.cnehs\.kr$/);
-                if(!match) return alert("⚠️ 가입 불가: 한일고 학생 메일(학번포함)만 가능합니다.");
-                grade = match[2]; ban = match[3]; number = match[4];
-
-                // 1학년 2반은 실제 존재하는 번호(1~26번), 관리자(30번), 부담임 계정(40번)만 가입 허용
-                if (grade === "1" && ban === "2") {
-                    const numInt = parseInt(number, 10);
-                    const allowed = (numInt >= 1 && numInt <= 26) || numInt === 30 || numInt === 40;
-                    if (!allowed) return alert("⚠️ 가입 불가: 1학년 2반에 존재하지 않는 번호입니다.");
-                }
-            }
+            const id = identityFromEmail(email);
+            if (id.error) return alert(id.error);
             try {
-                const userCred = await createUserWithEmailAndPassword(auth, email, pw);
-                const roleVal = ban === "2" ? "class2_member" : "other_class_member";
-                await set(ref(db, `users/${userCred.user.uid}`), { email: email, grade: grade, ban: ban, number: number, role: roleVal });
-                // Firestore 보안 규칙은 RTDB를 읽을 수 없으므로, 규칙 판단에 필요한 최소 식별 정보(등급/반/번호/역할)만
-                // Firestore에도 거울로 남긴다. RTDB의 users/{uid}가 여전히 원본이고, 이건 Rules 전용 사본이다.
-                // number는 원본이 "06" 같은 0-padding 문자열이지만, sub_admins 등 다른 컬렉션의 문서ID는
-                // student_6 처럼 정수로 만들어지므로, Rules에서 그 둘을 정확히 비교할 수 있도록 정수로 저장한다.
-                await setDoc(doc(fdb, 'users', userCred.user.uid), { grade, ban, number: parseInt(number, 10), role: roleVal }).catch(() => {});
+                const userCred = await createUserWithEmailAndPassword(auth, email.trim(), pw);
+                await createUserRecords(userCred.user, email.trim(), id);
                 alert("가입 성공!");
-            } catch(e) { alert(e.message); }
+            } catch(e) { alert(authErrorMessage(e)); }
         });
+
+        // Firebase 인증 오류를 알아듣기 쉬운 말로
+        function authErrorMessage(e) {
+            const code = (e && e.code) || '';
+            const map = {
+                'auth/weak-password': '비밀번호는 6자리 이상이어야 해요.',
+                'auth/email-already-in-use': '이미 가입된 메일이에요. 로그인해 주세요.',
+                'auth/invalid-email': '메일 주소 형식이 올바르지 않아요.',
+                'auth/user-not-found': '가입되지 않은 메일이에요.',
+                'auth/wrong-password': '비밀번호가 맞지 않아요.',
+                'auth/invalid-credential': '메일 또는 비밀번호가 맞지 않아요.',
+                'auth/invalid-login-credentials': '메일 또는 비밀번호가 맞지 않아요.',
+                'auth/too-many-requests': '시도가 너무 많아 잠시 막혔어요. 조금 뒤에 다시 해 주세요.',
+                'auth/network-request-failed': '인터넷 연결을 확인해 주세요.',
+            };
+            return map[code] || (e && e.message) || '문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
+        }
 
         document.getElementById('btn-login').addEventListener('click', async () => {
             try {
@@ -212,9 +238,9 @@
                 // 체크하면(기본값) 브라우저를 닫아도 로그인이 유지되고, 체크 해제하면 탭/브라우저를
                 // 닫는 순간 로그아웃된다 (같은 계정으로 이후 다시 signIn하면 그때 선택으로 갱신됨).
                 await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-                await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value);
+                await signInWithEmailAndPassword(auth, document.getElementById('login-email').value.trim(), document.getElementById('login-password').value);
             }
-            catch(e) { alert("로그인 실패"); }
+            catch(e) { alert("로그인 실패: " + authErrorMessage(e)); }
         });
 
         document.getElementById('btn-logout').addEventListener('click', () => {
@@ -651,6 +677,8 @@
                         isOperator = isOperatorAccount(user); // 1230 운영자 (isAdmin/isSubAdmin과는 별개 등급)
                         isRestrictedViewer = isTeacherAccount || !is2Ban; // 담임선생님 & 타반 학생: 동일하게 제한된 열람 권한
                         applyUserCustomization(d); // 개인 배경화면/강조색 커스텀 적용
+                        // 방문자 계정은 "2반 99번" 대신 "방문자"로 보이도록 처음 한 번 닉네임을 정해 둔다(글쓴이 이름 등에 쓰임)
+                        if (isVisitorEmail(user.email) && !d.nickname) update(ref(db, `users/${user.uid}`), { nickname: '방문자' }).catch(() => {});
 
                         // Firestore 보안 규칙이 참조할 최소 식별 정보(등급/반/번호/역할) 거울을 1회 채워넣는다.
                         // 가입 시 이미 만들어졌다면(getDoc이 존재 확인) 다시 쓰지 않는다 - 신규 가입 계정과 중복 작업 방지.
@@ -674,7 +702,8 @@
                             subSnap.forEach(d => { subAdminsList[d.id] = true; }); // 문서가 존재하면 곧 부관리자로 지정된 것 (문서 내용 자체보다 존재 여부가 플래그 역할)
                             isSubAdmin = !!subAdminsList[`student_${parseInt(d.number)}`];
 
-                            const displayNick = isTeacherAccount ? TEACHER_98_DISPLAY_NAME : (d.nickname ? d.nickname : `${d.grade}-${d.ban}반 ${d.number}번`);
+                            const isVisitor = isVisitorEmail(user.email);
+                            const displayNick = isTeacherAccount ? TEACHER_98_DISPLAY_NAME : (d.nickname ? d.nickname : (isVisitor ? '방문자' : `${d.grade}-${d.ban}반 ${d.number}번`));
                             let roleText = is2Ban ? "🟢 1-2반 정회원" : "🟡 타 학급 회원";
                             if(isFounder) roleText = "🌟 커뮤니티 창시자";
                             else if(isAdmin) roleText = "⚙️ 커뮤니티 엔지니어";
@@ -689,6 +718,7 @@
                             }
 
                             if (isTeacherAccount) roleText = "🧑‍🏫 1-2 담임선생님";
+                            if (isVisitor) roleText = "🧭 방문자";
 
                             // 홈 공지 작성 권한: 커뮤니티 엔지니어(관리자/창시자)·담임선생님·반장(=창시자)·부반장·1230 운영자
                             canPostNotice = isAdmin || isTeacherAccount || isViceClassPresident || isOperator;

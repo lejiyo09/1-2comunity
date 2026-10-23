@@ -8,7 +8,7 @@
 // 다운된 상태에서 처음 접속) 오프라인 캐시에 저장된 게 아무것도 없어서 대신 보여줄 화면 자체가 없다.
 // 앱 파일 내용으로 만든 버전 - tools/build 가 빌드할 때 자동으로 넣는다(index.html 의 <meta name="app-version"> 과 같은 값). 직접 고치지 말 것.
 // 배포로 이 값이 바뀌면 브라우저가 새 서비스워커를 설치해 대기시키고, 화면에 "새 버전이 준비되었습니다 [업데이트]" 알림이 뜬다(js/app-update.js).
-const APP_VERSION = 'faedfbd187e3';
+const APP_VERSION = 'a582aaf1897a';
 const CACHE_NAME = 'appshell-' + APP_VERSION; // 버전마다 앱 셸을 새로 저장하고, 교체되면 예전 캐시는 지운다
 // 앱 코드가 불러오는 "외부" 모듈(Firebase·Supabase)과 글꼴은 따로 저장해 둔다. 이게 없으면 오프라인에서 app.js 가 import 단계에서 실패해
 // 앱 전체가 시작되지 못하고 "불러오는 중…"에서 멈춘다. 버전이 고정된 파일이라 앱 셸 이름이 바뀌어도 지우지 않는다.
