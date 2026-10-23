@@ -111,6 +111,15 @@
         .auth-input, .auth-select { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 15px; margin-bottom: 12px; outline: none; transition: border 0.2s; background: var(--input-bg); color: var(--text-main); }
         .auth-input:focus, .auth-select:focus { border-color: var(--primary); }
         .auth-btn { width: 100%; padding: 14px; border-radius: 12px; background: var(--primary); color: white; font-size: 16px; font-weight: 700; border: none; cursor: pointer; margin-top: 10px; transition: opacity 0.2s; }
+        /* 비밀번호 재설정 링크 + "또는" 구분선 + Google 로그인 버튼 */
+        .auth-forgot { text-align: right; margin-top: 8px; }
+        .auth-forgot button { background: none; border: none; padding: 0; color: var(--text-muted); font-size: 12.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        .auth-forgot button:hover { color: var(--primary); }
+        .auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; color: var(--text-muted); font-size: 12px; }
+        .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
+        .auth-google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface-color); color: var(--text-main); font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+        .auth-google-btn:hover { background: var(--hover-bg); }
+        .auth-google-logo { flex-shrink: 0; }
         .auth-btn:hover { opacity: 0.9; }
         .auth-toggle { text-align: center; margin-top: 16px; font-size: 14px; color: var(--text-muted); cursor: pointer; }
         .auth-toggle span { color: var(--primary); font-weight: 600; }
