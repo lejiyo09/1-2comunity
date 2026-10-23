@@ -144,6 +144,7 @@
             }
             return { grade, ban, number };
         }
+        const provisioningUids = new Set(); // 처음 로그인 때 사용자 정보를 만드는 중인 계정(중복 생성 방지)
         // 새 계정의 사용자 정보(RTDB users/{uid}, 원본) + Firestore 규칙용 거울(users/{uid})을 만든다
         async function createUserRecords(user, email, id) {
             const roleVal = id.ban === "2" ? "class2_member" : "other_class_member";
@@ -871,6 +872,11 @@
                     if (d) {
                         saveInfoCache('user_profile_' + user.uid, d);
                         initSignedInUser(d, user);
+                    } else if (!provisioningUids.has(user.uid)) {
+                        // Firebase 콘솔에서 직접 만든 계정(방문자·담임선생님 등)은 회원가입을 거치지 않아 사용자 정보가 없다 -
+                        // 가입 가능한 메일이면 처음 로그인할 때 가입과 같은 규칙으로 만들어 준다(그러면 이 리스너가 다시 불려 화면이 열린다).
+                        const id = identityFromEmail(user.email);
+                        if (!id.error) { provisioningUids.add(user.uid); createUserRecords(user, (user.email || '').trim(), id).catch((e) => { provisioningUids.delete(user.uid); console.warn('사용자 정보 만들기 실패:', e); }); }
                     }
                 });
                 // 위 리스너가 응답하기 전(또는 오프라인이라 영원히 응답하지 않을 때) 마지막으로 저장해둔
