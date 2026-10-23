@@ -27,3 +27,18 @@ try {
   assert(!b.errors.some((e) => /PAGEERROR/.test(e)), '페이지 오류 없음 ' + b.errors.filter((e) => /PAGEERROR/.test(e)).join('|'));
   console.log('\nVISITOR ACCOUNT TEST PASSED');
 } finally { await b.close(); }
+
+// 콘솔에서 미리 만든 방문자 계정: 회원가입 없이 아이디·비밀번호로 로그인만 해도 정회원 권한으로 열림(담임선생님 계정도 같은 방식)
+{
+  const b2 = await bootApp({ uid: 'visitor-2', userEmail: 'hanilianadmin@hanilgo.cnehs.kr', waitMs: 2000 });
+  try {
+    const u = await b2.page.evaluate(() => window.__fb.rtdb.users && window.__fb.rtdb.users['visitor-2']);
+    assert(u && u.role === 'class2_member' && u.number === '99', '로그인만 해도 사용자 정보가 자동으로 만들어짐 ' + JSON.stringify(u));
+    assert((await b2.page.innerText('#profile-role-text')).includes('방문자'), '바로 방문자로 로그인된 화면');
+  } finally { await b2.close(); }
+  const b3 = await bootApp({ uid: 'stranger', userEmail: 'stranger@gmail.com', waitMs: 1500 });
+  try {
+    assert(await b3.page.evaluate(() => !(window.__fb.rtdb.users || {}).stranger), '가입할 수 없는 메일은 자동으로 만들지 않음');
+  } finally { await b3.close(); }
+  console.log('VISITOR AUTO-PROVISION TEST PASSED');
+}

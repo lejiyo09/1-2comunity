@@ -90,6 +90,18 @@ const FB_CORE = String.raw`
     signInWithEmailAndPassword: async (a, email) => { fb.user = mkUser({ uid: cfg.uid || 'userA', email }); fireAuth(); return { user: fb.user }; },
     createUserWithEmailAndPassword: async (a, email) => { fb.user = mkUser({ uid: cfg.uid || 'userA', email }); fireAuth(); return { user: fb.user }; },
     setPersistence: async () => {}, browserLocalPersistence: {}, browserSessionPersistence: {},
+    // Google 로그인: cfg.google = { uid, email } 이면 그 계정으로, cfg.googleError = 'auth/...' 이면 그 오류로
+    GoogleAuthProvider: class { setCustomParameters(p) { this.params = p; } static credentialFromError() { return { providerId: 'google.com' }; } },
+    signInWithPopup: async () => {
+      if (cfg.googleError) { const e = new Error(cfg.googleError); e.code = cfg.googleError; e.customData = { email: (cfg.google || {}).email }; throw e; }
+      const g = cfg.google || { uid: 'g-1', email: 'someone@gmail.com' };
+      fb.user = mkUser({ uid: g.uid, email: g.email }); fireAuth(); return { user: fb.user };
+    },
+    signInWithRedirect: async () => { fb.redirected = true; },
+    getRedirectResult: async () => null,
+    sendPasswordResetEmail: async (a, email) => { if (cfg.resetError) { const e = new Error(cfg.resetError); e.code = cfg.resetError; throw e; } (fb.resetEmails = fb.resetEmails || []).push(email); },
+    linkWithCredential: async (u, c) => { fb.linked = (fb.linked || 0) + 1; return { user: u }; },
+    deleteUser: async (u) => { (fb.deletedUsers = fb.deletedUsers || []).push(u.uid); },
   };
   if (cfg.rtdb) for (const [p, v] of Object.entries(cfg.rtdb)) rSet(p, v);
   rLast = JSON.stringify(fb.rtdb);
@@ -102,7 +114,7 @@ const moduleOf = (apiKey, exportsList) => `const a = window.__fb.${apiKey};\n` +
 const MODULES = {
   'firebase-app.js': `export const initializeApp = (c) => ({ __app: true, c });\n`,
   'firebase-database.js': moduleOf('rtdbApi', ['getDatabase', 'ref', 'onValue', 'get', 'set', 'update', 'push', 'remove', 'runTransaction', 'onDisconnect']),
-  'firebase-auth.js': moduleOf('authApi', ['getAuth', 'createUserWithEmailAndPassword', 'signInWithEmailAndPassword', 'onAuthStateChanged', 'signOut', 'setPersistence', 'browserLocalPersistence', 'browserSessionPersistence', 'signInAnonymously']),
+  'firebase-auth.js': moduleOf('authApi', ['getAuth', 'createUserWithEmailAndPassword', 'signInWithEmailAndPassword', 'onAuthStateChanged', 'signOut', 'setPersistence', 'browserLocalPersistence', 'browserSessionPersistence', 'signInAnonymously', 'GoogleAuthProvider', 'signInWithPopup', 'signInWithRedirect', 'getRedirectResult', 'sendPasswordResetEmail', 'linkWithCredential', 'deleteUser']),
   'firebase-firestore.js': moduleOf('fsApi', ['getFirestore', 'initializeFirestore', 'persistentLocalCache', 'persistentMultipleTabManager', 'collection', 'doc', 'getDoc', 'getDocs', 'setDoc', 'addDoc', 'updateDoc', 'deleteDoc', 'query', 'where', 'orderBy', 'onSnapshot', 'runTransaction']),
 };
 const SUPABASE_STUB = `
@@ -126,7 +138,7 @@ export async function bootApp(opts = {}) {
   await new Promise((res) => server.listen(0, '127.0.0.1', res));
   const browser = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport, serviceWorkers: 'block' });
-  const cfg = { uid: opts.uid || 'userA', userEmail: opts.userEmail, guest: !!opts.guest, noAuth: !!opts.noAuth, anonFail: !!opts.anonFail, authDelay: opts.authDelay || 0, rtdbDeny: opts.rtdbDeny || null, fsDeny: opts.fsDeny || null,
+  const cfg = { uid: opts.uid || 'userA', userEmail: opts.userEmail, guest: !!opts.guest, noAuth: !!opts.noAuth, anonFail: !!opts.anonFail, google: opts.google || null, googleError: opts.googleError || null, resetError: opts.resetError || null, authDelay: opts.authDelay || 0, rtdbDeny: opts.rtdbDeny || null, fsDeny: opts.fsDeny || null,
     sbRows: opts.sbRows || {}, rtdb: Object.assign(opts.userData ? { [`users/${opts.uid || 'userA'}`]: opts.userData } : {}, opts.rtdb || {}), fsData: opts.fsData || {} };
   await ctx.addInitScript(`window.__FB_CFG = ${JSON.stringify(cfg)}; window.__sbRows = ${JSON.stringify(cfg.sbRows)};\n${FB_CORE}`);
   const js = (body) => ({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body });

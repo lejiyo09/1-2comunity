@@ -1,7 +1,7 @@
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, get, set, update, push, remove, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, linkWithCredential, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         // Firestore SDK 추가 - 정적/영구 커뮤니티 데이터(게시글/아카이브/공지/설문/프로필 등)는 이제 여기로 저장한다.
         // RTDB의 runTransaction과 이름이 겹치므로 Firestore 쪽은 fsRunTransaction으로 별칭을 준다.
         // Firestore 인스턴스는 "(default)" 데이터베이스를 쓰며 getFirestore(app, "community") 같은 지정을 하지 않는다.
@@ -19,6 +19,7 @@
 
         // (Firebase 설정/Supabase 주소·공개 키는 js/config.js 에 모아 두었다)
         const app = initializeApp(firebaseConfig); const db = getDatabase(app); const auth = getAuth(app);
+        auth.languageCode = 'ko'; // 비밀번호 재설정 메일·Google 로그인 화면을 한국어로
 
         // ===============================
         // SUPABASE CONFIG (자료실 전용 - Firebase 설정과는 완전히 별개)
@@ -128,7 +129,7 @@
         const VISITOR_ACCOUNT_EMAILS = ["hanilianadmin@hanilgo.cnehs.kr"];
         const VISITOR_NUMBER = "99";
         function isVisitorEmail(email) { return VISITOR_ACCOUNT_EMAILS.includes(String(email || '').trim().toLowerCase()); }
-        // 가입 가능한 메일인지 확인하고 학년/반/번호를 정한다. 안 되면 { error: '안내 문구' }
+        // 가입 가능한 메일인지 확인하고 학년/반/번호를 정한다(이메일 가입과 Google 가입 공용). 안 되면 { error: '안내 문구' }
         function identityFromEmail(email) {
             const normalizedEmail = String(email || '').trim().toLowerCase();
             if (normalizedEmail === "nassir@hanilgo.cnehs.kr") return { grade: "1", ban: "2", number: "98" }; // 1-2 담임선생님 전용 계정(학번 형식 아님)
@@ -143,6 +144,7 @@
             }
             return { grade, ban, number };
         }
+        const provisioningUids = new Set(); // 처음 로그인 때 사용자 정보를 만드는 중인 계정(중복 생성 방지)
         // 새 계정의 사용자 정보(RTDB users/{uid}, 원본) + Firestore 규칙용 거울(users/{uid})을 만든다
         async function createUserRecords(user, email, id) {
             const roleVal = id.ban === "2" ? "class2_member" : "other_class_member";
@@ -220,7 +222,7 @@
             const code = (e && e.code) || '';
             const map = {
                 'auth/weak-password': '비밀번호는 6자리 이상이어야 해요.',
-                'auth/email-already-in-use': '이미 가입된 메일이에요. 로그인해 주세요.',
+                'auth/email-already-in-use': '이미 가입된 메일이에요. 로그인해 주세요. (비밀번호가 기억나지 않으면 "비밀번호를 잊으셨나요?")',
                 'auth/invalid-email': '메일 주소 형식이 올바르지 않아요.',
                 'auth/user-not-found': '가입되지 않은 메일이에요.',
                 'auth/wrong-password': '비밀번호가 맞지 않아요.',
@@ -228,9 +230,80 @@
                 'auth/invalid-login-credentials': '메일 또는 비밀번호가 맞지 않아요.',
                 'auth/too-many-requests': '시도가 너무 많아 잠시 막혔어요. 조금 뒤에 다시 해 주세요.',
                 'auth/network-request-failed': '인터넷 연결을 확인해 주세요.',
+                'auth/operation-not-allowed': '이 로그인 방식이 아직 켜져 있지 않아요. (관리자: Firebase 콘솔 → Authentication → 로그인 방법)',
+                'auth/unauthorized-domain': '이 사이트 주소가 Google 로그인 허용 도메인에 없어요. (관리자: Firebase 콘솔 → Authentication → 설정 → 승인된 도메인)',
+                'auth/popup-closed-by-user': 'Google 로그인 창이 닫혔어요.',
+                'auth/cancelled-popup-request': 'Google 로그인 창이 닫혔어요.',
             };
             return map[code] || (e && e.message) || '문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
         }
+
+        // --- Google 계정으로 로그인 / 가입 ---
+        // 학교 메일(@hanilgo.cnehs.kr) Google 계정만 받는다. 처음 들어온 계정이면 이메일 가입과 같은 규칙으로 사용자 정보를 만든다.
+        // 이미 이메일·비밀번호로 가입한 메일이면(Firebase 기본 설정: 메일당 계정 하나) 같은 계정으로 들어가 기존 데이터를 그대로 쓴다.
+        const googleProvider = new GoogleAuthProvider();
+        googleProvider.setCustomParameters({ hd: 'hanilgo.cnehs.kr', prompt: 'select_account' });
+        let googleSignInBusy = false;
+        async function completeGoogleSignIn(user) {
+            if (!user) return;
+            const snap = await get(ref(db, `users/${user.uid}`)).catch(() => null);
+            if (snap && snap.exists()) return; // 기존 회원 - 그대로 로그인
+            const email = (user.email || '').trim();
+            const id = identityFromEmail(email);
+            if (id.error) {
+                // 가입할 수 없는 메일로 방금 만들어진 계정은 지우고 로그아웃한다(빈 계정이 남지 않게)
+                try { await deleteUser(user); } catch (e) {}
+                await signOut(auth).catch(() => {});
+                alert(id.error + (email ? `\n(선택한 Google 계정: ${email})` : ''));
+                return;
+            }
+            await createUserRecords(user, email, id);
+        }
+        async function handleGoogleError(e) {
+            const code = (e && e.code) || '';
+            if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+                try { await signInWithRedirect(auth, googleProvider); return; } catch (err) { e = err; } // 팝업이 막히면 페이지 이동 방식으로
+            }
+            if (code === 'auth/account-exists-with-different-credential') {
+                // 같은 메일이 이미 이메일·비밀번호 계정으로 있고 자동으로 합쳐지지 않은 경우: 비밀번호로 한 번 로그인한 뒤 Google 을 연결한다
+                const pending = GoogleAuthProvider.credentialFromError(e);
+                const email = (e.customData && e.customData.email) || '';
+                const pw = prompt(`${email}\n이미 비밀번호로 가입된 계정이에요. 비밀번호를 한 번 입력하면 이 계정에 Google 로그인을 연결해요.`);
+                if (!pw) return;
+                try {
+                    const cred = await signInWithEmailAndPassword(auth, email, pw);
+                    if (pending) await linkWithCredential(cred.user, pending);
+                    alert('Google 로그인을 연결했어요. 다음부터는 Google 로도 로그인할 수 있어요.');
+                } catch (err) { alert(authErrorMessage(err)); }
+                return;
+            }
+            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+            alert(authErrorMessage(e));
+        }
+        window.signInWithGoogle = async function() {
+            if (googleSignInBusy) return;
+            googleSignInBusy = true;
+            try {
+                const rememberMe = document.getElementById('login-remember-me')?.checked !== false;
+                await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+                const res = await signInWithPopup(auth, googleProvider);
+                await completeGoogleSignIn(res.user);
+            } catch (e) { await handleGoogleError(e); }
+            finally { googleSignInBusy = false; }
+        };
+        // 페이지 이동 방식(팝업이 막혔을 때)으로 Google 로그인하고 돌아온 경우 마무리
+        getRedirectResult(auth).then((res) => { if (res && res.user) return completeGoogleSignIn(res.user); }).catch((e) => { if (e && e.code) handleGoogleError(e); });
+
+        // --- 비밀번호 재설정 메일 ---
+        window.sendPasswordReset = async function() {
+            const typed = (document.getElementById('login-email')?.value || '').trim();
+            const email = (prompt('비밀번호 재설정 링크를 받을 학교 메일을 입력해 주세요.', typed) || '').trim();
+            if (!email) return;
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert(`${email} 로 비밀번호 재설정 메일을 보냈어요. 메일함(스팸함 포함)을 확인해 주세요.\nGoogle 로그인만 쓰던 계정도 이 메일로 비밀번호를 새로 정할 수 있어요.`);
+            } catch (e) { alert(authErrorMessage(e)); }
+        };
 
         document.getElementById('btn-login').addEventListener('click', async () => {
             try {
@@ -799,6 +872,11 @@
                     if (d) {
                         saveInfoCache('user_profile_' + user.uid, d);
                         initSignedInUser(d, user);
+                    } else if (!provisioningUids.has(user.uid)) {
+                        // Firebase 콘솔에서 직접 만든 계정(방문자·담임선생님 등)은 회원가입을 거치지 않아 사용자 정보가 없다 -
+                        // 가입 가능한 메일이면 처음 로그인할 때 가입과 같은 규칙으로 만들어 준다(그러면 이 리스너가 다시 불려 화면이 열린다).
+                        const id = identityFromEmail(user.email);
+                        if (!id.error) { provisioningUids.add(user.uid); createUserRecords(user, (user.email || '').trim(), id).catch((e) => { provisioningUids.delete(user.uid); console.warn('사용자 정보 만들기 실패:', e); }); }
                     }
                 });
                 // 위 리스너가 응답하기 전(또는 오프라인이라 영원히 응답하지 않을 때) 마지막으로 저장해둔
