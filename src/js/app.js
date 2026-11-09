@@ -1561,7 +1561,7 @@
         // =========================================================================
         // 오프라인 정보 캐시 - Firestore로 가져오는 정보(게시글/시험범위/수행평가 일정 등)는 이미
         // persistentLocalCache(위 fdb 초기화 부분 참고)가 자동으로 오프라인 캐싱을 해준다. 하지만
-        // Realtime Database(반 공용/개인 일정, 청소 1인1역, 자리배치)와 외부 API(날씨, 급식)는
+        // Realtime Database(반 공용/개인 일정, 자리배치)와 외부 API(날씨, 급식)는
         // 그런 오프라인 캐시 기능이 브라우저 SDK 자체에 없어서, 여기서 직접 마지막 성공 결과를
         // localStorage에 저장해뒀다가 오프라인이거나 요청이 실패했을 때 대신 보여준다.
         // (수정은 여전히 온라인에서만 가능하지만, "확인"만큼은 오프라인에서도 할 수 있게 된다 -
@@ -1638,115 +1638,81 @@
             });
         }
 
-        // --- 청소 1인1역: 기본 데이터 + 관리자(엔지니어/창시자) 수정 ---
-        const defaultCleaningDuties = [
-            { id: 'plastic', area: '♻️ 플라스틱 분리수거', count: '2명', cycle: '주 2회 (월, 금)', students: '1219, 1208', days: '1,5' },
-            { id: 'paper',   area: '♻️ 폐휴지 분리수거',   count: '2명', cycle: '주 2회 (월, 금)', students: '1213, 1218', days: '1,5' },
-            { id: 'can',     area: '♻️ 캔 분리수거',       count: '1명', cycle: '주 1회 (월)',     students: '1201',       days: '1' },
-            { id: 'bottle',  area: '♻️ 병 분리수거',       count: '1명', cycle: '주 1회 (월)',     students: '1225',       days: '1' },
-            { id: 'bin',     area: '🗑️ 쓰레기통 청소',     count: '4명', cycle: '매일 (3명 정리 + 1명 수거 로테)', students: '1212, 1211, 1216, 1205', days: '1,2,3,4,5' },
-            { id: 'locker',  area: '🗄️ 사물함 위',         count: '3명', cycle: '매일 (2명씩 복도쪽·교실 뒤쪽 분담)', students: '1222, 1202, 1215', days: '1,2,3,4,5' },
-            { id: 'floor',   area: '🧹 바닥 청소',         count: '6명', cycle: '매일 (3명씩 번갈아)', students: '1223, 1214, 1204, 1209, 1206, 1210', days: '1,2,3,4,5' },
-            { id: 'window',  area: '🪟 창가 청소',         count: '2명', cycle: '매일 (앞 2칸·뒤 1칸 분담)', students: '1217, 1226', days: '1,2,3,4,5' },
-            { id: 'board',   area: '📝 칠판 정리',         count: '2명', cycle: '주기 자율 (매일 닦고 정리 원칙)', students: '1221, 1207', days: '1,2,3,4,5' },
-            { id: 'lights',  area: '🚪 문·창·전등 관리',   count: '1명', cycle: '특별실 이동 시 전등 전부 끄기', students: '1224', days: '1,2,3,4,5' }
+        // --- 호실별 청소: 일주일씩 한 호실이 교실 청소를 맡는다 (1인1역에서 개편) ---
+        // 순번표: 날짜 범위(시작일~끝일, 끝일 포함)와 호실. 마지막 주가 지나면 같은 순서로 7일씩 이어서 돈다.
+        // 순서를 바꾸거나 새 주기를 넣으려면 이 목록만 고치면 된다.
+        const CLEANING_ROOM_SCHEDULE = [
+            { start: '2026-11-10', end: '2026-11-16', room: '201호' },
+            { start: '2026-11-17', end: '2026-11-23', room: '106호' },
+            { start: '2026-11-24', end: '2026-11-30', room: '202호' },
+            { start: '2026-12-01', end: '2026-12-07', room: '105호' },
         ];
-        let cleaningDutyOverrides = {};
-        // RTDB는 오프라인 캐시가 없어서, 리스너가 값을 받아오기 전까지 쓸 마지막 저장값을 먼저 채워둔다.
-        (function hydrateCleaningDutyCache(){ const c = loadInfoCache('cleaningDuties'); if (c) cleaningDutyOverrides = c.data; })();
-
-        function renderCleaningDutyTable() {
-            const tbody = document.getElementById('cleaning-duty-tbody');
-            if (!tbody) return;
-            const today = new Date(); today.setHours(0,0,0,0);
-            const day = today.getDay();
-
-            tbody.innerHTML = defaultCleaningDuties.map(base => {
-                const o = cleaningDutyOverrides[base.id] || {};
-                const duty = { ...base, ...o };
-                const days = (duty.days || '').split(',').map(d => d.trim());
-                const cls = days.includes(String(day)) ? 'duty-today' : 'duty-off';
-                const editable = isAdmin ? 'duty-editable' : '';
-                const on = (field) => isAdmin ? `onclick="editCleaningDutyField('${base.id}','${field}')"` : '';
-                return `<tr class="${cls}" data-days="${duty.days}">
-                    <td class="${editable}" ${on('area')}><strong>${duty.area}</strong></td>
-                    <td class="${editable}" ${on('count')}>${duty.count}</td>
-                    <td class="${editable}" ${on('cycle')}>${duty.cycle}</td>
-                    <td class="${editable}" ${on('students')}>${duty.students}</td>
-                </tr>`;
-            }).join('');
-
-            const hint = document.getElementById('cleaning-admin-hint');
-            if (hint) hint.style.display = isAdmin ? 'inline' : 'none';
+        const cleaningYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const cleaningDate = (ymd) => new Date(ymd + 'T00:00:00');
+        const cleaningMd = (ymd) => { const d = cleaningDate(ymd); return `${d.getMonth() + 1}/${d.getDate()}`; };
+        // 그 날짜의 청소 담당 { start, end, room, repeated } - 순번표 시작 전이면 null
+        function getCleaningRoomFor(date) {
+            const ymd = cleaningYmd(date);
+            const first = CLEANING_ROOM_SCHEDULE[0], last = CLEANING_ROOM_SCHEDULE[CLEANING_ROOM_SCHEDULE.length - 1];
+            if (ymd < first.start) return null;
+            const hit = CLEANING_ROOM_SCHEDULE.find(w => ymd >= w.start && ymd <= w.end);
+            if (hit) return { ...hit, repeated: false };
+            if (ymd <= last.end) return null; // 순번표 사이 빈 날
+            // 순번표가 끝난 뒤: 같은 순서로 7일씩 이어서
+            const daysAfter = Math.round((cleaningDate(ymd) - cleaningDate(last.end)) / 86400000); // 1 = 끝난 다음 날
+            const k = Math.floor((daysAfter - 1) / 7);
+            const start = new Date(cleaningDate(last.end)); start.setDate(start.getDate() + 1 + k * 7);
+            const end = new Date(start); end.setDate(end.getDate() + 6);
+            return { start: cleaningYmd(start), end: cleaningYmd(end), room: CLEANING_ROOM_SCHEDULE[k % CLEANING_ROOM_SCHEDULE.length].room, repeated: true };
         }
-
-        const cleaningFieldLabels = { area: '담당 구역 이름', count: '인원', cycle: '주기 / 방식', students: '담당 학생 번호' };
-
-        window.editCleaningDutyField = async function(id, field) {
-            if (!isAdmin) return;
-            const base = defaultCleaningDuties.find(d => d.id === id);
-            if (!base) return;
-            const o = cleaningDutyOverrides[id] || {};
-            const duty = { ...base, ...o };
-
-            const newVal = prompt(`${cleaningFieldLabels[field]}:`, duty[field]);
-            if (newVal === null) { renderCleaningDutyTable(); return; }
-            const patch = { [field]: newVal.trim() };
-
-            // 주기/방식을 바꿀 때는 반짝임 표시 요일도 함께 물어봅니다.
-            if (field === 'cycle') {
-                const newDays = prompt("반짝임이 표시될 요일 (일=0, 월=1, 화=2, 수=3, 목=4, 금=5, 토=6 / 쉼표로 구분, 예: 1,2,3,4,5):", duty.days);
-                if (newDays !== null) patch.days = newDays.trim();
+        // 순번표(앞으로 몇 주) - 이번 주와 그 뒤를 보여준다
+        function getCleaningRoomWeeks(fromDate, count) {
+            const out = []; const first = CLEANING_ROOM_SCHEDULE[0];
+            let d = new Date(fromDate); d.setHours(0, 0, 0, 0);
+            if (cleaningYmd(d) < first.start) d = cleaningDate(first.start);
+            for (let guard = 0; out.length < count && guard < 400; guard++) {
+                const w = getCleaningRoomFor(d);
+                if (w) { out.push(w); d = cleaningDate(w.end); }
+                d.setDate(d.getDate() + 1);
             }
-
-            try {
-                await update(ref(db, `dashboard/cleaningDuties/${id}`), patch);
-            } catch (e) {
-                alert("저장 중 오류가 발생했습니다: " + (e && e.message ? e.message : e) + "\n(Firebase 데이터베이스 규칙에서 관리자 쓰기 권한이 dashboard/cleaningDuties 경로에 허용되어 있는지 확인이 필요합니다)");
-            } finally {
-                // 브라우저 prompt 창이 뜨고 닫히는 과정에서 마우스 hover 상태가 고착되는 것을 방지하기 위해 항상 다시 그립니다.
-                renderCleaningDutyTable();
-            }
+            return out;
         }
-
-        onValue(ref(db, 'dashboard/cleaningDuties'), (snap) => {
-            cleaningDutyOverrides = snap.val() || {};
-            saveInfoCache('cleaningDuties', cleaningDutyOverrides);
-            renderCurrentDuty(); // 내부에서 renderCleaningDutyTable()도 함께 호출하므로 홈 위젯/탭 표가 모두 최신화된다
-        });
 
         function renderCurrentDuty() {
             const today = new Date(); today.setHours(0,0,0,0);
+            const todayYmd = cleaningYmd(today);
+            const now = getCleaningRoomFor(today);
+            const next = getCleaningRoomWeeks(today, 1)[0]; // 시작 전이면 첫 주
 
             const dateEl = document.getElementById('current-date-display');
             if (dateEl) dateEl.innerText = `${today.getMonth() + 1}월 ${today.getDate()}일 기준`;
 
-            renderCleaningDutyTable();
+            // 탭: 이번 주 담당 크게 + 순번표
+            const curEl = document.getElementById('cleaning-room-current');
+            if (curEl) {
+                curEl.innerHTML = now
+                    ? `<div class="cleaning-room-now-label">이번 주 청소</div><div class="cleaning-room-now">${now.room}</div><div class="cleaning-room-now-range">${cleaningMd(now.start)} ~ ${cleaningMd(now.end)}</div>`
+                    : `<div class="cleaning-room-now-label">다음 청소</div><div class="cleaning-room-now">${next ? next.room : '—'}</div><div class="cleaning-room-now-range">${next ? `${cleaningMd(next.start)}부터` : ''}</div>`;
+            }
+            const tbody = document.getElementById('cleaning-room-tbody');
+            if (tbody) {
+                const weeks = getCleaningRoomWeeks(today, Math.max(CLEANING_ROOM_SCHEDULE.length, 4));
+                tbody.innerHTML = weeks.map(w => {
+                    const isNow = todayYmd >= w.start && todayYmd <= w.end;
+                    return `<tr class="${isNow ? 'duty-today' : ''}"><td>${cleaningMd(w.start)} ~ ${cleaningMd(w.end)}${isNow ? ' <span class="cleaning-room-badge">이번 주</span>' : ''}</td><td><strong>${w.room}</strong>${w.repeated ? ' <span class="cleaning-room-repeat">(순번 반복)</span>' : ''}</td></tr>`;
+                }).join('');
+            }
 
-            // 홈 위젯: 오늘 요일에 해당하는 1인1역만 추려서 담당 학생과 함께 리스트로 보여준다
+            // 홈 위젯: 오늘 청소 호실
             const homeEl = document.getElementById('home-cleaning-summary');
             if (homeEl) {
-                const day = today.getDay();
-                const todayDuties = defaultCleaningDuties
-                    .map(base => ({ ...base, ...(cleaningDutyOverrides[base.id] || {}) }))
-                    .filter(duty => (duty.days || '').split(',').map(d => d.trim()).includes(String(day)));
-
-                if (todayDuties.length === 0) {
-                    homeEl.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:8px 0;">오늘 해당하는 1인1역이 없습니다.</div>`;
-                } else {
-                    homeEl.innerHTML = todayDuties.map((duty, i) => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; ${i < todayDuties.length - 1 ? 'border-bottom:1px dashed var(--border-color);' : ''}">
-                            <strong style="color:var(--text-main); white-space:nowrap;">${duty.area}</strong>
-                            <span style="color:var(--text-muted); text-align:right;">${duty.students}</span>
-                        </div>
-                    `).join('');
-                }
-                if (!navigator.onLine) {
-                    const cached = loadInfoCache('cleaningDuties');
-                    if (cached) homeEl.innerHTML += infoOfflineBadgeHtml(cached.updatedAt);
-                }
+                homeEl.innerHTML = now
+                    ? `<div class="home-cleaning-room"><span class="home-cleaning-label">오늘 청소</span><strong class="home-cleaning-value">${now.room}</strong></div><div class="home-cleaning-range">${cleaningMd(now.start)} ~ ${cleaningMd(now.end)} 담당</div>`
+                    : `<div class="home-cleaning-room"><span class="home-cleaning-label">오늘 청소</span><strong class="home-cleaning-value" style="font-size:15px;">없음</strong></div><div class="home-cleaning-range">${next ? `${cleaningMd(next.start)}부터 ${next.room}` : ''}</div>`;
             }
         }
+        // 자정이 지나면(탭을 켜 둔 채로) 다음 날 담당으로 바뀌게
+        setInterval(() => { const el = document.getElementById('current-date-display'); const want = `${new Date().getMonth() + 1}월 ${new Date().getDate()}일 기준`; if (el && el.innerText && el.innerText !== want) renderCurrentDuty(); }, 60 * 1000);
 
         // 실시간 체크리스트 동기화 및 날짜별 초기화
         // 버그 수정: 예전에는 todayStr을 페이지 로드 시점에 한 번만(const) 계산해서 탭을 자정 너머로 오래 켜두면
