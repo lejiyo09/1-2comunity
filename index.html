@@ -22,7 +22,7 @@
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#2f6fed">
-    <meta name="app-version" content="2873bba23b7c">
+    <meta name="app-version" content="e515079c16a5">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -157,7 +157,7 @@
                             <div class="nav-item nav-item-sub" data-tab="timetable" onclick="switchTab('timetable')"><span class="nav-label">시간표 커스텀</span></div>
                             <div class="nav-item nav-item-sub" data-tab="schedule" onclick="switchTab('schedule')"><span class="nav-label">캘린더</span></div>
                             <div class="nav-item nav-item-sub" data-tab="exam" onclick="switchTab('exam')"><span class="nav-label">시험/수행평가</span></div>
-                            <div class="nav-item nav-item-sub" data-tab="cleaning" onclick="switchTab('cleaning')"><span class="nav-label">청소 1인1역</span></div>
+                            <div class="nav-item nav-item-sub" data-tab="cleaning" onclick="switchTab('cleaning')"><span class="nav-label">호실별 청소</span></div>
                             <div class="nav-item nav-item-sub" data-tab="squad" id="nav-squad" onclick="switchTab('squad')"><span class="nav-label">스쿼드 메이커</span></div>
                             <div class="nav-item nav-item-sub" data-tab="seat" onclick="switchTab('seat')"><span class="nav-label">랜덤 자리 배치</span></div>
                         </div>
@@ -433,7 +433,7 @@
                     <button class="btn-sub" onclick="openSidebarSettings()">🧭 사이드바 설정</button>
                 </div>
 
-                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.3.0</div>
+                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.4.0</div>
             </div>
         </div>
 
@@ -849,17 +849,17 @@
             </div>
 
             <div id="tab-cleaning" class="tab-content">
-                <div class="header"><h1>청소 1인1역 🧹</h1><p>학생 개개인이 고정 구역을 책임지는 1인1역 시스템</p></div>
+                <div class="header"><h1>호실별 청소 🧹</h1><p>일주일씩 한 호실이 교실 청소를 맡는 순번제</p></div>
                 <div class="card">
-                    <div class="card-title">1인1역 담당표 📋 <span style="font-size: 13px; color: #9ca3af; font-weight: normal;" id="current-date-display">불러오는 중...</span></div>
-                    <p style="font-size: 13px; color: #9ca3af; margin-bottom: 14px;">✨ 오늘 해당하는 담당 구역에 마우스를 올리면 파란색으로 표시되고, 해당하지 않는 구역은 흐리게 표시됩니다. <span id="cleaning-admin-hint" style="display:none; color:#2563eb;">(칸을 클릭하면 그 칸의 정보만 바로 수정할 수 있습니다)</span></p>
+                    <div class="card-title">청소 순번표 📋 <span style="font-size: 13px; color: #9ca3af; font-weight: normal;" id="current-date-display">불러오는 중...</span></div>
+                    <div id="cleaning-room-current" class="cleaning-room-current"></div>
                     <div class="table-wrapper">
                         <table id="cleaning-duty-table">
-                            <thead><tr><th style="width: 22%;">담당 구역</th><th style="width: 12%;">인원</th><th style="width: 30%;">주기 / 방식</th><th style="width: 36%;">담당 학생 번호</th></tr></thead>
-                            <tbody id="cleaning-duty-tbody"></tbody>
+                            <thead><tr><th style="width: 55%;">기간</th><th style="width: 45%;">청소 호실</th></tr></thead>
+                            <tbody id="cleaning-room-tbody"></tbody>
                         </table>
                     </div>
-                </div>            
+                </div>
             </div>
 
             <!-- 5.0: 아카이브(2반 아카이브) 페이지는 삭제되었다. 사진 첨부는 이제 커뮤니티 글쓰기에서 바로 할 수 있다.
