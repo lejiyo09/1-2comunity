@@ -3399,8 +3399,13 @@
         window.addEventListener('resize', adjustNoticePopupPosition);
         setInterval(adjustNoticePopupPosition, 1500);
 
+        // 팝업을 누르면 공지 탭으로 가서 그 공지를 연다(알림 벨의 openNoticeFromBell 과 같은 순서 - 탭을 안 바꾸면
+        // 숨겨진 공지 탭 안에서만 상세가 그려져 화면에는 아무 변화가 없었다)
         window.openNoticeDetailFromPopup = function() {
-            if (currentPopupNoticeId) showNoticeDetail(currentPopupNoticeId);
+            if (!currentPopupNoticeId) return;
+            switchTab('notice');
+            showNoticeDetail(currentPopupNoticeId);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         window.closeNoticePopup = function(e) {
