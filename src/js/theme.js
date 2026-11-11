@@ -52,6 +52,24 @@
             applySidebarPinUI();
         });
 
+        // 저사양 모드: html.gmw-lite 이면 CSS 가 유리 효과(backdrop-filter 블러)를 모두 끄고 반투명 배경을 불투명하게 바꾼다.
+        // 첫 화면 적용은 index.html <head> 의 짧은 스크립트가 미리 한다(깜빡임 방지).
+        const LITE_MODE_KEY = 'hanilgo_lite_mode';
+        const liteToggle = document.getElementById('settings-lite-toggle');
+        const liteKnob = document.getElementById('settings-lite-knob');
+        function isLiteMode(){ try { return localStorage.getItem(LITE_MODE_KEY) === '1'; } catch (e) { return false; } }
+        function applyLiteModeUI(){
+            const on = isLiteMode();
+            document.documentElement.classList.toggle('gmw-lite', on);
+            if (liteKnob) setKnob(liteKnob, on);
+            if (liteToggle) liteToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        applyLiteModeUI();
+        if (liteToggle) liteToggle.addEventListener('click', () => {
+            try { localStorage.setItem(LITE_MODE_KEY, isLiteMode() ? '0' : '1'); } catch (e) {}
+            applyLiteModeUI();
+        });
+
         // 우선순위: ① 사용자가 사이트에서 직접 선택한 테마 > ② 시스템(Chromebook) 테마 > ③ 기본값(라이트)
         function getManualTheme(){ return localStorage.getItem(THEME_KEY); } // 'light' | 'dark' | null(자동)
         function computeIsDark(){

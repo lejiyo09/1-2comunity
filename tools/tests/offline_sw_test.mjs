@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 function assert(c, m) { if (!c) { console.error('FAIL: ' + m); process.exitCode = 1; throw new Error('FAIL: ' + m); } console.log('ok -', m); }
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const CHROMIUM = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROMIUM = process.env.CHROMIUM_PATH || ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => fs.existsSync(p));
 const useOld = process.argv[2] === 'old'; // `old <git-ref>`: 그 시점의 sw.js 로 같은 시험을 해서(실패해야 정상) 시험이 문제를 재현하는지 확인
 const swSource = useOld ? execSync(`git show ${process.argv[3] || 'HEAD~1'}:sw.js`, { cwd: ROOT, encoding: 'utf8' }) : fs.readFileSync(ROOT + '/sw.js', 'utf8');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
