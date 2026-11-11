@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 import { fileURLToPath } from 'node:url';
 function assert(c, m) { if (!c) { console.error('FAIL: ' + m); process.exitCode = 1; throw new Error('FAIL: ' + m); } console.log('ok -', m); }
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const CHROMIUM = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROMIUM = process.env.CHROMIUM_PATH || ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => fs.existsSync(p));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 const swReal = fs.readFileSync(ROOT + '/sw.js', 'utf8');
 assert(/const APP_VERSION = '[0-9a-f]{12}';/.test(swReal) && /<meta name="app-version" content="[0-9a-f]{12}">/.test(fs.readFileSync(ROOT + '/index.html', 'utf8')), '빌드가 sw.js / index.html 에 앱 버전을 넣어 둠');
