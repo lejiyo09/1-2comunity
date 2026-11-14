@@ -24,7 +24,7 @@
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#2f6fed">
-    <meta name="app-version" content="1ccbb980a18c">
+    <meta name="app-version" content="d0d99bf3e4a9">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -445,7 +445,7 @@
                     <button class="btn-sub" onclick="openSidebarSettings()">🧭 사이드바 설정</button>
                 </div>
 
-                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.5.0</div>
+                <div style="padding-top:14px; border-top:1px solid var(--border-color); text-align:center; font-size:11px; color:var(--text-muted);">ver 5.6.0</div>
             </div>
         </div>
 
@@ -1556,7 +1556,8 @@
         <div class="flex justify-between items-center mb-2 flex-none">
           <h2 class="text-sm font-bold text-slate-200"><span class="mr-1.5">▦</span>TIMETABLE</h2>
           <div class="flex items-center gap-1">
-            <select id="manual-subject-select" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]"></select>
+            <select id="manual-subject-select" onchange="PlannerApp.onManualSubjectChange()" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]"></select>
+            <button id="manual-task-btn" onclick="PlannerApp.changeManualTask()" class="hidden px-1.5 py-1 bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 rounded text-[9px] font-bold transition hover:bg-indigo-600/40 max-w-[56px] truncate" title="클릭하면 다른 할일로 바꿉니다"></button>
             <select id="mark-subject-select" onchange="PlannerApp.setMarkSubject(this.value)" class="bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-[9px] text-slate-200 outline-none hidden max-w-[60px]" title="이 과목 색으로 표시해요"></select>
             <button id="btn-mark-grid" onclick="PlannerApp.toggleMarkMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600" title="드래그해서 반투명 표시를 남기거나 지워요 (같은 과목으로 다시 칠하면 지워져요, 실제 공부 기록과는 별개예요)"><span>🖍</span> 표시</button>
             <button id="btn-edit-grid" onclick="PlannerApp.toggleGridEditMode()" class="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow"><span>🔒</span> 편집</button>
@@ -1727,6 +1728,32 @@
       <h3 class="text-lg font-bold text-slate-100 mb-1">공부 시작</h3>
       <p class="text-slate-400 text-xs mb-5">"<span id="confirm-task-name" class="font-bold text-white"></span>"<br>공부를 지금 시작하시겠습니까?</p>
       <div class="flex gap-2.5"><button onclick="PlannerApp.closeModal('modal-confirm')" class="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-xs text-slate-300 transition">취소</button><button onclick="PlannerApp.confirmStartTask()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-xs text-white transition shadow-lg shadow-indigo-500/30">시작하기</button></div>
+    </div>
+  </div>
+
+  <!-- 편집 모드: 한 과목에 할일이 여러 개일 때 10분을 넣을 할일 고르기 -->
+  <div id="modal-task-pick" class="fixed inset-0 modal-backdrop hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-sm p-5">
+      <div class="flex justify-between items-center mb-1"><h3 class="text-base font-bold text-slate-100">어떤 공부를 추가할까요?</h3><button onclick="PlannerApp.closeModal('modal-task-pick')" class="text-slate-400 hover:text-white"><span class="text-lg">✕</span></button></div>
+      <p class="text-slate-400 text-xs mb-4">이 과목에 할일이 여러 개라 어느 쪽에 10분을 넣을지 골라주세요.</p>
+      <div id="task-pick-list" class="space-y-2 max-h-[40vh] overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <!-- 편집 모드: 지워진 할일의 기록이 남은 칸을 누르면, 살아있는 할일로 옮기거나 지우기 -->
+  <div id="modal-orphan" class="fixed inset-0 modal-backdrop hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-sm p-5">
+      <div class="flex justify-between items-center mb-1"><h3 class="text-base font-bold text-slate-100">지워진 할일의 기록이에요</h3><button onclick="PlannerApp.closeModal('modal-orphan')" class="text-slate-400 hover:text-white"><span class="text-lg">✕</span></button></div>
+      <p class="text-slate-400 text-xs mb-1">이 칸은 <span id="orphan-name" class="text-indigo-300 font-bold">-</span> 의 기록입니다. 어느 할일로 옮길까요?</p>
+      <p id="orphan-count" class="text-slate-500 text-[10px] mb-3"></p>
+      <label id="orphan-all-wrap" class="hidden flex items-center gap-2 text-[11px] text-indigo-300 font-semibold cursor-pointer bg-indigo-500/10 px-3 py-2 rounded border border-indigo-500/20 mb-3">
+        <input type="checkbox" id="orphan-all" class="w-4 h-4"><span>같은 할일이 찍힌 다른 칸도 함께 옮기기</span>
+      </label>
+      <div id="orphan-list" class="space-y-2 max-h-[32vh] overflow-y-auto pr-1 mb-3"></div>
+      <div class="flex gap-2">
+        <button id="orphan-keep-btn" class="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-[11px] text-slate-300 transition">그냥 두기</button>
+        <button id="orphan-clear-btn" class="flex-1 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 rounded-xl font-bold text-[11px] transition">이 칸 지우기</button>
+      </div>
     </div>
   </div>
 

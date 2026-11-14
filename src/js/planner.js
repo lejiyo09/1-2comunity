@@ -38,6 +38,7 @@
     let timerState = { interval: null, isRunning: false, taskId: null, subjectId: null, dateStr: null, lastTickTime: null, lastRenderedTimeKey: null };
     let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), tempStartTaskId = null;
     let isGridEditMode = false; let isTimeMachineUnlocked = false;
+    let manualTaskId = null; // 편집 모드에서 지금 찍고 있는 할일. 편집을 끝낼 때까지 유지된다.
     // 타임테이블 임시 마킹(반투명 하이라이트): 실제 공부 기록과는 완전히 별개로, 드래그해서
     // "이 시간에 뭘 할지" 같은 걸 표시만 해두는 기능이다. planner_records(state)에는 안 남기고
     // 날짜별로 따로 저장한다 - 실수로 실제 학습 데이터와 섞이면 안 되기 때문.
@@ -385,7 +386,8 @@
       const seg = segments.find(s => offsetSec >= s.startOffset && offsetSec < s.startOffset + s.seconds);
       if (!seg) { hideSegmentTooltip(); return null; }
       const task = seg.taskId ? (state.records[currentDateStr].tasks || []).find(t => t.id === seg.taskId) : null;
-      const taskLabel = task ? task.title : (seg.taskId ? '삭제된 할 일' : '알 수 없음');
+      const deletedName = seg.taskId && !task ? ((state.records[currentDateStr].deletedTasks || {})[seg.taskId]) : null;
+      const taskLabel = task ? task.title : (seg.taskId ? (deletedName ? `${deletedName} (삭제됨)` : '삭제된 할 일') : '알 수 없음');
       const sub = getSubject(seg.subId);
       const run = computeActivityRun(seg, box.id.slice(5).replace('-', ':'));
       let tooltipEl = document.getElementById('planner-segment-tooltip');
@@ -555,12 +557,30 @@
     }
     function clearSegmentHover() { hideSegmentTooltip(); setActivityHighlight(null); }
 
+    // 오전 7시부터 새벽 2시까지 (마지막 줄이 01시라 01:50 칸이 02:00에 끝난다)
+    const ROW_COUNT = 19;
+    function cellEnd(cellData) {
+      if (!cellData || !cellData.seconds) return null;
+      if (cellData.segments && cellData.segments.length) {
+        const last = cellData.segments[cellData.segments.length - 1];
+        return last.startOffset + last.seconds;
+      }
+      return (cellData.startOffset || 0) + cellData.seconds;
+    }
+    function cellStart(cellData) {
+      if (!cellData || !cellData.seconds) return null;
+      if (cellData.segments && cellData.segments.length) return cellData.segments[0].startOffset;
+      return cellData.startOffset || 0;
+    }
+    function touchesRightEdge(cellData) { const e = cellEnd(cellData); return e !== null && e >= 595; }
+    function touchesLeftEdge(cellData) { const s = cellStart(cellData); return s !== null && s <= 5; }
+
     function renderTimetable() {
       const grid = document.getElementById('timetable-grid'); if (!grid) return;
       const recordGrid = state.records[currentDateStr].grid || {}; grid.innerHTML = '';
       const now = new Date(); const activeTimeKey = timerState.isRunning && currentDateStr === timerState.dateStr ? `${String(now.getHours()).padStart(2, '0')}:${String(Math.floor(now.getMinutes() / 10) * 10).padStart(2, '0')}` : null;
       
-      for (let i = 0; i < 18; i++) {
+      for (let i = 0; i < ROW_COUNT; i++) {
         let h = (7 + i) % 24; let row = document.createElement('div'); row.className = 'flex-1 grid grid-cols-[30px_repeat(6,1fr)] w-full min-h-0';
         let label = document.createElement('div'); label.className = 'flex items-center justify-center text-[8px] font-mono font-bold text-slate-500 border-b border-r border-slate-700/80 bg-slate-800/30'; label.innerText = `${(7+i)>=24?'+':''}${String(h).padStart(2, '0')}`; row.appendChild(label);
         
@@ -571,7 +591,10 @@
 
           box.id = 'cell-' + timeKey.replace(':', '-');
           const markSubId = getCellMarkSubject(currentDateStr, timeKey);
-          box.className = `time-box relative overflow-hidden group border-b border-r border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${markSubId ? 'marked' : ''} ${isMarkMode ? 'cursor-pointer' : (isGridEditMode ? 'unlocked cursor-pointer' : 'locked')}`;
+          // 옆 칸과 공부가 이어지면 그 사이 세로줄을 지워 한 덩어리로 보이게 한다
+          const nextKey = m < 5 ? `${String(h).padStart(2, '0')}:${String((m + 1) * 10).padStart(2, '0')}` : null;
+          const joinsNext = nextKey && touchesRightEdge(cellData) && touchesLeftEdge(recordGrid[nextKey]);
+          box.className = `time-box relative overflow-hidden group border-b ${joinsNext ? '' : 'border-r'} border-slate-700/80 ${timeKey === activeTimeKey ? 'active-slot' : ''} ${markSubId ? 'marked' : ''} ${isMarkMode ? 'cursor-pointer' : (isGridEditMode ? 'unlocked cursor-pointer' : 'locked')}`;
           // 표시(마킹)는 과목별 색을 쓰되, 실제 공부 기록 색과 헷갈리지 않도록 훨씬 연하게(반투명하게) 얹는다.
           if (markSubId) box.style.setProperty('--mark-color', plannerHexToRgba(getSubject(markSubId).color, 0.28) || 'rgba(245, 158, 11, 0.28)');
 
@@ -666,10 +689,10 @@
       if (!canEditDate()) { uiAlert('지난주 이전 타임테이블은 타임머신 모드(날짜 더블클릭 후 관리자 비밀번호 입력)에서만 수정 가능합니다.'); return; }
       if (isMarkMode) { uiAlert('표시 기능을 먼저 끈 뒤에 편집 모드를 사용해주세요.'); return; }
       if (!isGridEditMode) {
-        uiConfirm("타임테이블을 수동으로 편집하시겠습니까?", () => { isGridEditMode = true; document.getElementById('manual-subject-select').classList.remove('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>✓</span> 완료'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.add('hidden'); renderTimetable(); }, {icon:'✏️', title:'편집 모드'});
+        isGridEditMode = true; document.getElementById('manual-subject-select').classList.remove('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>✓</span> 완료'; btn.className = 'px-1.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[9px] font-bold transition shadow whitespace-nowrap flex-none'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.add('hidden'); renderTimetable();
       } else resetEditMode();
     }
-    function resetEditMode() { isGridEditMode = false; document.getElementById('manual-subject-select').classList.add('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>🔒</span> 편집'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.remove('hidden'); renderTimetable(); }
+    function resetEditMode() { isGridEditMode = false; setManualTask(null); document.getElementById('manual-subject-select').classList.add('hidden'); const btn = document.getElementById('btn-edit-grid'); btn.innerHTML = '<span>🔒</span> 편집'; btn.className = 'px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[9px] font-bold transition shadow border border-slate-600'; const markBtn = document.getElementById('btn-mark-grid'); if (markBtn) markBtn.classList.remove('hidden'); renderTimetable(); }
 
     // 타임테이블 임시 마킹(반투명): 실제 기록 수정 모드(편집)와 동시에 켜면 드래그 동작이
     // 서로 헷갈리므로, 편집 모드일 때는 마킹 모드로 들어갈 수 없게 막는다.
@@ -723,17 +746,152 @@
       
       // 수동 편집 시 한 번 클릭으로 즉시 10분(100%) 채우고, 다시 클릭하면 초기화 (0% -> 100% -> 0%)
       if (currentSec === 0) {
-         gridData[timeKey].seconds = 600;
-         gridData[timeKey].parts = {}; gridData[timeKey].parts[subId] = 600;
-         gridData[timeKey].segments = [{ subId: subId, startOffset: 0, seconds: 600 }]; // 편집은 무조건 0초(왼쪽)부터
-         gridData[timeKey].passed = true;
+        const candidates = (state.records[currentDateStr].tasks || []).filter(t => t.subjectId === subId);
+        // 한 번 고른 할일은 편집을 끝낼 때까지 계속 쓴다. 매번 묻지 않는다.
+        const remembered = candidates.find(t => t.id === manualTaskId);
+        if (remembered) { fillCell(timeKey, subId, remembered.id); return; }
+        if (candidates.length > 1) {
+          openTaskPicker(candidates, task => { setManualTask(task.id); fillCell(timeKey, subId, task.id); });
+          return;
+        }
+        setManualTask(candidates.length === 1 ? candidates[0].id : null);
+        fillCell(timeKey, subId, candidates.length === 1 ? candidates[0].id : null);
       } else {
-         gridData[timeKey].seconds = 0;
-         gridData[timeKey].parts = {};
-         gridData[timeKey].segments = [];
-         gridData[timeKey].passed = false;
+        const orphans = orphanTaskIds(gridData[timeKey]);
+        if (orphans.length) { openOrphanModal(timeKey, orphans[0]); return; }
+        clearCell(timeKey);
       }
-      saveData(); updateDashboard(); renderTimetable(); 
+    }
+
+    // 칸을 10분 꽉 채운다. 할일이 정해져 있으면 그 할일의 누적 시간에도 10분을 더한다.
+    function fillCell(timeKey, subId, taskId) {
+      const cell = state.records[currentDateStr].grid[timeKey];
+      cell.seconds = 600;
+      cell.parts = { [subId]: 600 };
+      cell.segments = [{ subId: subId, taskId: taskId || null, startOffset: 0, seconds: 600 }]; // 편집은 무조건 0초(왼쪽)부터
+      cell.passed = true;
+      if (taskId) {
+        const task = (state.records[currentDateStr].tasks || []).find(t => t.id === taskId);
+        if (task) task.elapsedSec = (task.elapsedSec || 0) + 600;
+      }
+      saveData(); updateDashboard(); renderTasks(); renderTimetable();
+    }
+
+    // 칸 안의 조각(segments)을 할일별로 합친 초. 할일 정보가 없는 예전 조각은 빠진다.
+    function cellTaskSeconds(cell) {
+      const out = {};
+      ((cell && cell.segments) || []).forEach(sg => { if (sg.taskId) out[sg.taskId] = (out[sg.taskId] || 0) + sg.seconds; });
+      return out;
+    }
+
+    // 칸을 지우면 그 칸이 갖고 있던 시간만큼 할일 누적시간에서도 빼준다
+    function clearCell(timeKey) {
+      const cell = state.records[currentDateStr].grid[timeKey];
+      const tasks = state.records[currentDateStr].tasks || [];
+      const perTask = cellTaskSeconds(cell);
+      for (const tid in perTask) {
+        const task = tasks.find(t => t.id === tid);
+        if (task) task.elapsedSec = Math.max(0, (task.elapsedSec || 0) - perTask[tid]);
+      }
+      cell.seconds = 0;
+      cell.parts = {};
+      cell.segments = [];
+      cell.passed = false;
+      saveData(); updateDashboard(); renderTasks(); renderTimetable();
+    }
+
+    function setManualTask(taskId) {
+      manualTaskId = taskId;
+      const btn = document.getElementById('manual-task-btn');
+      if (!btn) return;
+      const task = (state.records[currentDateStr].tasks || []).find(t => t.id === taskId);
+      if (isGridEditMode && task) { btn.innerText = task.title; btn.classList.remove('hidden'); }
+      else btn.classList.add('hidden');
+    }
+    function onManualSubjectChange() { setManualTask(null); }
+    function changeManualTask() {
+      const subId = document.getElementById('manual-subject-select').value || state.subjects[0].id;
+      const candidates = (state.records[currentDateStr].tasks || []).filter(t => t.subjectId === subId);
+      if (candidates.length < 2) return;
+      openTaskPicker(candidates, task => setManualTask(task.id));
+    }
+
+    // 지워진 할일이라도 이름은 남겨뒀으니 그걸 찾아 쓴다
+    function taskNameOf(taskId) {
+      const rec = state.records[currentDateStr];
+      const alive = (rec.tasks || []).find(t => t.id === taskId);
+      if (alive) return alive.title;
+      return (rec.deletedTasks || {})[taskId] || '이름 모를 할일';
+    }
+    function orphanTaskIds(cell) {
+      const tasks = state.records[currentDateStr].tasks || [];
+      return Object.keys(cellTaskSeconds(cell)).filter(id => !tasks.some(t => t.id === id));
+    }
+    function cellsWithTask(taskId) {
+      const grid = state.records[currentDateStr].grid || {};
+      return Object.keys(grid).filter(k => (grid[k].segments || []).some(sg => sg.taskId === taskId));
+    }
+    function rebuildParts(cell) {
+      if (!cell.segments || !cell.segments.length) return;
+      cell.parts = {};
+      cell.segments.forEach(s => { cell.parts[s.subId] = (cell.parts[s.subId] || 0) + s.seconds; });
+    }
+
+    // 사라진 할일에 묶인 기록을 살아있는 할일로 옮겨준다
+    function remapTask(oldId, newId, timeKeys) {
+      const rec = state.records[currentDateStr];
+      const newTask = (rec.tasks || []).find(t => t.id === newId);
+      if (!newTask) return;
+      let moved = 0;
+      timeKeys.forEach(k => {
+        const cell = rec.grid[k];
+        if (!cell || !cell.segments) return;
+        cell.segments.forEach(s => { if (s.taskId === oldId) { s.taskId = newId; s.subId = newTask.subjectId; moved += s.seconds; } });
+        rebuildParts(cell);
+      });
+      newTask.elapsedSec = (newTask.elapsedSec || 0) + moved;
+      if (!cellsWithTask(oldId).length && rec.deletedTasks) delete rec.deletedTasks[oldId];
+      saveData(); updateDashboard(); renderTasks(); renderTimetable();
+      uiAlert(`${formatTime(moved)} 를 "${newTask.title}" (으)로 옮겼습니다.`, { icon: '🔗', title: '연결 완료' });
+    }
+
+    function taskPickButton(task, onClick) {
+      const btn = document.createElement('button');
+      btn.className = 'w-full text-left px-3 py-2.5 bg-slate-900/60 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 transition flex items-center justify-between gap-2';
+      btn.innerHTML = `<span class="truncate">${plannerEscapeText(task.title)}</span><span class="text-[10px] font-mono text-indigo-300 flex-none">${formatTime(task.elapsedSec || 0)}</span>`;
+      btn.onclick = onClick;
+      return btn;
+    }
+
+    function openOrphanModal(timeKey, orphanId) {
+      const rec = state.records[currentDateStr];
+      const others = cellsWithTask(orphanId).length;
+      document.getElementById('orphan-name').innerText = taskNameOf(orphanId);
+      document.getElementById('orphan-count').innerText = others > 1 ? `이 할일이 기록된 칸이 ${others}개 있습니다.` : '이 칸에만 기록되어 있습니다.';
+      const allWrap = document.getElementById('orphan-all-wrap');
+      const allBox = document.getElementById('orphan-all');
+      if (others > 1) { allWrap.classList.remove('hidden'); allBox.checked = true; } else { allWrap.classList.add('hidden'); allBox.checked = false; }
+      const list = document.getElementById('orphan-list');
+      list.innerHTML = '';
+      const alive = rec.tasks || [];
+      if (!alive.length) list.innerHTML = '<div class="text-[11px] text-slate-500 py-2">지금 남아있는 할일이 없어 옮길 곳이 없습니다.</div>';
+      alive.forEach(task => {
+        list.appendChild(taskPickButton(task, () => {
+          const keys = allBox.checked ? cellsWithTask(orphanId) : [timeKey];
+          closeModal('modal-orphan');
+          remapTask(orphanId, task.id, keys);
+        }));
+      });
+      document.getElementById('orphan-keep-btn').onclick = () => closeModal('modal-orphan');
+      document.getElementById('orphan-clear-btn').onclick = () => { closeModal('modal-orphan'); clearCell(timeKey); };
+      document.getElementById('modal-orphan').classList.remove('hidden');
+    }
+
+    function openTaskPicker(tasks, onPick) {
+      const list = document.getElementById('task-pick-list');
+      list.innerHTML = '';
+      tasks.forEach(task => list.appendChild(taskPickButton(task, () => { closeModal('modal-task-pick'); onPick(task); })));
+      document.getElementById('modal-task-pick').classList.remove('hidden');
     }
 
     function openAddTaskModal() { 
@@ -806,8 +964,13 @@
     function deleteTask(id, fromSetup=false) {
       uiConfirm('과제를 삭제하시겠습니까?', () => {
         if(timerState.taskId === id) stopTimer();
-        state.records[currentDateStr].tasks = state.records[currentDateStr].tasks.filter(t => t.id !== id); saveData(); 
-        if(fromSetup) renderSetupTaskList(); else { renderTasks(); updateDashboard(); }
+        const rec = state.records[currentDateStr];
+        // 표에 남을 기록이 이름 없는 유령이 되지 않도록 제목을 따로 보관해둔다
+        const gone = rec.tasks.find(t => t.id === id);
+        if (gone) { if (!rec.deletedTasks) rec.deletedTasks = {}; rec.deletedTasks[id] = gone.title; }
+        if (manualTaskId === id) setManualTask(null);
+        rec.tasks = rec.tasks.filter(t => t.id !== id); saveData(); 
+        if(fromSetup) renderSetupTaskList(); else { renderTasks(); updateDashboard(); renderTimetable(); }
       }, {icon:'🗑️', title:'삭제 확인', confirmText:'삭제'});
     }
     function toggleTaskComplete(id, isChecked) {
@@ -1591,6 +1754,8 @@
       handleChangePassword,
       handleDdaySubmit,
       handleManualOverride,
+      onManualSubjectChange,
+      changeManualTask,
       handleTaskClick,
       handleWorkspaceNoteInput,
       importData,

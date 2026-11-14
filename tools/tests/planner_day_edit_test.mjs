@@ -44,8 +44,7 @@ try {
   assert((await p.innerText('#main-task-list')).includes('내일 영어 단어'), 'TASKS 목록에 바로 보임');
   // 타임테이블 편집
   await p.evaluate(() => PlannerApp.toggleGridEditMode()); await p.waitForTimeout(150);
-  assert(await genericOpen(p), '타임테이블 편집 확인 창');
-  await p.click('#generic-confirm-btn'); await p.waitForTimeout(150);
+  assert(!(await genericOpen(p)), '타임테이블 편집은 확인 창 없이 바로 켜짐');
   await p.click('#cell-09-00'); await p.waitForTimeout(150);
   r = await recs(p);
   assert(r[D.tomorrow].grid['09:00'] && r[D.tomorrow].grid['09:00'].seconds === 600 && !(r[D.today].grid['09:00']), '타임테이블 칸을 고치면 그날 기록에 저장됨');
